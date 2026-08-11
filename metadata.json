@@ -1,0 +1,8 @@
+{
+  "name": "Copy of ICT Europa Smart Autodoc Pro_published20260217_latestmodupgrade",
+  "description": "AI alapú dokumentum átnevező és optimalizáló alkalmazás kamera támogatással.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": []
+}
