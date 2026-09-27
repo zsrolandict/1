@@ -80,7 +80,7 @@ companies 1─* engagements 1─* engagement_members *─1 profiles
 | Szabály | Érték |
 |---|---|
 | Pontszám | valószínűség (1–5) × hatás (1–5) |
-| RAG | ≥ 15 piros · 8–14 sárga · < 8 zöld; **kitettség ≥ lényegességi küszöb → piros** |
+| RAG | ≥ 15 piros · 8–14 sárga · < 8 zöld; **várható veszteség ≥ lényegességi küszöb → piros** |
 | Valószínűség | 1 → 5% · 2 → 20% · 3 → 40% · 4 → 65% · 5 → 90% |
 | Várható veszteség | bruttó kitettség × valószínűség |
 | Quick win | nem zöld és ≤ 5 munkanap → 0–30 nap |

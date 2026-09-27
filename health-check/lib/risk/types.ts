@@ -62,6 +62,8 @@ export interface ScoredRisk extends RiskItem {
   exposureExplanation: string;
   score: number;              // likelihood × impact, 1–25
   rag: Rag;
+  /** A várható veszteség elérte a lényegességi küszöböt, ezért piros (a pontszám alapján nem lenne). */
+  materialityOverride: boolean;
   probability: number;        // likelihood → valószínűség (0–1)
   expectedLossHuf: number;    // exposure × probability
   quickWin: boolean;

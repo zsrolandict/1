@@ -70,7 +70,7 @@ Ugyanaz a motor szolgál ki minden típust; a típus a hangsúlyokat, a kötelez
 - **Riport-nézőpont:** a címlap és az ajánlat a címzett szemszögéből fogalmaz.
 - **Interjúterv:** kivel, milyen sorrendben, meddig, miért és miről beszéljünk. A kérdések címzetthez kötöttek, és minden interjú a tervhez van rendelve, állapottal.
 
-Példa: ugyanaz a gyártó mintacég, változatlan válaszokkal. Health Checkként 52 pont, 4 piros tétel, 182 M Ft várható veszteség; vendor DD-ként 37 pont, 5 piros tétel, 343 M Ft.
+Példa: ugyanaz a gyártó mintacég, változatlan válaszokkal. Health Checkként 52 pont, 3 piros tétel, 182 M Ft várható veszteség (a Change of Control V2 × H5, 46 M Ft várható veszteséggel sárga); vendor DD-ként 37 pont, 5 piros tétel, 343 M Ft (a CoC V5 × H5, piros).
 
 | Típus | Kinek szól | Fókusz | Keret |
 |---|---|---|---|
@@ -123,7 +123,7 @@ A jogosultságokat az adatbázis érvényesíti sorszintű szabályokkal, ezt te
 |---|---|
 | Pontszám | valószínűség (1–5) × hatás (1–5) |
 | Besorolás | ≥ 15 piros · 8–14 sárga · < 8 zöld |
-| Lényegességi küszöb | ha a kitettség eléri, a tétel mindig piros (projektenként állítható) |
+| Lényegességi küszöb | ha a **várható veszteség** (kitettség × valószínűség) eléri, a tétel mindig piros; egy nagy, de valószínűtlen kitettség így nem piros automatikusan (projektenként állítható) |
 | Valószínűség → esély | 5% · 20% · 40% · 65% · 90% |
 | Várható veszteség | bruttó kitettség × esély |
 | Gyors javítás | nem zöld és ≤ 5 munkanap → 0–30 nap |

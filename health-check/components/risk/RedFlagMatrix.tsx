@@ -664,7 +664,7 @@ function RiskRow({
           className={`inline-flex min-w-[64px] items-center justify-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
             r.identified ? RAG_STYLE[rag].badge : 'bg-slate-50 text-slate-400 ring-slate-200'
           }`}
-          title={score < 15 && rag === 'RED' ? 'Lényegességi küszöb feletti kitettség' : undefined}
+          title={eff.materialityOverride ? 'A várható veszteség eléri a lényegességi küszöböt' : undefined}
         >
           {score} · {RAG_LABEL[rag]}
         </span>

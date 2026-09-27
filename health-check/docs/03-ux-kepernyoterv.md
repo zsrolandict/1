@@ -69,7 +69,7 @@ Az alapelv: **egy képernyő, egy döntés**. A tanácsadónak nem adatot kell b
 ### Interakciós szabályok
 
 - **Pipálás = azonosítás.** A nem pipált sor halványan, de pontszámmal együtt látszik, így a tanácsadó látja, mit „kapna”.
-- **Közlekedési lámpa:** `V × H ≥ 15` → piros, `8–14` → sárga, `< 8` → zöld. **Lényegességi felülbírálás:** ha a kitettség ≥ a küszöb, a tétel pontszámtól függetlenül piros (tooltip jelzi).
+- **Közlekedési lámpa:** `V × H ≥ 15` → piros, `8–14` → sárga, `< 8` → zöld. **Lényegességi felülbírálás:** ha a várható veszteség (kitettség × valószínűség) ≥ a küszöb, a tétel pontszámtól függetlenül piros (tooltip jelzi).
 - **Forintosítás:** bruttó kitettség (Ft) × valószínűség (5% / 20% / 40% / 65% / 90%) = **várható veszteség**. A dashboard mindkettőt mutatja, mert a vevő a bruttót, a CFO a várhatót kérdezi.
 - **Quick win (⚡):** nem zöld tétel, legfeljebb 5 munkanap alatt javítható → a 0–30 napos oszlopba kerül.
 - **Hőtérkép-cella kattintás** → a táblázat az adott cellára szűr.

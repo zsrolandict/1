@@ -30,9 +30,11 @@ export const PROBABILITY: Record<Scale5, number> = {
 
 export interface EngineOptions {
   /**
-   * Lényegességi küszöb (Ft). Ha egy tétel bruttó kitettsége eléri,
-   * a pontszámtól függetlenül PIROS. 1–5 Mrd Ft árbevételű KKV-nál
-   * jellemzően az EBITDA 5%-a; alapértelmezés 50 M Ft.
+   * Lényegességi küszöb (Ft). Ha egy tétel VÁRHATÓ vesztesége
+   * (kitettség × valószínűség) eléri, a pontszámtól függetlenül PIROS.
+   * Így egy nagy, de valószínűtlen kitettség nem lesz automatikusan piros,
+   * a típus-korrekció viszont (a valószínűségen át) ide is hat.
+   * 1–5 Mrd Ft árbevételű KKV-nál jellemzően az EBITDA 5%-a; alapértelmezés 50 M Ft.
    */
   materialityHuf: number;
   /** Quick win: legfeljebb ennyi munkanap alatt javítható. */
@@ -80,11 +82,11 @@ export function scoreRisk(risk: RiskItem, options: Partial<EngineOptions> = {}):
   const score = likelihood * impact;
   const resolved = resolveExposure(risk, opts.company);
   const exposure = resolved.valueHuf;
-  let rag = ragFromScore(score);
-  if (exposure >= opts.materialityHuf) rag = 'RED';
-
   const probability = PROBABILITY[likelihood];
   const expectedLossHuf = Math.round(exposure * probability);
+  let rag = ragFromScore(score);
+  const materialityOverride = rag !== 'RED' && expectedLossHuf >= opts.materialityHuf;
+  if (materialityOverride) rag = 'RED';
   const quickWin = rag !== 'GREEN' && risk.remediationDays <= opts.quickWinMaxDays;
 
   let window: ActionWindow;
@@ -105,6 +107,7 @@ export function scoreRisk(risk: RiskItem, options: Partial<EngineOptions> = {}):
     exposureExplanation: resolved.explanation,
     score,
     rag,
+    materialityOverride,
     probability,
     expectedLossHuf,
     quickWin,

@@ -19,10 +19,19 @@ describe('ragFromScore', () => {
 });
 
 describe('scoreRisk', () => {
-  it('lényegességi küszöb feletti kitettség pirosra emel', () => {
-    const r = scoreRisk({ ...base, likelihood: 1, impact: 2, exposureHuf: 60_000_000 });
-    expect(r.score).toBe(2);
+  it('a küszöböt elérő VÁRHATÓ veszteség pirosra emel', () => {
+    // V5 (90%) × 60 M = 54 M ≥ 50 M → piros, pedig a pontszám csak 10
+    const r = scoreRisk({ ...base, likelihood: 5, impact: 2, exposureHuf: 60_000_000 });
+    expect(r.score).toBe(10);
     expect(r.rag).toBe('RED');
+    expect(r.materialityOverride).toBe(true);
+  });
+
+  it('nagy, de valószínűtlen kitettség nem lesz automatikusan piros', () => {
+    // V1 (5%) × 600 M = 30 M < 50 M → a pontszám dönt (2 → zöld)
+    const r = scoreRisk({ ...base, likelihood: 1, impact: 2, exposureHuf: 600_000_000 });
+    expect(r.rag).toBe('GREEN');
+    expect(r.materialityOverride).toBe(false);
   });
 
   it('várható veszteség = kitettség × valószínűség', () => {

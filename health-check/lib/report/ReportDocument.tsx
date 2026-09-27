@@ -210,7 +210,7 @@ function ScorecardPage({ m }: { m: ReportModel }) {
             Minden azonosított kockázatot 1–5 skálán értékeltünk a bekövetkezés valószínűsége és a hatás súlyossága szerint.
             A cellában a tételek száma látható.
           </Text>
-          <Text style={s.muted}>• Piros: pontszám ≥ 15, vagy a kitettség eléri a {formatHufShort(m.materialityHuf)} lényegességi küszöböt.</Text>
+          <Text style={s.muted}>• Piros: pontszám ≥ 15, vagy a várható veszteség (kitettség × valószínűség) eléri a {formatHufShort(m.materialityHuf)} lényegességi küszöböt.</Text>
           <Text style={s.muted}>• Sárga: pontszám 8–14.</Text>
           <Text style={s.muted}>• Zöld: pontszám 8 alatt – figyelemmel kísérendő.</Text>
           <Text style={[s.muted, { marginTop: 6 }]}>
