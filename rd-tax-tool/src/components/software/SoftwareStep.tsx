@@ -7,21 +7,24 @@ import { Code, GitBranchPlus, Plus, ReceiptText, Scale, Trash2, TriangleAlert } 
 import { IP_RULES, LEGAL_REFERENCES, REVENUE_MODEL_LABELS, TAX_RATES } from '../../domain/constants';
 import { newComponent } from '../../domain/defaults';
 import { formatHuf, formatPercent } from '../../domain/format';
+import type { Exposure } from '../../domain/exposure';
 import type { RoyaltyYear, SoftwareAssetInputs, SoftwareComponent, SoftwareResult } from '../../domain/types';
 import { Button } from '../ui/Button';
 import { Card, LegalBadge } from '../ui/Card';
 import { CurrencyInput, Segmented, TextInput, Toggle } from '../ui/fields';
+import { ExposureCard } from './ExposureCard';
 import { DateField, DeadlineBadge, MoneyCell, QualificationBanner } from './shared';
 
 interface SoftwareStepProps {
   sw: SoftwareAssetInputs;
   result: SoftwareResult;
+  exposure?: Exposure;
   taxYear: number;
   profitBeforeTax: number;
   onChange: (patch: Partial<SoftwareAssetInputs>) => void;
 }
 
-export function SoftwareStep({ sw, result, taxYear, profitBeforeTax, onChange }: SoftwareStepProps) {
+export function SoftwareStep({ sw, result, exposure, taxYear, profitBeforeTax, onChange }: SoftwareStepProps) {
   const updateComponent = (id: string, patch: Partial<SoftwareComponent>) =>
     onChange({ components: sw.components.map((c) => (c.id === id ? { ...c, ...patch } : c)) });
   const removeComponent = (id: string) => onChange({ components: sw.components.filter((c) => c.id !== id) });
@@ -76,6 +79,7 @@ export function SoftwareStep({ sw, result, taxYear, profitBeforeTax, onChange }:
       {sw.enabled && (
         <>
           <QualificationBanner qualification={result.qualification} />
+          {exposure && <ExposureCard exposure={exposure} />}
 
           <Card
             title="Fejlesztés és NAV-bejelentések"

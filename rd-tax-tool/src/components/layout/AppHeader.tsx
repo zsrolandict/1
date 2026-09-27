@@ -45,6 +45,7 @@ export function AppHeader({ onExport, onImport, onReset, onDemo, mode, onModeCha
             [
               ['full', 'Teljes átvilágítás'],
               ['royalty', 'Szoftverjogdíj-kalkulátor'],
+              ['rules', 'Szabálykönyv'],
             ] as const
           ).map(([value, label]) => (
             <button

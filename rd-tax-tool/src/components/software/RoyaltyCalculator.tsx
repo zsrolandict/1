@@ -9,6 +9,8 @@ import { formatHuf, formatPercent } from '../../domain/format';
 import type { ClientProfile, RoyaltyYear, SoftwareAssetInputs, SoftwareResult, TaxParameters } from '../../domain/types';
 import { Card } from '../ui/Card';
 import { CurrencyInput, Segmented, Toggle } from '../ui/fields';
+import type { Exposure } from '../../domain/exposure';
+import { ExposureCard } from './ExposureCard';
 import { QualificationBanner } from './shared';
 
 interface RoyaltyCalculatorProps {
@@ -16,12 +18,13 @@ interface RoyaltyCalculatorProps {
   params: TaxParameters;
   sw: SoftwareAssetInputs;
   result: SoftwareResult;
+  exposure: Exposure;
   onClient: (patch: Partial<ClientProfile>) => void;
   onParams: (patch: Partial<TaxParameters>) => void;
   onSoftware: (patch: Partial<SoftwareAssetInputs>) => void;
 }
 
-export function RoyaltyCalculator({ client, params, sw, result, onClient, onParams, onSoftware }: RoyaltyCalculatorProps) {
+export function RoyaltyCalculator({ client, params, sw, result, exposure, onClient, onParams, onSoftware }: RoyaltyCalculatorProps) {
   const year = client.taxYear;
   const row: RoyaltyYear = sw.royaltyYears.find((y) => y.year === year) ?? {
     year,
@@ -173,6 +176,7 @@ export function RoyaltyCalculator({ client, params, sw, result, onClient, onPara
           </dl>
         </div>
         {result.enabled && <QualificationBanner qualification={result.qualification} compact />}
+        <ExposureCard exposure={exposure} compact />
         {result.warnings.length > 0 && (
           <ul className="rounded-xl border border-risk-yellow/30 bg-risk-yellow-soft px-5 py-3 text-xs text-slate-700">
             {result.warnings.map((w) => (

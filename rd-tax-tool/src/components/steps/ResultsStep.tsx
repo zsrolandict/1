@@ -1,4 +1,4 @@
-import { ChartColumn, Eye, EyeOff, Gauge, ListChecks, Printer, Route } from 'lucide-react';
+import { ChartColumn, FileSpreadsheet, Eye, EyeOff, Gauge, ListChecks, Printer, Route } from 'lucide-react';
 import { useState } from 'react';
 import type { ActionStep } from '../../domain/actionPlan';
 import { formatHuf, formatPercent } from '../../domain/format';
@@ -9,6 +9,9 @@ import { SavingsBreakdown } from '../charts/SavingsBreakdown';
 import { ActionPlan } from '../report/ActionPlan';
 import { ExecutiveReport } from '../report/ExecutiveReport';
 import { SealPanel } from '../report/SealPanel';
+import { ScenarioCard } from '../report/ScenarioCard';
+import { ExposureCard } from '../software/ExposureCard';
+import type { Exposure } from '../../domain/exposure';
 import type { SealStatus } from '../../state/useAssessment';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -17,6 +20,7 @@ import { DerivationTable, Warnings } from './CostStep';
 interface ResultsStepProps {
   assessment: Assessment;
   savings: SavingsResult;
+  exposure: Exposure;
   audit: AuditResult;
   actionPlan: ActionStep[];
   missingClientData: boolean;
@@ -24,11 +28,13 @@ interface ResultsStepProps {
   onParamsChange: (patch: Partial<TaxParameters>) => void;
   onSeal: (sealedBy: string) => Promise<void>;
   onReopen: () => void;
+  onApplyVariant: (variant: Assessment) => void;
 }
 
 export function ResultsStep({
   assessment,
   savings,
+  exposure,
   audit,
   actionPlan,
   missingClientData,
@@ -36,8 +42,28 @@ export function ResultsStep({
   onParamsChange,
   onSeal,
   onReopen,
+  onApplyVariant,
 }: ResultsStepProps) {
   const [preview, setPreview] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  /** Builds the workbook and hands it to the browser; the xlsx writer is loaded on demand. */
+  const downloadExcel = async () => {
+    setExporting(true);
+    try {
+      const [{ default: writeExcelFile }, { buildWorkbook, workbookFileName }, { compareScenarios }] = await Promise.all([
+        import('write-excel-file/browser'),
+        import('../../domain/workbook'),
+        import('../../domain/scenarios'),
+      ]);
+      const sheets = buildWorkbook({ assessment, savings, audit, exposure, scenarios: compareScenarios(assessment).rows });
+      await writeExcelFile(sheets).toFile(workbookFileName(assessment));
+    } catch {
+      window.alert('Az Excel-fájl elkészítése nem sikerült.');
+    } finally {
+      setExporting(false);
+    }
+  };
   const years = assessment.params.selfRevisionYears;
 
   return (
@@ -54,6 +80,9 @@ export function ResultsStep({
           <Button icon={preview ? EyeOff : Eye} onClick={() => setPreview((p) => !p)}>
             {preview ? 'Dashboard nézet' : 'Riport előnézet'}
           </Button>
+          <Button icon={FileSpreadsheet} onClick={() => void downloadExcel()} disabled={exporting}>
+            {exporting ? 'Készül…' : 'Excel'}
+          </Button>
           <Button variant="primary" icon={Printer} onClick={() => window.print()}>
             Nyomtatás / PDF
           </Button>
@@ -67,7 +96,7 @@ export function ResultsStep({
       )}
 
       {preview ? (
-        <ExecutiveReport assessment={assessment} savings={savings} audit={audit} actionPlan={actionPlan} sealStatus={sealStatus} />
+        <ExecutiveReport assessment={assessment} savings={savings} exposure={exposure} audit={audit} actionPlan={actionPlan} sealStatus={sealStatus} />
       ) : (
         <>
           {/* KPI row */}
@@ -112,6 +141,8 @@ export function ResultsStep({
             </div>
           </div>
 
+          <ExposureCard exposure={exposure} />
+
           <div className="grid gap-6 lg:grid-cols-2">
             <Card title="Megtakarítás jogcímenként" icon={ChartColumn}>
               <SavingsBreakdown savings={savings} />
@@ -120,6 +151,8 @@ export function ResultsStep({
               <CriteriaBars audit={audit} />
             </Card>
           </div>
+
+          <ScenarioCard assessment={assessment} locked={Boolean(assessment.seal)} onApply={onApplyVariant} />
 
           <SealPanel
             key={assessment.seal?.hash ?? 'open'}

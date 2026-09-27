@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { demoAssessment, emptyAssessment, emptySoftware, newComponent } from './defaults';
 import { DEMOS, findDemo } from './demos';
+import { calculateExposure } from './exposure';
+import { compareScenarios } from './scenarios';
+import { RULEBOOK, rulebookSummary } from './rulebook';
+import { IP_RULES } from './constants';
 import { calculateCorporateTax, calculateSavings, calculateSzocho } from './engine';
 import { scoreAudit } from './scoring';
 import { calculateSoftware, nexusRatio, notificationDeadline } from './software';
@@ -505,5 +509,78 @@ describe('demo library', () => {
     const r = savingsOf(findDemo('software-partial')!.build());
     expect(r.ipBox.sale.exemptShare).toBeCloseTo(120 / 170);
     expect(r.ipBox.sale.taxablePart).toBeGreaterThan(0);
+  });
+});
+
+describe('money at risk', () => {
+  const exposureOf = (a: Assessment) => calculateExposure(a.software, a.client, a.params.hipaRate);
+
+  it('shows nothing when every notification is on time and the income is licence fees', () => {
+    expect(exposureOf(findDemo('software-full')!.build()).items).toHaveLength(0);
+  });
+
+  it('prices the missed enhancement (lost) and the open one (at risk)', () => {
+    const a = findDemo('software-partial')!.build();
+    const e = exposureOf(a);
+    const lost = e.items.find((i) => i.kind === 'LOST')!;
+    const atRisk = e.items.find((i) => i.kind === 'AT_RISK')!;
+    expect(lost.label).toContain('v2.0');
+    expect(atRisk.label).toContain('v3.0');
+    // Lost = the sale saving the case would have had with v2.0 notified on time.
+    const fixed = { ...a.software, components: a.software.components.map((c) => (c.id === 'part-v2' ? { ...c, reportedOn: c.capitalizedOn } : c)) };
+    const base = savingsOf(a).ipBox.sale.citSaving;
+    expect(lost.amount).toBe(calculateSavings(a.client, a.costs, a.params, fixed).ipBox.sale.citSaving - base);
+    expect(atRisk.amount).toBeGreaterThan(0);
+  });
+
+  it('prices a late original notification as the whole sale saving, and the SaaS licence split per year', () => {
+    const a = findDemo('software-none')!.build();
+    const e = exposureOf(a);
+    const onTime = { ...a.software, components: a.software.components.map((c) => ({ ...c, reportedOn: c.capitalizedOn })) };
+    expect(e.lost).toBe(calculateSavings(a.client, a.costs, a.params, onTime).ipBox.sale.citSaving);
+    expect(e.foregoneAnnual).toBe(calculateSavings(a.client, a.costs, a.params, { ...a.software, saasLicenceSeparated: true }).ipBox.annualSaving);
+    expect(e.foregoneAnnual).toBeGreaterThan(0);
+  });
+});
+
+describe('what-if scenarios', () => {
+  const row = (a: Assessment, id: string) => compareScenarios(a).rows.find((r) => r.id === id);
+
+  it('shows the szocho route as a loss for a profitable client', () => {
+    const r = row(demoAssessment(), 'engineer-route')!;
+    // 96M engineer wages: 9% Tao (8.64M) → 6.5% szocho (6.24M)
+    expect(r.annualDelta).toBe(6_240_000 - 8_640_000);
+  });
+
+  it('shows the Tao route as worse this year for a loss-making client', () => {
+    const r = row(findDemo('food')!.build(), 'engineer-route')!;
+    expect(r.thisYearDelta).toBeLessThan(0);
+  });
+
+  it('prices a 25 M Ft university cooperation at 25 M Ft extra deduction', () => {
+    const r = row(findDemo('electronics')!.build(), 'university')!;
+    expect(r.annualDelta).toBe(2_250_000);
+  });
+
+  it('matches the SaaS licence split with the money-at-risk figure', () => {
+    const a = findDemo('software-none')!.build();
+    expect(row(a, 'saas-licence')!.annualDelta).toBe(calculateExposure(a.software, a.client, a.params.hipaRate).foregoneAnnual);
+  });
+
+  it('offers "notify all" only as a comparison', () => {
+    const r = row(findDemo('software-partial')!.build(), 'notify-all')!;
+    expect(r.applicable).toBe(false);
+    expect(r.saleDelta).toBeGreaterThan(0);
+  });
+});
+
+describe('rulebook', () => {
+  it('lists every rule once, with values taken from the engine constants', () => {
+    const rules = RULEBOOK.flatMap((g) => g.rules);
+    expect(new Set(rules.map((r) => r.id)).size).toBe(rules.length);
+    expect(rules.find((r) => r.id === 'ip-notify')!.value).toBe(`${IP_RULES.NOTIFICATION_DAYS} nap`);
+    expect(rules.find((r) => r.id === 'szocho-phd')!.value).toContain('500');
+    const s = rulebookSummary();
+    expect(s.confirmed + s.source + s.verify + s.method).toBe(s.total);
   });
 });

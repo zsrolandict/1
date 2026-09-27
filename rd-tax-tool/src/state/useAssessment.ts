@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { buildActionPlan } from '../domain/actionPlan';
 import { demoAssessment, emptyAssessment, emptySoftware, newComponent } from '../domain/defaults';
 import { calculateSavings } from '../domain/engine';
+import { calculateExposure } from '../domain/exposure';
 import { scoreAudit } from '../domain/scoring';
 import { createSeal, isLegacySealVersion, verifySeal } from '../domain/seal';
 import type {
@@ -33,7 +34,8 @@ type Action =
   | { type: 'software'; patch: Partial<SoftwareAssetInputs> }
   | { type: 'seal'; seal: AuditSeal }
   | { type: 'reopen' }
-  | { type: 'replace'; assessment: Assessment };
+  | { type: 'replace'; assessment: Assessment }
+  | { type: 'variant'; assessment: Assessment };
 
 function reducer(state: Assessment, action: Action): Assessment {
   // Sealed cases only accept replace (new/open/demo) and reopen.
@@ -58,6 +60,9 @@ function reducer(state: Assessment, action: Action): Assessment {
         : state;
     case 'replace':
       return action.assessment;
+    case 'variant':
+      // Seal guard above already rejects this for sealed cases.
+      return { ...action.assessment, seal: null, sealedSource: null, sealHistory: state.sealHistory };
   }
 }
 
@@ -198,6 +203,10 @@ export function useAssessment() {
     () => calculateSavings(assessment.client, assessment.costs, assessment.params, assessment.software),
     [assessment.client, assessment.costs, assessment.params, assessment.software],
   );
+  const exposure = useMemo(
+    () => calculateExposure(assessment.software, assessment.client, assessment.params.hipaRate),
+    [assessment.software, assessment.client, assessment.params.hipaRate],
+  );
   const audit = useMemo(
     () => scoreAudit(assessment.audit, assessment.client.industry),
     [assessment.audit, assessment.client.industry],
@@ -218,6 +227,8 @@ export function useAssessment() {
       reset: () => dispatch({ type: 'replace', assessment: emptyAssessment() }),
       loadDemo: (build: () => Assessment = demoAssessment) => dispatch({ type: 'replace', assessment: build() }),
       load: (raw: unknown) => dispatch({ type: 'replace', assessment: normaliseAssessment(raw) }),
+      /** Takes over a what-if variant; ignored while the case is sealed. */
+      applyVariant: (variant: Assessment) => dispatch({ type: 'variant', assessment: variant }),
     }),
     [],
   );
@@ -248,5 +259,5 @@ export function useAssessment() {
     URL.revokeObjectURL(url);
   }, [assessment]);
 
-  return { assessment, savings, audit, actionPlan, sealStatus, seal, exportJson, ...actions };
+  return { assessment, savings, exposure, audit, actionPlan, sealStatus, seal, exportJson, ...actions };
 }

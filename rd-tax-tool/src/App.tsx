@@ -15,6 +15,7 @@ import { ExecutiveReport } from './components/report/ExecutiveReport';
 import { AuditStep } from './components/steps/AuditStep';
 import { ClientStep, clientErrors } from './components/steps/ClientStep';
 import { CostStep } from './components/steps/CostStep';
+import { RulebookView } from './components/rules/RulebookView';
 import { RoyaltyCalculator } from './components/software/RoyaltyCalculator';
 import { SoftwareStep } from './components/software/SoftwareStep';
 import { ResultsStep } from './components/steps/ResultsStep';
@@ -25,6 +26,7 @@ export default function App() {
   const {
     assessment,
     savings,
+    exposure,
     audit,
     actionPlan,
     sealStatus,
@@ -37,6 +39,7 @@ export default function App() {
     updateAudit,
     updateSoftware,
     reset,
+    applyVariant,
     loadDemo,
     load,
   } = useAssessment();
@@ -95,13 +98,16 @@ export default function App() {
         {assessment.seal && <SealBanner status={sealStatus} onOpen={() => goTo('results')} />}
 
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-          {mode === 'royalty' ? (
+          {mode === 'rules' ? (
+            <RulebookView />
+          ) : mode === 'royalty' ? (
             <fieldset disabled={Boolean(assessment.seal)} className="m-0 min-w-0 border-0 p-0">
               <RoyaltyCalculator
                 client={assessment.client}
                 params={assessment.params}
                 sw={assessment.software}
                 result={savings.ipBox}
+                exposure={exposure}
                 onClient={updateClient}
                 onParams={updateParams}
                 onSoftware={updateSoftware}
@@ -111,6 +117,7 @@ export default function App() {
             <ResultsStep
               assessment={assessment}
               savings={savings}
+              exposure={exposure}
               audit={audit}
               actionPlan={actionPlan}
               missingClientData={missingClientData}
@@ -118,6 +125,7 @@ export default function App() {
               onParamsChange={updateParams}
               onSeal={seal}
               onReopen={reopen}
+              onApplyVariant={applyVariant}
             />
           ) : (
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -145,6 +153,7 @@ export default function App() {
                   <SoftwareStep
                     sw={assessment.software}
                     result={savings.ipBox}
+                    exposure={exposure}
                     taxYear={assessment.client.taxYear}
                     profitBeforeTax={assessment.client.profitBeforeTax}
                     onChange={updateSoftware}
@@ -155,7 +164,7 @@ export default function App() {
             </div>
           )}
 
-          <div className={`mt-8 flex justify-between border-t border-slate-200 pt-6 ${mode === 'royalty' ? 'hidden' : ''}`}>
+          <div className={`mt-8 flex justify-between border-t border-slate-200 pt-6 ${mode !== 'full' ? 'hidden' : ''}`}>
             {prev ? (
               <Button icon={ChevronLeft} onClick={() => goTo(prev.id)}>
                 {prev.label}
@@ -178,18 +187,19 @@ export default function App() {
 
       {/* Print target: only this is visible when printing, from any step. */}
       <div className="print-only">
-        <ExecutiveReport assessment={assessment} savings={savings} audit={audit} actionPlan={actionPlan} sealStatus={sealStatus} />
+        <ExecutiveReport assessment={assessment} savings={savings} exposure={exposure} audit={audit} actionPlan={actionPlan} sealStatus={sealStatus} />
       </div>
     </>
   );
 }
 
-export type AppMode = 'full' | 'royalty';
+export type AppMode = 'full' | 'royalty' | 'rules';
 const MODE_KEY = 'ict-rd-mode';
 
 function loadMode(): AppMode {
   try {
-    return localStorage.getItem(MODE_KEY) === 'royalty' ? 'royalty' : 'full';
+    const stored = localStorage.getItem(MODE_KEY);
+    return stored === 'royalty' || stored === 'rules' ? stored : 'full';
   } catch {
     return 'full';
   }

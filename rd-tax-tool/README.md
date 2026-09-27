@@ -6,7 +6,7 @@ Belső szakértői eszköz ügyfélcégek K+F projektjeinek gyors átvilágítá
 cd rd-tax-tool
 npm install
 npm run dev        # http://localhost:5173
-npm test           # a számítási motor, a pontozás és a pecsét egységtesztjei
+npm test           # motor, pontozás, pecsét, demók, forgatókönyvek, Excel-export
 npm run build      # típusellenőrzés + produkciós build (dist/)
 ```
 
@@ -136,6 +136,13 @@ Külön lépés a saját fejlesztésű, hasznosított szoftverre, a teljes élet
 ### Szoftverjogdíj-kalkulátor (demó mód)
 
 A fejlécben a **Szoftverjogdíj-kalkulátor** nézet egy oldalon számol: éves jogdíjbevétel − levonható ráfordítás → Tao-, HIPA- és innovációsjárulék-megtakarítás, tényleges adókulccsal és „kedvezmény nélkül / kedvezménnyel” összevetéssel. Ugyanazt a motort és adatot használja, mint a teljes átvilágítás; a bejelentéseket, továbbfejlesztéseket és az eladást a teljes nézet kezeli.
+
+## Tanácsadói eszközök
+
+- **Mennyi pénz van veszélyben?** (`src/domain/exposure.ts`) – forintban mutatja, mit veszített el a cég az elmulasztott bejelentésekkel (*Elveszett*), mit veszít, ha egy nyitott 75 napos határidő lejár (*Veszélyben*), és mennyi jogdíjkedvezmény marad el évente a SaaS licencdíj-elkülönítés hiánya miatt (*Évente elmarad*). Minden összeg a számítási motor újrafuttatásából jön, egy bemenet megváltoztatásával. Megjelenik a Szoftver lépésben, az Eredménytáblán, a kalkulátorban és a riportban.
+- **Mi lenne, ha…** (`src/domain/scenarios.ts`) – egy döntés megváltoztatása egymás mellett: mérnöki bérek Tao- vagy szocho-úton, azonnali levonás vagy amortizáció, 25 M Ft egyetemi együttműködés, SaaS licencdíj-elkülönítés, minden bejelentés határidőben. Oszlopok: éves eltérés, idén pénzben realizálható eltérés, egyszeri eladási eltérés. Az „Átvétel” gomb beemeli a változatot az ügybe (lezárt ügyben tiltva); a „minden bejelentés határidőben” csak összevetés.
+- **Szabálykönyv** (fejléc harmadik füle, `src/domain/rulebook.ts`) – minden kulcs és szabály közvetlenül a konstansokból, jogszabályhellyel és státusszal (adócsapat megerősítette / nyilvános forrás / ellenőrizendő / ICT módszertan). A verzió a vezetői riport láblécén is szerepel.
+- **Excel-export** (Eredménytábla → *Excel*, `src/domain/workbook.ts`) – hat munkalap: Összesítő, Levezetés, Szoftver, Audit, Forgatókönyvek, Szabálykönyv. A Levezetés lapon valódi képletek (`ROUND(alap × kulcs)`) állnak a program saját értéke és az eltérés mellett, így az adócsapat saját eszközzel ellenőrizhet. Az Excel-író csak kattintáskor töltődik be.
 
 ## Tao / HIPA szakmai review (2026. szeptember)
 

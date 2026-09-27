@@ -12,6 +12,8 @@ import { savingsRows } from '../charts/SavingsBreakdown';
 import type { SealStatus } from '../../state/useAssessment';
 import { OUTCOME_LABELS } from '../layout/DemoMenu';
 import { deadlineText } from '../software/shared';
+import type { Exposure } from '../../domain/exposure';
+import { RULEBOOK_CONFIRMED_ON, RULEBOOK_VERSION, rulebookSummary } from '../../domain/rulebook';
 import { ActionPlan } from './ActionPlan';
 import { ReportSealLine } from './SealPanel';
 
@@ -21,9 +23,10 @@ interface ExecutiveReportProps {
   audit: AuditResult;
   actionPlan: ActionStep[];
   sealStatus: SealStatus;
+  exposure: Exposure;
 }
 
-export function ExecutiveReport({ assessment, savings, audit, actionPlan, sealStatus }: ExecutiveReportProps) {
+export function ExecutiveReport({ assessment, savings, audit, actionPlan, sealStatus, exposure }: ExecutiveReportProps) {
   const { client, params } = assessment;
   const today = new Date().toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric' });
   const years = params.selfRevisionYears;
@@ -103,7 +106,7 @@ export function ExecutiveReport({ assessment, savings, audit, actionPlan, sealSt
         )}
       </section>
 
-      {savings.ipBox.enabled && <ReportIpBox savings={savings} assetName={assessment.software.name} />}
+      {savings.ipBox.enabled && <ReportIpBox savings={savings} exposure={exposure} assetName={assessment.software.name} />}
 
       {/* SZTNH readiness */}
       <section className="avoid-break mt-8">
@@ -174,6 +177,9 @@ export function ExecutiveReport({ assessment, savings, audit, actionPlan, sealSt
           </div>
         </div>
       </footer>
+      <p className="mt-3 text-[10.5px] text-slate-400">
+        Szabálykönyv v{RULEBOOK_VERSION} (adócsapat jóváhagyása: {RULEBOOK_CONFIRMED_ON}) · {rulebookSummary().verify} szabály ellenőrzés alatt
+      </p>
       <div className="avoid-break mt-4">
         <ReportSealLine seal={assessment.seal} status={sealStatus} />
       </div>
@@ -204,7 +210,7 @@ function KeyFigure({ label, value, emphasis = false }: { label: string; value: s
 }
 
 /** Software IP-box summary with every component's notification status. */
-function ReportIpBox({ savings, assetName }: { savings: SavingsResult; assetName: string }) {
+function ReportIpBox({ savings, exposure, assetName }: { savings: SavingsResult; exposure: Exposure; assetName: string }) {
   const ip = savings.ipBox;
   const alertStatuses = ['OPEN', 'MISSED', 'REPORTED_LATE'];
   return (
@@ -236,6 +242,13 @@ function ReportIpBox({ savings, assetName }: { savings: SavingsResult; assetName
           </>
         )}
       </div>
+      {exposure.items.length > 0 && (
+        <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+          <ExposureTile label="Elveszett" value={exposure.lost} tone="text-risk-red" />
+          <ExposureTile label="Veszélyben" value={exposure.atRisk} tone="text-risk-yellow" />
+          <ExposureTile label="Évente elmarad" value={exposure.foregoneAnnual} tone="text-navy-700" />
+        </div>
+      )}
       <p className="mt-2 mb-1 font-semibold text-navy-900">NAV-bejelentések ({IP_RULES.NOTIFICATION_DAYS} nap, jogvesztő)</p>
       <ul className="space-y-0.5">
         {ip.components.map((c) => (
@@ -248,5 +261,14 @@ function ReportIpBox({ savings, assetName }: { savings: SavingsResult; assetName
         ))}
       </ul>
     </section>
+  );
+}
+
+function ExposureTile({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return (
+    <div className="rounded border border-slate-200 px-2 py-1.5">
+      <p className={`text-[10px] font-semibold uppercase ${tone}`}>{label}</p>
+      <p className="tabular font-semibold text-navy-900">{formatHuf(value)}</p>
+    </div>
   );
 }

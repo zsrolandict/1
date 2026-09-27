@@ -303,7 +303,7 @@ export function DerivationTable({ savings, hipaRate }: { savings: SavingsResult;
             ? [
                 {
                   label: 'IP-box – HIPA / innovációs járulék',
-                  formula: 'jogdíjbevétel × beállított hányad × kulcs',
+                  formula: 'jogdíjbevétel × HIPA-kulcs (+ 0,3%), nexus nélkül',
                   value: savings.ipBox.hipaSaving + savings.ipBox.innovationContributionSaving,
                 },
               ]
