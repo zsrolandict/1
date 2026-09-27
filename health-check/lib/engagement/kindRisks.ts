@@ -1,0 +1,124 @@
+import { sectorItem } from '@/lib/scenarios/types';
+import type { RiskItem } from '@/lib/risk/types';
+import type { EngagementKind } from './kinds';
+
+/**
+ * Átvilágítás-típusonként javasolt további kockázati tételek. Az alapkatalógus
+ * mindenhol ugyanaz; ezeket a szakértő egy kattintással veheti fel, ha a típus
+ * (és a cég) indokolja.
+ */
+export const KIND_RISKS: Record<EngagementKind, RiskItem[]> = {
+  HEALTH_CHECK: [
+    sectorItem({
+      code: 'HC-01', pillar: 'OPERATIONS', title: 'Hiányzó üzleti terv és vezetői riportrendszer',
+      description: 'Nincs írásos éves terv, a vezetés havi számok nélkül dönt.',
+      likelihood: 3, impact: 3, exposureHuf: 10_000_000, remediationDays: 15,
+      remediation: 'Éves üzleti terv, havi vezetői riport 8–10 mutatóval.', division: 'ADVISORY', serviceFeeHuf: 700_000,
+      reasoning: 'A társaság nem rendelkezik írásos üzleti tervvel, és a vezetés nem kap rendszeres, számszerű riportot. Így az eltérések későn derülnek ki, a döntések tapasztalatra és megérzésre épülnek, a növekedés finanszírozása pedig nehezen tervezhető.',
+    }),
+    sectorItem({
+      code: 'HC-02', pillar: 'FINANCE', title: 'Nincs likviditási előrejelzés',
+      description: 'A pénzügyi vezetés nem készít 13 hetes vagy 12 hónapos cash-flow tervet.',
+      likelihood: 3, impact: 3, exposureHuf: 15_000_000, remediationDays: 5,
+      remediation: '13 hetes gördülő cash-flow terv bevezetése.', division: 'ACCOUNTING', serviceFeeHuf: 400_000,
+      reasoning: 'A társaság nem tervezi előre a likviditását. Egy nagyobb vevő késedelme vagy egy szezonális csúcs váratlan finanszírozási igényt okozhat, amit rövid határidővel, drágán kell megoldani.',
+    }),
+  ],
+  VENDOR_DD: [
+    sectorItem({
+      code: 'VDD-01', pillar: 'FINANCE', title: 'Rendezetlen tulajdonosi kölcsönök és kapcsolt tartozások',
+      description: 'Tulajdonosi kölcsön, kapcsolt követelés vagy tartozás a mérlegben, dokumentálatlan feltételekkel.',
+      likelihood: 3, impact: 3, exposureHuf: 30_000_000, remediationDays: 10,
+      remediation: 'Tulajdonosi és kapcsolt tételek rendezése vagy szerződéses rögzítése a tranzakció előtt.', division: 'TAX', serviceFeeHuf: 800_000,
+      reasoning: 'A mérlegben rendezetlen tulajdonosi és kapcsolt feles tételek szerepelnek. A vevő ezeket a vételár-számításnál adósságként vagy kockázatként kezeli, és rendezésüket a zárás feltételévé teszi; a dokumentálatlan feltételek adózási kérdéseket is felvetnek.',
+    }),
+    sectorItem({
+      code: 'VDD-02', pillar: 'LEGAL', title: 'Hiányos adatszoba és dokumentáció',
+      description: 'Szerződések, engedélyek, határozatok nem teljesek vagy nem kereshetők.',
+      likelihood: 4, impact: 3, exposureHuf: 20_000_000, remediationDays: 10,
+      remediation: 'Adatszoba-struktúra, hiánylista, dokumentumpótlás a vevői átvilágítás előtt.', division: 'LEGAL', serviceFeeHuf: 600_000,
+      reasoning: 'A vevői átvilágításhoz szükséges dokumentumok hiányosak és nehezen visszakereshetők. Ez elhúzza a tranzakciót, bizalmatlanságot kelt, és a vevő a bizonytalanságot jellemzően vételár-csökkentéssel vagy szigorúbb szavatossági feltételekkel árazza be.',
+    }),
+  ],
+  BUY_SIDE_DD: [
+    sectorItem({
+      code: 'BUY-01', pillar: 'LEGAL', title: 'Elégtelen szavatossági és kártalanítási védelem',
+      description: 'A feltárt kockázatokra nincs megfelelő szavatossági nyilatkozat vagy kártalanítási mechanizmus.',
+      likelihood: 3, impact: 4, exposureHuf: 80_000_000, remediationDays: 15,
+      remediation: 'Specifikus kártalanítás és vételár-visszatartás (escrow) a feltárt tételekre.', division: 'LEGAL', serviceFeeHuf: 1_500_000,
+      reasoning: 'Az átvilágítás során feltárt kockázatok egy részére az adásvételi szerződés tervezete nem nyújt védelmet. A zárás után bekövetkező károk így a vevőt terhelnék; ezekre specifikus kártalanítás vagy vételár-visszatartás javasolt.',
+    }),
+    sectorItem({
+      code: 'BUY-02', pillar: 'FINANCE', title: 'Rejtett függő kötelezettségek',
+      description: 'Peres ügyek, kezességek, garanciák vagy adóellenőrzési kockázat a mérlegen kívül.',
+      likelihood: 3, impact: 4, exposureHuf: 50_000_000, remediationDays: 10,
+      remediation: 'Függő kötelezettségek teljes körű listája eladói nyilatkozattal; beárazás a vételárba.', division: 'LEGAL', serviceFeeHuf: 800_000,
+      reasoning: 'A célpont mérlegén kívüli kötelezettségei (peres ügyek, kezességek, bankgaranciák, adóellenőrzési kockázat) nem teljes körűen ismertek. Ezek a zárás után a vevőnél jelennek meg, ezért a vételárban vagy kártalanítással kell kezelni őket.',
+    }),
+  ],
+  FINANCING_READINESS: [
+    sectorItem({
+      code: 'FIK-01', pillar: 'FINANCE', title: 'Kovenánsok megsértésének kockázata',
+      description: 'A meglévő hitelszerződések mutatói (adósságszolgálat, eladósodottság) a határérték közelében.',
+      likelihood: 3, impact: 4, exposureHuf: 40_000_000, remediationDays: 10,
+      remediation: 'Kovenáns-előrejelzés, egyeztetés a bankkal a megsértés előtt.', division: 'ADVISORY', serviceFeeHuf: 700_000,
+      reasoning: 'A meglévő hitelszerződések pénzügyi mutatói a határérték közelében vannak. Megsértésük esetén a bank a hitelt felmondhatja vagy a feltételeket szigoríthatja, ami az új finanszírozás esélyét is rontja.',
+    }),
+    sectorItem({
+      code: 'FIK-02', pillar: 'FINANCE', title: 'Hiányzó 12 hónapos cash-flow előrejelzés',
+      description: 'A finanszírozási igény nincs cash-flow tervvel alátámasztva.',
+      likelihood: 4, impact: 3, exposureHuf: 15_000_000, remediationDays: 5,
+      remediation: '12 hónapos, havi bontású cash-flow és finanszírozási terv, érzékenységvizsgálattal.', division: 'ACCOUNTING', serviceFeeHuf: 500_000,
+      reasoning: 'A társaság nem tudja számszerűen bemutatni, hogyan szolgálja ki az új finanszírozást. A bank vagy befektető ezt alapdokumentumként kéri; hiánya a bírálatot elhúzza vagy kedvezőtlenebb feltételekhez vezet.',
+    }),
+  ],
+  SUCCESSION: [
+    sectorItem({
+      code: 'SUC-01', pillar: 'LEGAL', title: 'Hiányzó tulajdonosi megállapodás',
+      description: 'Nincs szindikátusi szerződés vagy megállapodás a döntéshozatalról, kilépésről, elővásárlásról.',
+      likelihood: 4, impact: 4, exposureHuf: 50_000_000, remediationDays: 20,
+      remediation: 'Tulajdonosi (szindikátusi) megállapodás: döntéshozatal, kilépés, elővásárlás, értékelési mechanizmus.', division: 'LEGAL', serviceFeeHuf: 1_200_000,
+      reasoning: 'A jelenlegi és a leendő tulajdonosok között nincs írásos megállapodás a döntéshozatalról, a kilépésről és az üzletrészek értékeléséről. Az átadás után egy vita vagy egy tulajdonos váratlan kiesése megbéníthatja a cég működését.',
+    }),
+    sectorItem({
+      code: 'SUC-02', pillar: 'FINANCE', title: 'A cég és a család vagyonának összefonódása',
+      description: 'Tulajdonosi kölcsönök, családi ingatlan bérlése, magáncélú költségek a cégben.',
+      likelihood: 3, impact: 3, exposureHuf: 20_000_000, remediationDays: 15,
+      remediation: 'Tulajdonosi tételek leválasztása, piaci feltételű szerződések, az átadás adózási tervezése.', division: 'TAX', serviceFeeHuf: 900_000,
+      reasoning: 'A cég és az alapító család vagyona több ponton összefonódik. Az átadás előtt ezek rendezése nélkül az utódok nem látják tisztán a cég valódi eredményét, és az átadás adózási terhe is nagyobb lehet.',
+    }),
+  ],
+  COMPLIANCE_AUDIT: [
+    sectorItem({
+      code: 'CMP-01', pillar: 'LEGAL', title: 'Hiányzó kötelező belső szabályzatok',
+      description: 'Visszaélés-bejelentési rendszer, adatvédelmi és munkavédelmi szabályzat hiányos vagy elavult.',
+      likelihood: 3, impact: 3, exposureHuf: 8_000_000, remediationDays: 10,
+      remediation: 'Kötelező szabályzatok felmérése és pótlása, felelősök kijelölése, munkatársi oktatás.', division: 'LEGAL', serviceFeeHuf: 600_000,
+      reasoning: 'A társaság méretéhez és tevékenységéhez kötelezően előírt belső szabályzatok egy része hiányzik vagy elavult. Hatósági ellenőrzés vagy munkavállalói panasz esetén ez önmagában bírságot vonhat maga után.',
+    }),
+    sectorItem({
+      code: 'CMP-02', pillar: 'FINANCE', title: 'Magas adóellenőrzési kockázat',
+      description: 'Az adóhatóság kockázatelemzése szempontjából kiemelt tételek (pl. kapcsolt ügyletek, visszaigénylések).',
+      likelihood: 3, impact: 4, exposureHuf: 20_000_000, remediationDays: 10,
+      remediation: 'Adóügyi önellenőrző felülvizsgálat a kiemelt tételekre, szükség esetén önellenőrzés.', division: 'TAX', serviceFeeHuf: 800_000,
+      reasoning: 'A társaság több olyan tételt mutat, amelyet az adóhatóság kockázatelemzése kiemelten figyel. Egy ellenőrzés esetén az utólag feltárt hiba adókülönbözettel, pótlékkal és bírsággal jár; önellenőrzéssel ez jelentősen csökkenthető.',
+    }),
+  ],
+  POST_MERGER: [
+    sectorItem({
+      code: 'PMI-01', pillar: 'HR', title: 'Kulcsemberek elvándorlása az akvizíció után',
+      description: 'A kulcsemberek megtartására nincs program; a bizonytalanság miatt távozhatnak.',
+      likelihood: 4, impact: 4, exposureHuf: 0, remediationDays: 10,
+      remediation: 'Megtartási program (bónusz, szerep, kommunikáció) az első 30 napban.', division: 'HR', serviceFeeHuf: 900_000,
+      reasoning: 'Tulajdonosváltás után a kulcsemberek egy része bizonytalanná válik, és a versenytársak ilyenkor aktívan keresik őket. Megtartási program nélkül a tudás és az ügyfélkapcsolatok egy része az első évben elveszhet.',
+      valuation: { formula: { type: 'REVENUE_SHARE', share: 0.2, marginBased: true, label: 'kulcsemberekhez kötött árbevétel' }, overrideHuf: null },
+    }),
+    sectorItem({
+      code: 'PMI-02', pillar: 'OPERATIONS', title: 'Párhuzamos rendszerek és folyamatok',
+      description: 'Az anyavállalattal eltérő ügyviteli rendszer, jóváhagyási rend és beszerzés.',
+      likelihood: 4, impact: 3, exposureHuf: 25_000_000, remediationDays: 30,
+      remediation: 'Integrációs terv: rendszerek, jóváhagyási rend, beszerzés egységesítése 100 napon belül.', division: 'ADVISORY', serviceFeeHuf: 1_000_000,
+      reasoning: 'A megvásárolt cég és az új tulajdonos rendszerei és folyamatai eltérnek. Párhuzamos működés mellett nő az adminisztráció, a hibák száma és a kontrollhiány, és a tervezett szinergiák késnek.',
+    }),
+  ],
+};

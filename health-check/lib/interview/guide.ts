@@ -1,7 +1,7 @@
 import { ENGAGEMENT_KINDS } from '@/lib/engagement/kinds';
 import { scoreRisk } from '@/lib/risk/engine';
 import type { Pillar } from '@/lib/risk/types';
-import { BASE_QUESTIONS, KIND_TOPIC_QUESTIONS, RISK_PROBES, ROLE_PILLARS } from './questionBank';
+import { BASE_QUESTIONS, KIND_QUESTIONS, RISK_PROBES, ROLE_PILLARS } from './questionBank';
 import type { GuideContext, InterviewQuestion } from './types';
 
 /** Becsült idő / kérdés (perc), a követő kérdésekkel együtt. */
@@ -83,19 +83,21 @@ export function buildInterviewGuide(ctx: GuideContext): InterviewQuestion[] {
     }),
   );
 
-  // 5. Átvilágítás-típus specifikus kérdések.
-  (KIND_TOPIC_QUESTIONS[profile.extraTopic] ?? []).forEach((q, i) => {
-    if (!covers(q.pillar)) return;
-    out.push({
-      id: `kind-${ctx.kind}-${i}`,
-      pillar: q.pillar,
-      text: q.text,
-      listenFor: q.listenFor,
-      followUps: q.followUps ?? [],
-      source: { type: 'KIND', kind: ctx.kind },
-      priority: 2,
-    });
-  });
+  // 5. Átvilágítás-típus specifikus kérdések – csak a címzett szerepkörnek.
+  KIND_QUESTIONS[ctx.kind]
+    .filter((q) => q.roles.includes(ctx.role))
+    .forEach((q, i) =>
+      out.push({
+        id: `kind-${ctx.kind}-${ctx.role}-${i}`,
+        pillar: q.pillar,
+        text: q.text,
+        listenFor: q.listenFor,
+        followUps: q.followUps ?? [],
+        source: { type: 'KIND', kind: ctx.kind },
+        // A típus lényegét adó kérdések az első kettő – ezek kötelezők.
+        priority: i < 2 ? 1 : 2,
+      }),
+    );
 
   // Duplikátumok kiszűrése, majd rendezés: prioritás → a típus pillérsúlya.
   const seen = new Set<string>();

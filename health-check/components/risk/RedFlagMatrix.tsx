@@ -31,7 +31,8 @@ import { getScenario, SCENARIOS } from '@/lib/scenarios';
 import { EXPERT_PARAMETERS } from '@/lib/risk/parameters';
 import { computeFormula, resolveExposure, type CompanyProfile, type Formula } from '@/lib/risk/valuation';
 import ExportPdfButton, { type SaveFile } from '@/components/report/ExportPdfButton';
-import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
+import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, hourSplit, PM_HOURS, type EngagementKind } from '@/lib/engagement/kinds';
+import { KIND_RISKS } from '@/lib/engagement/kindRisks';
 
 const SOURCE_LABEL: Partial<Record<RiskSource, string>> = {
   CHECKLIST: 'Csekklista',
@@ -128,7 +129,17 @@ export default function RedFlagMatrix({
     setExpanded(new Set());
   };
 
-  const result = useMemo(() => assess(items, { materialityHuf, company }), [items, materialityHuf, company]);
+  const profile = ENGAGEMENT_KINDS[kind];
+  const focusCodes = useMemo(() => new Set(profile.focusRiskCodes), [profile]);
+  const result = useMemo(
+    () => assess(items, { materialityHuf, company, pillarWeights: profile.weights }),
+    [items, materialityHuf, company, profile],
+  );
+  const kindExtras = KIND_RISKS[kind].filter((k) => !items.some((r) => r.code === k.code));
+  const addKindRisk = (code: string) => {
+    const item = KIND_RISKS[kind].find((k) => k.code === code);
+    if (item) setItems((xs) => [{ ...item, source: 'MANUAL' }, ...xs]);
+  };
   const scoredById = useMemo(() => new Map(result.risks.map((r) => [r.id, r])), [result]);
 
   const visible = items.filter((r) => {
@@ -140,7 +151,11 @@ export default function RedFlagMatrix({
       if (!`${r.code} ${r.title} ${r.description}`.toLowerCase().includes(q)) return false;
     }
     return true;
-  });
+  })
+    // A típus fókusztételei elöl (stabil rendezés, egyébként a lista sorrendje marad).
+    .map((r, i) => ({ r, i, f: focusCodes.has(r.code) ? 0 : 1 }))
+    .sort((a, b) => a.f - b.f || a.i - b.i)
+    .map((x) => x.r);
 
   const update = (id: string, patch: Partial<RiskItem>) =>
     setItems((xs) => xs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -257,6 +272,42 @@ export default function RedFlagMatrix({
         </p>
       </section>
 
+      {/* ── Az átvilágítás típusa: cél, keret, fókusz ───────────── */}
+      <section className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm print:hidden">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <span className="font-semibold text-slate-900">{profile.label}</span>
+          <span className="text-slate-500">Címzett: {profile.audience}</span>
+          <span className="text-slate-500">{profile.purpose}</span>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-slate-500">Keret: <b className="text-slate-800">{profile.hourBudget} óra</b></span>
+          {hourSplit(kind).map((h) => (
+            <span key={h.pillar} className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">
+              {PILLAR_LABEL[h.pillar]} {h.hours} ó · súly {Math.round(profile.weights[h.pillar] * 100)}%
+            </span>
+          ))}
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">Projektvezetés {PM_HOURS} ó</span>
+          <span className="ml-auto text-slate-500">
+            Fókusz: {profile.focusRiskCodes.join(', ')}
+          </span>
+        </div>
+        {kindExtras.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 text-xs">
+            <span className="text-slate-500">Ehhez a típushoz javasolt további tételek:</span>
+            {kindExtras.map((k) => (
+              <button
+                key={k.code}
+                onClick={() => addKindRisk(k.code)}
+                title={k.description}
+                className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-indigo-800 hover:bg-indigo-100"
+              >
+                <Plus className="h-3 w-3" /> {k.code} {k.title}
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* ── KPI sáv ─────────────────────────────────────────────── */}
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Kpi label="Összesített státusz" icon={<ShieldAlert className="h-4 w-4" />}>
@@ -302,7 +353,10 @@ export default function RedFlagMatrix({
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-600">{PILLAR_LABEL[p]}</span>
+                  <span className="text-sm font-medium text-slate-600">
+                    {PILLAR_LABEL[p]}{' '}
+                    <span className="text-xs font-normal text-slate-400">· súly {Math.round(profile.weights[p] * 100)}%</span>
+                  </span>
                   <span className={`h-2.5 w-2.5 rounded-full ${RAG_STYLE[s.rag].dot}`} />
                 </div>
                 <div className="mt-3 text-3xl font-semibold tabular-nums text-slate-900">{s.healthScore}</div>
@@ -383,6 +437,7 @@ export default function RedFlagMatrix({
                 <RiskRow
                   key={r.id}
                   risk={r}
+                  focus={focusCodes.has(r.code)}
                   company={company}
                   expanded={expanded.has(r.id)}
                   onToggleExpand={() =>
@@ -491,6 +546,7 @@ export default function RedFlagMatrix({
 
 function RiskRow({
   risk: r,
+  focus,
   company,
   expanded,
   onToggleExpand,
@@ -499,6 +555,7 @@ function RiskRow({
   onDelete,
 }: {
   risk: RiskItem;
+  focus: boolean;
   company: CompanyProfile;
   expanded: boolean;
   onToggleExpand: () => void;
@@ -550,6 +607,11 @@ function RiskRow({
             </select>
           ) : (
             <span className="text-[11px] text-slate-400">{PILLAR_LABEL[r.pillar]}</span>
+          )}
+          {focus && (
+            <span className="rounded bg-slate-900 px-1.5 text-[10px] font-medium text-white" title="A választott átvilágítás-típus kiemelt tétele">
+              Fókusz
+            </span>
           )}
           {r.source && SOURCE_LABEL[r.source] && (
             <span

@@ -109,7 +109,12 @@ function CoverPage({ m }: { m: ReportModel }) {
         <Stat label="Azonosított tételek" value={String(t.identified)} sub={`${t.red} piros · ${t.amber} sárga · ${t.green} zöld`} />
       </View>
 
-      <Text style={[s.h2, { marginTop: 22 }]}>A három legfontosabb megállapítás</Text>
+      <View style={[s.card, { marginTop: 14, borderLeftWidth: 3, borderLeftColor: C.primary }]}>
+        <Text style={[s.small, { marginBottom: 2 }]}>Szempont · {m.kindLabel}</Text>
+        <Text>{m.reportLens}</Text>
+      </View>
+
+      <Text style={[s.h2, { marginTop: 18 }]}>A három legfontosabb megállapítás</Text>
       {m.topFindings.length === 0 && <Text style={s.muted}>Nincs sárga vagy piros besorolású tétel.</Text>}
       {m.topFindings.map((r, i) => (
         <View key={r.id} style={[s.card, { marginBottom: 8, borderLeftWidth: 3, borderLeftColor: RAG_COLOR[r.rag].fg }]} wrap={false}>
@@ -158,7 +163,9 @@ function ScorecardPage({ m }: { m: ReportModel }) {
           return (
             <View key={pl} style={[s.card, { width: '49%', marginBottom: 8 }]} wrap={false}>
               <View style={[s.row, { justifyContent: 'space-between', alignItems: 'center' }]}>
-                <Text style={{ fontSize: 11, fontWeight: 600 }}>{PILLAR_LABEL[pl]}</Text>
+                <Text style={{ fontSize: 11, fontWeight: 600 }}>
+                  {PILLAR_LABEL[pl]} <Text style={{ fontSize: 8, fontWeight: 400, color: C.muted }}>· súly {Math.round(m.weights[pl] * 100)}%</Text>
+                </Text>
                 <RagPill rag={x.rag} />
               </View>
               <Text style={{ fontSize: 24, fontWeight: 700, marginTop: 4, lineHeight: 1.2 }}>{x.healthScore}<Text style={{ fontSize: 9, fontWeight: 400, color: C.muted }}> / 100</Text></Text>
@@ -207,6 +214,9 @@ function ScorecardPage({ m }: { m: ReportModel }) {
           <Text style={s.muted}>• Zöld: pontszám 8 alatt – figyelemmel kísérendő.</Text>
           <Text style={[s.muted, { marginTop: 6 }]}>
             A várható veszteség a bruttó kitettség és a valószínűség szorzata (5% / 20% / 40% / 65% / 90%).
+          </Text>
+          <Text style={[s.muted, { marginTop: 6 }]}>
+            Az összesített Health Score a pillérek súlyozott átlaga; a súlyokat az átvilágítás típusa ({m.kindLabel}) adja.
           </Text>
         </View>
       </View>
@@ -312,8 +322,8 @@ function OfferPage({ m }: { m: ReportModel }) {
       <Chrome m={m} />
       <Text style={s.h2}>5. Következő lépések és ajánlat</Text>
       <Text style={[s.muted, { marginBottom: 8 }]}>
-        A sárga és piros tételek javításában az ICT Európa divíziói közvetlenül tudnak támogatni. Az átvilágítás díja
-        100%-ban beszámít a javítási megbízásokba.
+        {m.reportLens} A sárga és piros tételek javításában az ICT Európa divíziói közvetlenül tudnak támogatni. Az
+        átvilágítás díja 100%-ban beszámít a javítási megbízásokba.
       </Text>
       <View style={s.row}>
         <Text style={[s.th, { flex: 2 }]}>Divízió</Text>

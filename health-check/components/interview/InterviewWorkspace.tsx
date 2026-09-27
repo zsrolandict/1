@@ -17,11 +17,15 @@ import {
   ShieldCheck,
   Sparkles,
   Upload,
+  Users,
 } from 'lucide-react';
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 import { buildInterviewGuide, estimateMinutes } from '@/lib/interview/guide';
 import { ROLE_LABEL } from '@/lib/interview/questionBank';
 import { getScenario, SCENARIOS } from '@/lib/scenarios';
+import { buildInterviewPlan } from '@/lib/interview/plan';
+import { emptyRecord, loadRecords, saveRecords, type InterviewRecord, type InterviewRecords } from '@/lib/interview/records';
+import InterviewPlanPanel from './InterviewPlanPanel';
 import { formatMs, notesToTranscript, verifyAnalysis } from '@/lib/interview/transcript';
 import type {
   InterviewAnalysis,
@@ -37,7 +41,7 @@ import { PILLARS } from '@/lib/risk/engine';
 import { applySuggestion, DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario, type Workspace } from '@/lib/risk/store';
 import type { Pillar } from '@/lib/risk/types';
 
-type Tab = 'guide' | 'process' | 'analysis';
+type Tab = 'plan' | 'guide' | 'process' | 'analysis';
 const ROLES = Object.keys(ROLE_LABEL) as IntervieweeRole[];
 
 const PRIORITY_LABEL = { 1: 'Kötelező', 2: 'Ha van idő', 3: 'Opcionális' } as const;
@@ -53,26 +57,37 @@ function sourceBadge(s: QuestionSource): { label: string; cls: string } {
   }
 }
 
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export default function InterviewWorkspace({ showPrint = true }: { showPrint?: boolean } = {}) {
   const [ws, setWs] = useState<Workspace>(DEFAULT_WORKSPACE);
   const [hydrated, setHydrated] = useState(false);
   const [role, setRole] = useState<IntervieweeRole>('OWNER_CEO');
-  const [tab, setTab] = useState<Tab>('guide');
+  const [tab, setTab] = useState<Tab>('plan');
   const [status, setStatus] = useState<{ ai: boolean; transcription: boolean } | null>(null);
 
   const [facts, setFacts] = useState<KnownFact[]>(getScenario(DEFAULT_WORKSPACE.scenarioId).facts);
   const scenario = getScenario(ws.scenarioId);
   const [aiQuestions, setAiQuestions] = useState<InterviewQuestion[]>([]);
-  const [asked, setAsked] = useState<Set<string>>(new Set());
-
   const [consent, setConsent] = useState(false);
   const [speakers, setSpeakers] = useState(2);
-  const [notes, setNotes] = useState('');
-  const [transcript, setTranscript] = useState<Transcript | null>(null);
-  const [speakerNames, setSpeakerNames] = useState<Record<string, string>>({});
-  const [analysis, setAnalysis] = useState<InterviewAnalysis | null>(null);
-  const [analysisIsSample, setAnalysisIsSample] = useState(false);
-  const [accepted, setAccepted] = useState<Set<string>>(new Set());
+
+  // Interjúalanyonkénti rekordok: az interjúterv sorai ezekhez kötődnek.
+  const [records, setRecords] = useState<InterviewRecords>({});
+  const rec: InterviewRecord = records[role] ?? emptyRecord(role);
+  const { notes, transcript, speakerNames, analysis, analysisIsSample } = rec;
+  const asked = useMemo(() => new Set(rec.asked), [rec.asked]);
+  const accepted = useMemo(() => new Set(rec.accepted), [rec.accepted]);
+
+  const updateRec = (patch: Partial<InterviewRecord>, forRole: IntervieweeRole = role) =>
+    setRecords((prev) => {
+      const cur = prev[forRole] ?? emptyRecord(forRole);
+      const next = { ...prev, [forRole]: { ...cur, ...patch } };
+      saveRecords(ws.scenarioId, next);
+      return next;
+    });
   const [busy, setBusy] = useState<null | 'ai-questions' | 'transcribe' | 'analyze'>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,6 +95,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
     const loaded = loadWorkspace();
     setWs(loaded);
     setFacts(getScenario(loaded.scenarioId).facts);
+    setRecords(loadRecords(loaded.scenarioId));
     setHydrated(true);
     fetch('/api/interviews/status')
       .then((r) => r.json())
@@ -97,6 +113,17 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
     [ws.kind, ws.items, role, facts, scenario],
   );
   const questions = useMemo(() => [...buildInterviewGuide(context), ...aiQuestions], [context, aiQuestions]);
+  const plan = useMemo(
+    () => buildInterviewPlan({ kind: ws.kind, risks: ws.items, missingDocuments: scenario.missingDocuments, facts }),
+    [ws.kind, ws.items, scenario, facts],
+  );
+  const planItem = plan.find((p) => p.role === role);
+  const roleLabel = planItem?.label ?? ROLE_LABEL[role];
+
+  const openFromPlan = (r: IntervieweeRole, target: Tab) => {
+    setRole(r);
+    setTab(target);
+  };
 
   // Szerepkör- vagy típusváltáskor az AI-kérdések már nem aktuálisak.
   useEffect(() => setAiQuestions([]), [role, ws.kind]);
@@ -146,9 +173,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
       form.append('consent', String(consent));
       form.append('speakers', String(speakers));
       const body = await callApi<{ transcript: Transcript }>('/api/interviews/transcribe', { method: 'POST', body: form });
-      setTranscript(body.transcript);
-      setSpeakerNames({});
-      setAnalysis(null);
+      updateRec({ transcript: body.transcript, speakerNames: {}, analysis: null, heldAt: rec.heldAt ?? today() });
     });
 
   const useNotes = () => {
@@ -158,17 +183,23 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
       return;
     }
     setError(null);
-    setTranscript(t);
-    setSpeakerNames({});
-    setAnalysis(null);
+    updateRec({ transcript: t, speakerNames: {}, analysis: null, heldAt: rec.heldAt ?? today() });
   };
 
+  /** A mintaeset interjúja mindig a hozzá tartozó interjúalanyhoz kötődik. */
   const loadSample = () => {
-    setNotes(scenario.interview.notes);
-    setTranscript(notesToTranscript(scenario.interview.notes));
-    setSpeakerNames({});
-    setAnalysis(null);
-    setRole(scenario.interview.role);
+    const sampleRole = scenario.interview.role;
+    updateRec(
+      {
+        notes: scenario.interview.notes,
+        transcript: notesToTranscript(scenario.interview.notes),
+        speakerNames: {},
+        analysis: null,
+        heldAt: today(),
+      },
+      sampleRole,
+    );
+    setRole(sampleRole);
   };
 
   const analyze = () =>
@@ -179,41 +210,33 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript: namedTranscript, role, kind: ws.kind, facts }),
       });
-      setAnalysis(body.analysis);
-      setAnalysisIsSample(false);
-      setAccepted(new Set());
+      updateRec({ analysis: body.analysis, analysisIsSample: false, accepted: [] });
       setTab('analysis');
     });
 
   const showSampleAnalysis = () => {
     if (!namedTranscript) return;
-    setAnalysis(verifyAnalysis(scenario.interview.analysis, namedTranscript, facts));
-    setAnalysisIsSample(true);
-    setAccepted(new Set());
+    updateRec({ analysis: verifyAnalysis(scenario.interview.analysis, namedTranscript, facts), analysisIsSample: true, accepted: [] });
     setTab('analysis');
   };
 
   const acceptFlag = (f: SuggestedRedFlag, key: string) => {
     const when = f.startMs != null ? `, ${formatMs(f.startMs)}` : '';
-    const evidence = `„${f.quote}” – ${ROLE_LABEL[role]} interjú${when}`;
+    const evidence = `„${f.quote}” – ${roleLabel} interjú${when}`;
     updateWs({ ...ws, items: applySuggestion(ws.items, f, evidence, ws.company) });
-    setAccepted((s) => new Set(s).add(key));
+    updateRec({ accepted: [...rec.accepted, key] });
   };
 
-  const isSampleTranscript = notes === scenario.interview.notes && transcript?.origin === 'NOTES';
+  const isSampleTranscript = notes === scenario.interview.notes && transcript?.origin === 'NOTES' && role === scenario.interview.role;
 
   const switchScenario = (id: string) => {
     const sc = getScenario(id);
     updateWs(workspaceFromScenario(sc));
     setFacts(sc.facts);
     setAiQuestions([]);
-    setAsked(new Set());
-    setNotes('');
-    setTranscript(null);
-    setAnalysis(null);
-    setAccepted(new Set());
+    setRecords(loadRecords(sc.id));
     setRole(sc.interview.role);
-    setTab('guide');
+    setTab('plan');
   };
   const speakerLabels = transcript ? [...new Set(transcript.segments.map((s) => s.speaker))] : [];
 
@@ -253,7 +276,12 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
             aria-label="Interjúalany"
             className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm"
           >
-            {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+            {ROLES.map((r) => (
+              <option key={r} value={r}>
+                {plan.find((p) => p.role === r)?.label ?? ROLE_LABEL[r]}
+                {plan.some((p) => p.role === r) ? '' : ' (nincs a tervben)'}
+              </option>
+            ))}
           </select>
           <ServiceBadge ok={status?.ai} label="AI-elemzés" />
           <ServiceBadge ok={status?.transcription} label="Hang → leirat" />
@@ -261,6 +289,9 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
       </header>
 
       <nav className="flex gap-1 border-b border-slate-200 print:hidden">
+        <TabButton active={tab === 'plan'} onClick={() => setTab('plan')} icon={<Users className="h-4 w-4" />}>
+          Interjúterv
+        </TabButton>
         <TabButton active={tab === 'guide'} onClick={() => setTab('guide')} icon={<ListChecks className="h-4 w-4" />}>
           1. Kérdések
         </TabButton>
@@ -278,13 +309,54 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
         </div>
       )}
 
+      {tab !== 'plan' && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md bg-slate-100 px-3 py-2 text-sm print:hidden">
+          <span className="text-slate-500">Interjú:</span>
+          <b className="text-slate-900">{roleLabel}</b>
+          {planItem ? (
+            <span className="text-slate-500">· a terv {planItem.order}. interjúja · ~{planItem.minutes} perc</span>
+          ) : (
+            <span className="text-amber-700">· nincs az interjútervben</span>
+          )}
+          <label className="ml-auto flex items-center gap-1 text-xs text-slate-500">
+            Álnév
+            <input
+              value={rec.alias}
+              onChange={(e) => updateRec({ alias: e.target.value })}
+              placeholder="pl. Ügyvezető, KP-1"
+              className="w-32 rounded border border-slate-200 bg-white px-2 py-0.5 text-xs"
+            />
+          </label>
+          <label className="flex items-center gap-1 text-xs text-slate-500">
+            Dátum
+            <input
+              type="date"
+              value={rec.heldAt ?? ''}
+              onChange={(e) => updateRec({ heldAt: e.target.value || null })}
+              className="rounded border border-slate-200 bg-white px-2 py-0.5 text-xs"
+            />
+          </label>
+        </div>
+      )}
+
+      {tab === 'plan' && (
+        <InterviewPlanPanel
+          plan={plan}
+          records={records}
+          kind={ws.kind}
+          sampleRole={scenario.interview.role}
+          onOpen={openFromPlan}
+        />
+      )}
+
       {tab === 'guide' && (
         <GuideTab
           showPrint={showPrint}
           role={role}
+          roleLabel={roleLabel}
           questions={questions}
           asked={asked}
-          onToggle={(id) => setAsked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; })}
+          onToggle={(id) => updateRec({ asked: rec.asked.includes(id) ? rec.asked.filter((x) => x !== id) : [...rec.asked, id] })}
           facts={facts}
           missingCount={scenario.missingDocuments.length}
           onFactsChange={setFacts}
@@ -337,7 +409,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
             <Card title="…vagy jegyzet / diktált szöveg" icon={<FileText className="h-4 w-4" />}>
               <textarea
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => updateRec({ notes: e.target.value })}
                 rows={8}
                 placeholder={'[00:01:10] Ügyvezető: …\nKérdező: …\nvagy szabad szöveg'}
                 className="w-full rounded-md border border-slate-200 p-2 font-mono text-xs outline-none focus:border-slate-400"
@@ -371,7 +443,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
                         <span className="w-24 truncate">{s} →</span>
                         <input
                           value={speakerNames[s] ?? ''}
-                          onChange={(e) => setSpeakerNames((m) => ({ ...m, [s]: e.target.value }))}
+                          onChange={(e) => updateRec({ speakerNames: { ...speakerNames, [s]: e.target.value } })}
                           placeholder="szerep (pl. CFO)"
                           className="flex-1 rounded border border-slate-200 px-2 py-1"
                         />
@@ -427,6 +499,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
 function GuideTab(props: {
   showPrint: boolean;
   role: IntervieweeRole;
+  roleLabel: string;
   questions: InterviewQuestion[];
   asked: Set<string>;
   onToggle: (id: string) => void;
@@ -444,7 +517,7 @@ function GuideTab(props: {
     <section className="grid gap-4 lg:grid-cols-[1fr_320px]">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-sm">
-          <span className="font-medium text-slate-900">{ROLE_LABEL[props.role]}</span>
+          <span className="font-medium text-slate-900">{props.roleLabel}</span>
           <span className="text-slate-500">{questions.length} kérdés · {mandatory} kötelező</span>
           <span className="inline-flex items-center gap-1 text-slate-500"><Clock className="h-4 w-4" /> ~{estimateMinutes(questions)} perc</span>
           <span className="text-slate-500">Elhangzott: {questions.filter((q) => asked.has(q.id)).length}</span>

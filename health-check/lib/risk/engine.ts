@@ -40,6 +40,11 @@ export interface EngineOptions {
   auditFeeHuf: number;
   /** Cégadatok a forintosító képletekhez. */
   company: CompanyProfile;
+  /**
+   * Pillérsúlyok az összesített Health Score-hoz (az átvilágítás típusa adja).
+   * Hiányzik: egyenlő súly.
+   */
+  pillarWeights?: Record<Pillar, number>;
 }
 
 export const DEFAULT_OPTIONS: EngineOptions = {
@@ -150,7 +155,7 @@ export function assess(items: RiskItem[], partial: Partial<EngineOptions> = {}):
     green: sum(pillarList.map((p) => p.green)),
     grossExposureHuf: sum(pillarList.map((p) => p.grossExposureHuf)),
     expectedLossHuf: sum(pillarList.map((p) => p.expectedLossHuf)),
-    healthScore: Math.round(sum(pillarList.map((p) => p.healthScore)) / PILLARS.length),
+    healthScore: weightedHealth(pillarList, opts.pillarWeights),
     rag: pillarList.map((p) => p.rag).reduce<Rag>(worstRag, 'GREEN'),
   };
 
@@ -174,6 +179,13 @@ export function assess(items: RiskItem[], partial: Partial<EngineOptions> = {}):
     actionPlan,
     pipeline: { byDivision, totalFeeHuf, creditHuf, netAfterCreditHuf: totalFeeHuf - creditHuf },
   };
+}
+
+function weightedHealth(pillars: PillarSummary[], weights?: Record<Pillar, number>): number {
+  if (!weights) return Math.round(sum(pillars.map((p) => p.healthScore)) / pillars.length);
+  const total = sum(pillars.map((p) => Math.max(0, weights[p.pillar] ?? 0)));
+  if (total <= 0) return Math.round(sum(pillars.map((p) => p.healthScore)) / pillars.length);
+  return Math.round(sum(pillars.map((p) => p.healthScore * Math.max(0, weights[p.pillar] ?? 0))) / total);
 }
 
 function sum(xs: number[]): number {

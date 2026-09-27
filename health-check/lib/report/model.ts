@@ -1,6 +1,6 @@
 import { ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 import { WINDOWS } from '@/lib/risk/engine';
-import type { RiskAssessment, ScoredRisk } from '@/lib/risk/types';
+import type { Pillar, RiskAssessment, ScoredRisk } from '@/lib/risk/types';
 import { EXPERT_PARAMETERS } from '@/lib/risk/parameters';
 import type { CompanyProfile } from '@/lib/risk/valuation';
 
@@ -19,6 +19,9 @@ export interface ReportModel extends ReportInput {
   generatedAt: string;
   kindLabel: string;
   audience: string;
+  /** A riport nézőpontja az átvilágítás típusa szerint. */
+  reportLens: string;
+  weights: Record<Pillar, number>;
   /** A 3 legnagyobb prioritású piros/sárga tétel a vezetői összefoglalóba. */
   topFindings: ScoredRisk[];
   /** Részletezőbe: csak piros és sárga, prioritás szerint. */
@@ -45,6 +48,8 @@ export function buildReportModel(input: ReportInput): ReportModel {
     generatedAt: input.generatedAt ?? new Date().toISOString(),
     kindLabel: profile.label,
     audience: profile.audience,
+    reportLens: profile.reportLens,
+    weights: profile.weights,
     topFindings: nonGreen.slice(0, 3),
     detailed: nonGreen,
     greenCount: assessment.risks.length - nonGreen.length,
