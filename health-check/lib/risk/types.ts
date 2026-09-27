@@ -1,3 +1,4 @@
+import type { KindAdjustment } from '@/lib/engagement/adjustments';
 import type { Valuation } from './valuation';
 
 // Kockázati motor – domain típusok.
@@ -44,11 +45,18 @@ export interface RiskItem {
   reasoning?: string;
   /** Forintosító képlet + szakértői felülírás. Hiányzik = kézi `exposureHuf`. */
   valuation?: Valuation;
+  /** A szakértő kikapcsolta a típusfüggő korrekciót ennél a tételnél. */
+  ignoreKindAdjustment?: boolean;
 }
 
 export type RiskSource = 'MANUAL' | 'CHECKLIST' | 'AI_DOCUMENT' | 'AI_INTERVIEW';
 
 export interface ScoredRisk extends RiskItem {
+  /** A szakértő által megadott (korrekció előtti) értékek; likelihood/impact már a korrigált. */
+  baseLikelihood: Scale5;
+  baseImpact: Scale5;
+  /** Alkalmazott típusfüggő korrekció, ha módosított. */
+  adjustment?: KindAdjustment;
   /** Honnan jön a kitettség összege (képlet / felülírás / kézi) és a levezetés. */
   exposureSource: 'FORMULA' | 'OVERRIDE' | 'MANUAL';
   exposureExplanation: string;

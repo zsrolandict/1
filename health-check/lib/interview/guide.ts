@@ -1,3 +1,4 @@
+import { adjustmentsFor } from '@/lib/engagement/adjustments';
 import { ENGAGEMENT_KINDS } from '@/lib/engagement/kinds';
 import { scoreRisk } from '@/lib/risk/engine';
 import type { Pillar } from '@/lib/risk/types';
@@ -22,7 +23,7 @@ export function buildInterviewGuide(ctx: GuideContext): InterviewQuestion[] {
   // 1. Azonosított kockázatok célzott kérdései – ezek a legértékesebbek.
   for (const risk of ctx.risks) {
     if (!risk.identified || !covers(risk.pillar)) continue;
-    const { rag } = scoreRisk(risk);
+    const { rag } = scoreRisk(risk, { adjustments: adjustmentsFor(ctx.kind) });
     const important = rag === 'RED' || profile.focusRiskCodes.includes(risk.code);
     const probes = RISK_PROBES[risk.code] ?? [
       {

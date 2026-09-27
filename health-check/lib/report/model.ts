@@ -31,6 +31,8 @@ export interface ReportModel extends ReportInput {
   /** Nem jóváhagyott szakértői paraméterre épülő tételek – a módszertani részben jelezzük. */
   unapprovedParameterRisks: ScoredRisk[];
   aiSourcedCount: number;
+  /** Típusfüggő korrekcióval módosított tételek. */
+  adjustedRisks: ScoredRisk[];
 }
 
 export function buildReportModel(input: ReportInput): ReportModel {
@@ -54,6 +56,7 @@ export function buildReportModel(input: ReportInput): ReportModel {
     detailed: nonGreen,
     greenCount: assessment.risks.length - nonGreen.length,
     unapprovedParameterRisks: unapproved,
+    adjustedRisks: assessment.risks.filter((r) => r.adjustment),
     aiSourcedCount: assessment.risks.filter((r) => r.source === 'AI_INTERVIEW' || r.source === 'AI_DOCUMENT').length,
   };
 }

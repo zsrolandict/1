@@ -1,3 +1,4 @@
+import { adjustmentsFor } from '@/lib/engagement/adjustments';
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import { scoreRisk } from '@/lib/risk/engine';
 import type { Pillar, RiskItem } from '@/lib/risk/types';
@@ -112,7 +113,7 @@ export function buildInterviewPlan(ctx: Omit<GuideContext, 'role'>): PlannedInte
   for (const r of ctx.risks) {
     if (!r.identified) continue;
     const owner = riskOwner(r);
-    const red = scoreRisk(r).rag === 'RED';
+    const red = scoreRisk(r, { adjustments: adjustmentsFor(ctx.kind) }).rag === 'RED';
     const reason = `Bejelölt kockázat: ${r.code} ${r.title}${red ? ' (piros)' : ''}`;
     const spec = specs.get(owner);
     if (spec) {

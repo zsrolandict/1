@@ -63,6 +63,15 @@ Alapelv: **a gép előkészít és számol, a szakértő dönt.** Minden AI-java
 
 Ugyanaz a motor szolgál ki minden típust; a típus a hangsúlyokat, a kötelező interjúkérdéseket, az óraszámkeretet és a riport címzettjét állítja.
 
+**Mit változtat a típus (✅):**
+- **Tételenkénti korrekció:** ugyanannak a ténynek a vizsgálat céljától függően más a súlya. A Change of Control záradék például Health Checknél V−1, eladásnál V+2, mert a tranzakció kiváltja. A korrekció megváltoztatja a besorolást, a várható veszteséget, az akcióterv sorrendjét és az ajánlatot. Tételenként kikapcsolható; a táblázat kezdő javaslat, a szakértők jóváhagyására vár.
+- **Pillérsúlyok** az összesített Health Score-ban, és ebből az **óraszámkeret pillérenkénti bontása**.
+- **Fókusztételek** a lista elején, és **típusonként 2 saját kockázati tétel**, egy kattintással felvehetően.
+- **Riport-nézőpont:** a címlap és az ajánlat a címzett szemszögéből fogalmaz.
+- **Interjúterv:** kivel, milyen sorrendben, meddig, miért és miről beszéljünk. A kérdések címzetthez kötöttek, és minden interjú a tervhez van rendelve, állapottal.
+
+Példa: ugyanaz a gyártó mintacég, változatlan válaszokkal. Health Checkként 52 pont, 4 piros tétel, 182 M Ft várható veszteség; vendor DD-ként 37 pont, 5 piros tétel, 343 M Ft.
+
 | Típus | Kinek szól | Fókusz | Keret |
 |---|---|---|---|
 | Vállalati Health Check | tulajdonos / vezetés | általános állapot, 90 napos terv | 18 ó |

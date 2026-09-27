@@ -4,6 +4,7 @@ import { DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/ris
 import { EXPERT_PARAMETERS } from '@/lib/risk/parameters';
 import type { Rag, ScoredRisk } from '@/lib/risk/types';
 import { BRAND } from './brand';
+import { formatAdjustment, KIND_ADJUSTMENTS_STATUS } from '@/lib/engagement/adjustments';
 import { firstSentence, formatDateHu, WINDOW_ORDER, type ReportModel } from './model';
 
 const C = BRAND.colors;
@@ -252,6 +253,11 @@ function FindingCard({ r }: { r: ScoredRisk }) {
       <Text style={{ fontSize: 11, fontWeight: 600, marginTop: 3 }}>{r.title}</Text>
       {r.reasoning ? <Text style={{ marginTop: 3 }}>{r.reasoning}</Text> : <Text style={[s.muted, { marginTop: 3 }]}>{r.description}</Text>}
       {r.evidence && <Text style={[s.small, { fontStyle: 'italic', marginTop: 3 }]}>Bizonyíték: {r.evidence}</Text>}
+      {r.adjustment && (
+        <Text style={[s.small, { marginTop: 3 }]}>
+          Típus-korrekció ({formatAdjustment(r.adjustment)}; szakértői érték V{r.baseLikelihood} × H{r.baseImpact}): {r.adjustment.reason}
+        </Text>
+      )}
       <View style={[s.row, { marginTop: 6, backgroundColor: C.panel, padding: 6, borderRadius: 3 }]}>
         <View style={{ flex: 1.4 }}>
           <Text style={s.small}>Kitettség</Text>
@@ -361,6 +367,13 @@ function OfferPage({ m }: { m: ReportModel }) {
         • A forintosított értékek kiinduló becslések (árbevétel-arány, tételszám × egységösszeg, forgótőke-különbség),
         amelyeket a szakértők tételenként felülvizsgáltak; nem jelentenek jogi vagy adóhatósági döntést.
       </Text>
+      {m.adjustedRisks.length > 0 && (
+        <Text style={[s.muted, { marginBottom: 4 }]}>
+          • Az átvilágítás típusa ({m.kindLabel}) {m.adjustedRisks.length} tételnél módosította a valószínűséget vagy a hatást,
+          mert ugyanannak a ténynek a vizsgálat céljától függően más a súlya. A korrekciót és az okát tételenként jelöljük.
+          {KIND_ADJUSTMENTS_STATUS.approved ? '' : ' (A korrekciós táblázat kezdő javaslat, szakértői jóváhagyásra vár.)'}
+        </Text>
+      )}
       {m.aiSourcedCount > 0 && (
         <Text style={[s.muted, { marginBottom: 4 }]}>
           • {m.aiSourcedCount} megállapítás AI-alapú előszűrésből (interjú- vagy dokumentumelemzés) származik; mindegyiket

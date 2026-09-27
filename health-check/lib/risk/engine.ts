@@ -10,6 +10,7 @@ import type {
   ScoredRisk,
 } from './types';
 import { DEFAULT_COMPANY, resolveExposure, type CompanyProfile } from './valuation';
+import type { KindAdjustments } from '@/lib/engagement/adjustments';
 
 export const PILLARS: Pillar[] = ['FINANCE', 'LEGAL', 'OPERATIONS', 'HR'];
 export const DIVISIONS: Division[] = ['LEGAL', 'TAX', 'ACCOUNTING', 'HR', 'ADVISORY'];
@@ -45,6 +46,8 @@ export interface EngineOptions {
    * Hiányzik: egyenlő súly.
    */
   pillarWeights?: Record<Pillar, number>;
+  /** Típusfüggő valószínűség/hatás-korrekciók tételkódonként. */
+  adjustments?: KindAdjustments;
 }
 
 export const DEFAULT_OPTIONS: EngineOptions = {
@@ -66,14 +69,21 @@ export function worstRag(a: Rag, b: Rag): Rag {
   return RAG_RANK[a] >= RAG_RANK[b] ? a : b;
 }
 
-export function scoreRisk(risk: RiskItem, opts: EngineOptions = DEFAULT_OPTIONS): Omit<ScoredRisk, 'priority'> {
-  const score = risk.likelihood * risk.impact;
+const clampScale = (n: number): Scale5 => Math.min(5, Math.max(1, Math.round(n))) as Scale5;
+
+export function scoreRisk(risk: RiskItem, options: Partial<EngineOptions> = {}): Omit<ScoredRisk, 'priority'> {
+  const opts = { ...DEFAULT_OPTIONS, ...options };
+  const adj = risk.ignoreKindAdjustment ? undefined : opts.adjustments?.[risk.code];
+  const likelihood = clampScale(risk.likelihood + (adj?.dL ?? 0));
+  const impact = clampScale(risk.impact + (adj?.dI ?? 0));
+  const adjusted = likelihood !== risk.likelihood || impact !== risk.impact;
+  const score = likelihood * impact;
   const resolved = resolveExposure(risk, opts.company);
   const exposure = resolved.valueHuf;
   let rag = ragFromScore(score);
   if (exposure >= opts.materialityHuf) rag = 'RED';
 
-  const probability = PROBABILITY[risk.likelihood];
+  const probability = PROBABILITY[likelihood];
   const expectedLossHuf = Math.round(exposure * probability);
   const quickWin = rag !== 'GREEN' && risk.remediationDays <= opts.quickWinMaxDays;
 
@@ -85,6 +95,11 @@ export function scoreRisk(risk: RiskItem, opts: EngineOptions = DEFAULT_OPTIONS)
 
   return {
     ...risk,
+    likelihood,
+    impact,
+    baseLikelihood: risk.likelihood,
+    baseImpact: risk.impact,
+    adjustment: adjusted && adj ? adj : undefined,
     exposureHuf: exposure,
     exposureSource: resolved.source,
     exposureExplanation: resolved.explanation,

@@ -23,7 +23,7 @@ import {
   TrendingDown,
   Zap,
 } from 'lucide-react';
-import { assess, AUDIT_FEE_HUF, DIVISIONS, formatHuf, formatHufShort, PILLARS, ragFromScore, WINDOWS } from '@/lib/risk/engine';
+import { assess, scoreRisk, AUDIT_FEE_HUF, DIVISIONS, formatHuf, formatHufShort, PILLARS, ragFromScore, WINDOWS } from '@/lib/risk/engine';
 import { catalogDefault, DEFAULT_CATALOG, DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
 import type { Division, Pillar, Rag, RiskItem, RiskSource, Scale5, ScoredRisk } from '@/lib/risk/types';
 import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario } from '@/lib/risk/store';
@@ -33,6 +33,7 @@ import { computeFormula, resolveExposure, type CompanyProfile, type Formula } fr
 import ExportPdfButton, { type SaveFile } from '@/components/report/ExportPdfButton';
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, hourSplit, PM_HOURS, type EngagementKind } from '@/lib/engagement/kinds';
 import { KIND_RISKS } from '@/lib/engagement/kindRisks';
+import { adjustmentsFor, formatAdjustment, KIND_ADJUSTMENTS_STATUS, type KindAdjustment } from '@/lib/engagement/adjustments';
 
 const SOURCE_LABEL: Partial<Record<RiskSource, string>> = {
   CHECKLIST: 'Csekklista',
@@ -131,10 +132,15 @@ export default function RedFlagMatrix({
 
   const profile = ENGAGEMENT_KINDS[kind];
   const focusCodes = useMemo(() => new Set(profile.focusRiskCodes), [profile]);
-  const result = useMemo(
-    () => assess(items, { materialityHuf, company, pillarWeights: profile.weights }),
-    [items, materialityHuf, company, profile],
+  const adjustments = adjustmentsFor(kind);
+  const engineOpts = useMemo(
+    () => ({ materialityHuf, company, pillarWeights: profile.weights, adjustments }),
+    [materialityHuf, company, profile, adjustments],
   );
+  const result = useMemo(() => assess(items, engineOpts), [items, engineOpts]);
+  // Minden sorra (a nem bejelöltekre is) a korrigált értékelés – így látszik, mit kapna.
+  const effById = useMemo(() => new Map(items.map((r) => [r.id, scoreRisk(r, engineOpts)])), [items, engineOpts]);
+  const adjustedCount = items.filter((r) => r.identified && effById.get(r.id)?.adjustment).length;
   const kindExtras = KIND_RISKS[kind].filter((k) => !items.some((r) => r.code === k.code));
   const addKindRisk = (code: string) => {
     const item = KIND_RISKS[kind].find((k) => k.code === code);
@@ -145,7 +151,8 @@ export default function RedFlagMatrix({
   const visible = items.filter((r) => {
     if (pillarFilter !== 'ALL' && r.pillar !== pillarFilter) return false;
     if (onlyIdentified && !r.identified) return false;
-    if (cell && (r.likelihood !== cell.l || r.impact !== cell.i || !r.identified)) return false;
+    const eff = effById.get(r.id);
+    if (cell && (eff?.likelihood !== cell.l || eff?.impact !== cell.i || !r.identified)) return false;
     if (query) {
       const q = query.toLowerCase();
       if (!`${r.code} ${r.title} ${r.description}`.toLowerCase().includes(q)) return false;
@@ -290,6 +297,10 @@ export default function RedFlagMatrix({
           <span className="ml-auto text-slate-500">
             Fókusz: {profile.focusRiskCodes.join(', ')}
           </span>
+        </div>
+        <div className="mt-1 text-xs text-violet-800">
+          Típus-korrekció {adjustedCount} bejelölt tételnél módosítja a valószínűséget vagy a hatást
+          {!KIND_ADJUSTMENTS_STATUS.approved && ' (kezdő javaslat, szakértői jóváhagyásra vár)'}.
         </div>
         {kindExtras.length > 0 && (
           <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 text-xs">
@@ -449,6 +460,8 @@ export default function RedFlagMatrix({
                     })
                   }
                   scored={scoredById.get(r.id)}
+                  eff={effById.get(r.id)!}
+                  kindAdjustment={adjustments?.[r.code]}
                   onChange={(patch) => update(r.id, patch)}
                   onDelete={r.id.startsWith('CUS-') ? () => setItems((xs) => xs.filter((x) => x.id !== r.id)) : undefined}
                 />
@@ -551,6 +564,8 @@ function RiskRow({
   expanded,
   onToggleExpand,
   scored,
+  eff,
+  kindAdjustment,
   onChange,
   onDelete,
 }: {
@@ -560,16 +575,18 @@ function RiskRow({
   expanded: boolean;
   onToggleExpand: () => void;
   scored?: ScoredRisk;
+  eff: Omit<ScoredRisk, 'priority'>;
+  kindAdjustment?: KindAdjustment;
   onChange: (patch: Partial<RiskItem>) => void;
   onDelete?: () => void;
 }) {
-  const score = r.likelihood * r.impact;
+  const score = eff.score;
   const exposure = resolveExposure(r, company);
   const hasFormula = Boolean(r.valuation && r.valuation.formula.type !== 'MANUAL');
   const setExposure = (v: number) =>
     hasFormula ? onChange({ valuation: { ...r.valuation!, overrideHuf: v } }) : onChange({ exposureHuf: v });
   // A nem azonosított sorokon is mutatjuk, milyen besorolást kapna – halványan.
-  const rag: Rag = scored?.rag ?? ragFromScore(score);
+  const rag: Rag = eff.rag;
   const isCustom = r.id.startsWith('CUS-');
 
   return (
@@ -647,10 +664,19 @@ function RiskRow({
           className={`inline-flex min-w-[64px] items-center justify-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
             r.identified ? RAG_STYLE[rag].badge : 'bg-slate-50 text-slate-400 ring-slate-200'
           }`}
-          title={scored && scored.score < 15 && rag === 'RED' ? 'Lényegességi küszöb feletti kitettség' : undefined}
+          title={score < 15 && rag === 'RED' ? 'Lényegességi küszöb feletti kitettség' : undefined}
         >
           {score} · {RAG_LABEL[rag]}
         </span>
+        {eff.adjustment && (
+          <button
+            onClick={onToggleExpand}
+            title={`Típus-korrekció: ${eff.adjustment.reason}`}
+            className="mt-1 block w-full text-[10px] font-medium text-violet-700 hover:underline"
+          >
+            típus: {formatAdjustment(eff.adjustment)} → V{eff.likelihood}×H{eff.impact}
+          </button>
+        )}
       </td>
       <td className="px-2 py-2 text-right align-top">
         <HufInput value={exposure.valueHuf} onChange={setExposure} className="w-36 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
@@ -704,6 +730,20 @@ function RiskRow({
       <tr className="bg-slate-50/70">
         <td />
         <td colSpan={9} className="px-3 pb-4 pt-1">
+          {kindAdjustment && (
+            <label className="mb-3 flex items-start gap-2 rounded-md bg-violet-50 p-2 text-xs text-violet-900">
+              <input
+                type="checkbox"
+                checked={!r.ignoreKindAdjustment}
+                onChange={(e) => onChange({ ignoreKindAdjustment: !e.target.checked })}
+                className="mt-0.5 accent-violet-700"
+              />
+              <span>
+                <b>Típus-korrekció ({formatAdjustment(kindAdjustment)}):</b> {kindAdjustment.reason}{' '}
+                <span className="text-violet-700">A megadott értékek: V{r.likelihood} × H{r.impact}.</span>
+              </span>
+            </label>
+          )}
           <RiskDetails risk={r} company={company} onChange={onChange} />
         </td>
       </tr>
