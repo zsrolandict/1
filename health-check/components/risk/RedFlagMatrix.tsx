@@ -21,9 +21,15 @@ import {
 } from 'lucide-react';
 import { assess, AUDIT_FEE_HUF, DIVISIONS, formatHuf, formatHufShort, PILLARS, ragFromScore, WINDOWS } from '@/lib/risk/engine';
 import { DEFAULT_CATALOG, DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
-import type { Division, Pillar, Rag, RiskItem, Scale5, ScoredRisk } from '@/lib/risk/types';
+import type { Division, Pillar, Rag, RiskItem, RiskSource, Scale5, ScoredRisk } from '@/lib/risk/types';
+import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace } from '@/lib/risk/store';
+import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 
-const STORAGE_KEY = 'ict-hc:red-flag-matrix:v1';
+const SOURCE_LABEL: Partial<Record<RiskSource, string>> = {
+  CHECKLIST: 'Csekklista',
+  AI_DOCUMENT: 'AI · dokumentum',
+  AI_INTERVIEW: 'AI · interjú',
+};
 const SCALE: Scale5[] = [1, 2, 3, 4, 5];
 
 const RAG_STYLE: Record<Rag, { dot: string; badge: string; cell: string; ring: string }> = {
@@ -57,7 +63,8 @@ interface Props {
 
 export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyName = 'Minta Gyártó Kft.', onChange }: Props) {
   const [items, setItems] = useState<RiskItem[]>(initialItems);
-  const [materialityHuf, setMaterialityHuf] = useState(50_000_000);
+  const [materialityHuf, setMaterialityHuf] = useState(DEFAULT_WORKSPACE.materialityHuf);
+  const [kind, setKind] = useState<EngagementKind>(DEFAULT_WORKSPACE.kind);
   const [pillarFilter, setPillarFilter] = useState<Pillar | 'ALL'>('ALL');
   const [onlyIdentified, setOnlyIdentified] = useState(false);
   const [query, setQuery] = useState('');
@@ -68,28 +75,18 @@ export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyN
 
   // Munkapéldány visszatöltése (csak kényelmi funkció – a forrás az adatbázis).
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw) as { items: RiskItem[]; materialityHuf: number };
-        if (Array.isArray(saved.items)) setItems(saved.items);
-        if (typeof saved.materialityHuf === 'number') setMaterialityHuf(saved.materialityHuf);
-      }
-    } catch {
-      /* privát mód / sérült adat – alapértékekkel megyünk tovább */
-    }
+    const ws = loadWorkspace();
+    setItems(ws.items);
+    setMaterialityHuf(ws.materialityHuf);
+    setKind(ws.kind);
     setHydrated(true);
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, materialityHuf }));
-    } catch {
-      /* ignore */
-    }
+    saveWorkspace({ kind, materialityHuf, items });
     onChangeRef.current?.(items);
-  }, [items, materialityHuf, hydrated]);
+  }, [items, materialityHuf, kind, hydrated]);
 
   const result = useMemo(() => assess(items, { materialityHuf }), [items, materialityHuf]);
   const scoredById = useMemo(() => new Map(result.risks.map((r) => [r.id, r])), [result]);
@@ -125,12 +122,12 @@ export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyN
 
   const reset = () => {
     setItems(initialItems);
-    setMaterialityHuf(50_000_000);
+    setMaterialityHuf(DEFAULT_WORKSPACE.materialityHuf);
     setCell(null);
   };
 
   const exportJson = () => {
-    const blob = new Blob([JSON.stringify({ companyName, generatedAt: new Date().toISOString(), materialityHuf, ...result }, null, 2)], {
+    const blob = new Blob([JSON.stringify({ companyName, kind, generatedAt: new Date().toISOString(), materialityHuf, ...result }, null, 2)], {
       type: 'application/json',
     });
     const url = URL.createObjectURL(blob);
@@ -148,10 +145,20 @@ export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyN
       {/* ── Fejléc ─────────────────────────────────────────────── */}
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Health Check · Red Flag Mátrix</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+            {ENGAGEMENT_KINDS[kind].label} · Red Flag Mátrix
+          </p>
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">{companyName}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
+          <select
+            value={kind}
+            onChange={(e) => setKind(e.target.value as EngagementKind)}
+            aria-label="Átvilágítás típusa"
+            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700"
+          >
+            {ENGAGEMENT_KIND_LIST.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+          </select>
           <label className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600">
             Lényegességi küszöb
             <HufInput value={materialityHuf} onChange={setMaterialityHuf} className="w-32 text-right font-medium text-slate-900" />
@@ -427,16 +434,26 @@ function RiskRow({
           ) : (
             <span className="text-[11px] text-slate-400">{PILLAR_LABEL[r.pillar]}</span>
           )}
+          {r.source && SOURCE_LABEL[r.source] && (
+            <span
+              className="rounded bg-indigo-50 px-1.5 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/20"
+              title={r.evidence}
+            >
+              {SOURCE_LABEL[r.source]}
+            </span>
+          )}
         </div>
         {isCustom ? (
           <>
             <input value={r.title} onChange={(e) => onChange({ title: e.target.value })} className="mt-0.5 w-full rounded border border-slate-200 px-1.5 py-0.5 font-medium text-slate-900" />
             <input value={r.remediation} onChange={(e) => onChange({ remediation: e.target.value })} placeholder="Javasolt intézkedés…" className="mt-1 w-full rounded border border-slate-200 px-1.5 py-0.5 text-xs" />
+            {r.evidence && <p className="mt-1 text-xs italic text-slate-500">{r.evidence}</p>}
           </>
         ) : (
           <>
             <p className={`font-medium ${r.identified ? 'text-slate-900' : ''}`}>{r.title}</p>
             <p className="text-xs text-slate-500">{r.description}</p>
+            {r.evidence && <p className="mt-1 text-xs italic text-indigo-700">{r.evidence}</p>}
           </>
         )}
       </td>

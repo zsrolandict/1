@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import AppNav from '@/components/AppNav';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -10,7 +11,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="hu">
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="min-h-screen antialiased">
+        <AppNav />
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,0 +1,667 @@
+'use client';
+
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  AlertTriangle,
+  Bot,
+  Check,
+  CheckCircle2,
+  Clock,
+  FileAudio,
+  FileText,
+  ListChecks,
+  Loader2,
+  MessageSquareQuote,
+  Plus,
+  Printer,
+  ShieldCheck,
+  Sparkles,
+  Upload,
+} from 'lucide-react';
+import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
+import { buildInterviewGuide, estimateMinutes } from '@/lib/interview/guide';
+import { ROLE_LABEL } from '@/lib/interview/questionBank';
+import { SAMPLE_ANALYSIS_RAW, SAMPLE_FACTS, SAMPLE_MISSING_DOCUMENTS, SAMPLE_NOTES } from '@/lib/interview/sample';
+import { formatMs, notesToTranscript, verifyAnalysis } from '@/lib/interview/transcript';
+import type {
+  InterviewAnalysis,
+  InterviewQuestion,
+  IntervieweeRole,
+  KnownFact,
+  QuestionSource,
+  SuggestedRedFlag,
+  Transcript,
+} from '@/lib/interview/types';
+import { PILLAR_LABEL } from '@/lib/risk/catalog';
+import { PILLARS } from '@/lib/risk/engine';
+import { applySuggestion, DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, type Workspace } from '@/lib/risk/store';
+import type { Pillar } from '@/lib/risk/types';
+
+type Tab = 'guide' | 'process' | 'analysis';
+const ROLES = Object.keys(ROLE_LABEL) as IntervieweeRole[];
+
+const PRIORITY_LABEL = { 1: 'Kötelező', 2: 'Ha van idő', 3: 'Opcionális' } as const;
+
+function sourceBadge(s: QuestionSource): { label: string; cls: string } {
+  switch (s.type) {
+    case 'RED_FLAG': return { label: `Red Flag · ${s.code}`, cls: 'bg-red-50 text-red-700 ring-red-600/20' };
+    case 'MISSING_DOCUMENT': return { label: 'Hiányzó dokumentum', cls: 'bg-amber-50 text-amber-800 ring-amber-600/20' };
+    case 'DOCUMENT_FINDING': return { label: 'Dokumentum-tény ellenőrzése', cls: 'bg-sky-50 text-sky-700 ring-sky-600/20' };
+    case 'KIND': return { label: ENGAGEMENT_KINDS[s.kind].label, cls: 'bg-slate-100 text-slate-700 ring-slate-500/20' };
+    case 'AI': return { label: 'AI-javaslat', cls: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20' };
+    default: return { label: 'Alapkérdés', cls: 'bg-slate-50 text-slate-600 ring-slate-400/20' };
+  }
+}
+
+export default function InterviewWorkspace() {
+  const [ws, setWs] = useState<Workspace>(DEFAULT_WORKSPACE);
+  const [hydrated, setHydrated] = useState(false);
+  const [role, setRole] = useState<IntervieweeRole>('OWNER_CEO');
+  const [tab, setTab] = useState<Tab>('guide');
+  const [status, setStatus] = useState<{ ai: boolean; transcription: boolean } | null>(null);
+
+  const [facts, setFacts] = useState<KnownFact[]>(SAMPLE_FACTS);
+  const [aiQuestions, setAiQuestions] = useState<InterviewQuestion[]>([]);
+  const [asked, setAsked] = useState<Set<string>>(new Set());
+
+  const [consent, setConsent] = useState(false);
+  const [speakers, setSpeakers] = useState(2);
+  const [notes, setNotes] = useState('');
+  const [transcript, setTranscript] = useState<Transcript | null>(null);
+  const [speakerNames, setSpeakerNames] = useState<Record<string, string>>({});
+  const [analysis, setAnalysis] = useState<InterviewAnalysis | null>(null);
+  const [analysisIsSample, setAnalysisIsSample] = useState(false);
+  const [accepted, setAccepted] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState<null | 'ai-questions' | 'transcribe' | 'analyze'>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setWs(loadWorkspace());
+    setHydrated(true);
+    fetch('/api/interviews/status')
+      .then((r) => r.json())
+      .then(setStatus)
+      .catch(() => setStatus({ ai: false, transcription: false }));
+  }, []);
+
+  const updateWs = (next: Workspace) => {
+    setWs(next);
+    saveWorkspace(next);
+  };
+
+  const context = useMemo(
+    () => ({ kind: ws.kind, role, risks: ws.items, missingDocuments: SAMPLE_MISSING_DOCUMENTS, facts }),
+    [ws.kind, ws.items, role, facts],
+  );
+  const questions = useMemo(() => [...buildInterviewGuide(context), ...aiQuestions], [context, aiQuestions]);
+
+  // Szerepkör- vagy típusváltáskor az AI-kérdések már nem aktuálisak.
+  useEffect(() => setAiQuestions([]), [role, ws.kind]);
+
+  const namedTranscript = useMemo<Transcript | null>(
+    () =>
+      transcript && {
+        ...transcript,
+        segments: transcript.segments.map((s) => ({ ...s, speaker: speakerNames[s.speaker]?.trim() || s.speaker })),
+      },
+    [transcript, speakerNames],
+  );
+
+  async function callApi<T>(url: string, init: RequestInit): Promise<T> {
+    const res = await fetch(url, init);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error ?? `Hiba (${res.status})`);
+    return body as T;
+  }
+
+  const run = async (kind: typeof busy, fn: () => Promise<void>) => {
+    setBusy(kind);
+    setError(null);
+    try {
+      await fn();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Ismeretlen hiba.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const extendWithAi = () =>
+    run('ai-questions', async () => {
+      const body = await callApi<{ aiQuestions: InterviewQuestion[] }>('/api/interviews/guide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context, withAi: true }),
+      });
+      setAiQuestions(body.aiQuestions);
+    });
+
+  const transcribe = (file: File) =>
+    run('transcribe', async () => {
+      const form = new FormData();
+      form.append('audio', file);
+      form.append('consent', String(consent));
+      form.append('speakers', String(speakers));
+      const body = await callApi<{ transcript: Transcript }>('/api/interviews/transcribe', { method: 'POST', body: form });
+      setTranscript(body.transcript);
+      setSpeakerNames({});
+      setAnalysis(null);
+    });
+
+  const useNotes = () => {
+    const t = notesToTranscript(notes);
+    if (!t.segments.length) {
+      setError('A jegyzet üres.');
+      return;
+    }
+    setError(null);
+    setTranscript(t);
+    setSpeakerNames({});
+    setAnalysis(null);
+  };
+
+  const loadSample = () => {
+    setNotes(SAMPLE_NOTES);
+    setTranscript(notesToTranscript(SAMPLE_NOTES));
+    setSpeakerNames({});
+    setAnalysis(null);
+    setRole('OWNER_CEO');
+  };
+
+  const analyze = () =>
+    run('analyze', async () => {
+      if (!namedTranscript) return;
+      const body = await callApi<{ analysis: InterviewAnalysis }>('/api/interviews/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript: namedTranscript, role, kind: ws.kind, facts }),
+      });
+      setAnalysis(body.analysis);
+      setAnalysisIsSample(false);
+      setAccepted(new Set());
+      setTab('analysis');
+    });
+
+  const showSampleAnalysis = () => {
+    if (!namedTranscript) return;
+    setAnalysis(verifyAnalysis(SAMPLE_ANALYSIS_RAW, namedTranscript, facts));
+    setAnalysisIsSample(true);
+    setAccepted(new Set());
+    setTab('analysis');
+  };
+
+  const acceptFlag = (f: SuggestedRedFlag, key: string) => {
+    const when = f.startMs != null ? `, ${formatMs(f.startMs)}` : '';
+    const evidence = `„${f.quote}” – ${ROLE_LABEL[role]} interjú${when}`;
+    updateWs({ ...ws, items: applySuggestion(ws.items, f, evidence) });
+    setAccepted((s) => new Set(s).add(key));
+  };
+
+  const isSampleTranscript = notes === SAMPLE_NOTES && transcript?.origin === 'NOTES';
+  const speakerLabels = transcript ? [...new Set(transcript.segments.map((s) => s.speaker))] : [];
+
+  if (!hydrated) return null;
+
+  return (
+    <div className="mx-auto max-w-[1200px] space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+            {ENGAGEMENT_KINDS[ws.kind].label} · Interjúk
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold text-slate-900">Interjú-előkészítés és elemzés</h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
+          <select
+            value={ws.kind}
+            onChange={(e) => updateWs({ ...ws, kind: e.target.value as EngagementKind })}
+            aria-label="Átvilágítás típusa"
+            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm"
+          >
+            {ENGAGEMENT_KIND_LIST.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+          </select>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as IntervieweeRole)}
+            aria-label="Interjúalany"
+            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm"
+          >
+            {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+          </select>
+          <ServiceBadge ok={status?.ai} label="AI-elemzés" />
+          <ServiceBadge ok={status?.transcription} label="Hang → leirat" />
+        </div>
+      </header>
+
+      <nav className="flex gap-1 border-b border-slate-200 print:hidden">
+        <TabButton active={tab === 'guide'} onClick={() => setTab('guide')} icon={<ListChecks className="h-4 w-4" />}>
+          1. Kérdések
+        </TabButton>
+        <TabButton active={tab === 'process'} onClick={() => setTab('process')} icon={<FileAudio className="h-4 w-4" />}>
+          2. Interjú feldolgozása
+        </TabButton>
+        <TabButton active={tab === 'analysis'} onClick={() => setTab('analysis')} icon={<Sparkles className="h-4 w-4" />} disabled={!analysis}>
+          3. Elemzés
+        </TabButton>
+      </nav>
+
+      {error && (
+        <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
+        </div>
+      )}
+
+      {tab === 'guide' && (
+        <GuideTab
+          role={role}
+          questions={questions}
+          asked={asked}
+          onToggle={(id) => setAsked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; })}
+          facts={facts}
+          onFactsChange={setFacts}
+          aiAvailable={Boolean(status?.ai)}
+          aiBusy={busy === 'ai-questions'}
+          onExtendWithAi={extendWithAi}
+          identifiedCount={ws.items.filter((r) => r.identified).length}
+        />
+      )}
+
+      {tab === 'process' && (
+        <section className="grid gap-4 lg:grid-cols-[380px_1fr]">
+          <div className="space-y-4">
+            <Card title="Hangfelvétel" icon={<FileAudio className="h-4 w-4" />}>
+              <label className="flex items-start gap-2 rounded-md bg-amber-50 p-2.5 text-sm text-amber-900">
+                <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 accent-slate-900" />
+                <span>
+                  Az interjúalany <b>tájékoztatást kapott</b> az adatkezelésről, és <b>hozzájárult</b> a felvételhez és annak
+                  AI-alapú feldolgozásához.
+                </span>
+              </label>
+              <label className="mt-3 flex items-center justify-between text-sm text-slate-600">
+                Beszélők száma
+                <select value={speakers} onChange={(e) => setSpeakers(Number(e.target.value))} className="rounded border border-slate-200 px-2 py-1">
+                  {[2, 3, 4, 5, 6].map((n) => <option key={n}>{n}</option>)}
+                </select>
+              </label>
+              <label
+                className={`mt-3 flex cursor-pointer flex-col items-center gap-1 rounded-md border-2 border-dashed p-4 text-center text-sm ${
+                  consent && status?.transcription ? 'border-slate-300 text-slate-600 hover:bg-slate-50' : 'cursor-not-allowed border-slate-200 text-slate-400'
+                }`}
+              >
+                {busy === 'transcribe' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+                {busy === 'transcribe' ? 'Leirat készül…' : 'Hangfájl kiválasztása (mp3, m4a, wav)'}
+                <input
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  disabled={!consent || !status?.transcription || busy !== null}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) transcribe(f); e.target.value = ''; }}
+                />
+              </label>
+              <p className="mt-2 text-xs text-slate-500">
+                {status?.transcription
+                  ? 'A hangot nem tároljuk: a leirat elkészülte után csak a szöveg marad meg.'
+                  : 'A leiratkészítő szolgáltatás nincs beállítva a szerveren. Addig használja a jegyzet-beillesztést.'}
+              </p>
+            </Card>
+
+            <Card title="…vagy jegyzet / diktált szöveg" icon={<FileText className="h-4 w-4" />}>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={8}
+                placeholder={'[00:01:10] Ügyvezető: …\nKérdező: …\nvagy szabad szöveg'}
+                className="w-full rounded-md border border-slate-200 p-2 font-mono text-xs outline-none focus:border-slate-400"
+              />
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button onClick={useNotes} className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
+                  Jegyzet feldolgozása
+                </button>
+                <button onClick={loadSample} className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+                  Minta interjú betöltése
+                </button>
+              </div>
+            </Card>
+          </div>
+
+          <Card title="Leirat" icon={<MessageSquareQuote className="h-4 w-4" />}>
+            {!transcript ? (
+              <p className="py-10 text-center text-sm text-slate-400">Töltsön fel hangfájlt vagy illesszen be jegyzetet.</p>
+            ) : (
+              <>
+                <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <span className="rounded bg-slate-100 px-2 py-0.5">{transcript.origin === 'AUDIO' ? 'Hangfelvétel-leirat' : 'Jegyzet'}</span>
+                  <span>{transcript.segments.length} szakasz</span>
+                  {transcript.timed && transcript.durationMs > 0 && <span>{formatMs(transcript.durationMs)}</span>}
+                  {isSampleTranscript && <span className="rounded bg-amber-100 px-2 py-0.5 text-amber-800">Kitalált minta</span>}
+                </div>
+                {speakerLabels.length > 1 && speakerLabels.length <= 6 && (
+                  <div className="mb-3 grid gap-2 sm:grid-cols-2">
+                    {speakerLabels.map((s) => (
+                      <label key={s} className="flex items-center gap-2 text-xs text-slate-600">
+                        <span className="w-24 truncate">{s} →</span>
+                        <input
+                          value={speakerNames[s] ?? ''}
+                          onChange={(e) => setSpeakerNames((m) => ({ ...m, [s]: e.target.value }))}
+                          placeholder="szerep (pl. CFO)"
+                          className="flex-1 rounded border border-slate-200 px-2 py-1"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <ol className="max-h-[420px] space-y-2 overflow-y-auto pr-1 text-sm">
+                  {namedTranscript!.segments.map((s, i) => (
+                    <li key={i} className="grid grid-cols-[56px_1fr] gap-2">
+                      <span className="pt-0.5 font-mono text-[11px] text-slate-400">{transcript.timed ? formatMs(s.startMs) : ''}</span>
+                      <p><b className="font-medium text-slate-900">{s.speaker}:</b> <span className="text-slate-700">{s.text}</span></p>
+                    </li>
+                  ))}
+                </ol>
+                <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                  <button
+                    onClick={analyze}
+                    disabled={!status?.ai || busy !== null}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    {busy === 'analyze' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
+                    {busy === 'analyze' ? 'Elemzés folyamatban…' : 'AI-elemzés indítása'}
+                  </button>
+                  {!status?.ai && isSampleTranscript && (
+                    <button onClick={showSampleAnalysis} className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+                      Minta-elemzés megtekintése
+                    </button>
+                  )}
+                  {!status?.ai && <span className="text-xs text-slate-500">Az AI-kulcs nincs beállítva a szerveren.</span>}
+                </div>
+              </>
+            )}
+          </Card>
+        </section>
+      )}
+
+      {tab === 'analysis' && analysis && (
+        <AnalysisTab
+          analysis={analysis}
+          isSample={analysisIsSample}
+          accepted={accepted}
+          onAccept={acceptFlag}
+          facts={facts}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Kérdések fül ──────────────────────────────────────────────────
+
+function GuideTab(props: {
+  role: IntervieweeRole;
+  questions: InterviewQuestion[];
+  asked: Set<string>;
+  onToggle: (id: string) => void;
+  facts: KnownFact[];
+  onFactsChange: (f: KnownFact[]) => void;
+  aiAvailable: boolean;
+  aiBusy: boolean;
+  onExtendWithAi: () => void;
+  identifiedCount: number;
+}) {
+  const { questions, asked } = props;
+  const mandatory = questions.filter((q) => q.priority === 1).length;
+  return (
+    <section className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-sm">
+          <span className="font-medium text-slate-900">{ROLE_LABEL[props.role]}</span>
+          <span className="text-slate-500">{questions.length} kérdés · {mandatory} kötelező</span>
+          <span className="inline-flex items-center gap-1 text-slate-500"><Clock className="h-4 w-4" /> ~{estimateMinutes(questions)} perc</span>
+          <span className="text-slate-500">Elhangzott: {questions.filter((q) => asked.has(q.id)).length}</span>
+          <div className="ml-auto flex gap-2 print:hidden">
+            <button
+              onClick={props.onExtendWithAi}
+              disabled={!props.aiAvailable || props.aiBusy}
+              title={props.aiAvailable ? undefined : 'Az AI-kulcs nincs beállítva a szerveren.'}
+              className="inline-flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 font-medium text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {props.aiBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} AI-bővítés
+            </button>
+            <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-slate-700 hover:bg-slate-50">
+              <Printer className="h-4 w-4" /> Nyomtatás
+            </button>
+          </div>
+        </div>
+
+        <ol className="space-y-2">
+          {questions.map((q, i) => {
+            const badge = sourceBadge(q.source);
+            const done = asked.has(q.id);
+            return (
+              <li key={q.id} className={`rounded-lg border bg-white p-3 shadow-sm ${done ? 'border-emerald-200' : 'border-slate-200'}`}>
+                <div className="flex items-start gap-3">
+                  <button onClick={() => props.onToggle(q.id)} aria-label="Elhangzott" className="mt-0.5 print:hidden">
+                    {done ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <span className="block h-5 w-5 rounded-full border-2 border-slate-300" />}
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                      <span className="font-mono text-slate-400">{i + 1}.</span>
+                      <span className="text-slate-500">{PILLAR_LABEL[q.pillar]}</span>
+                      <span className={`rounded px-1.5 font-medium ring-1 ring-inset ${badge.cls}`}>{badge.label}</span>
+                      {q.priority === 1 && <span className="rounded bg-slate-900 px-1.5 font-medium text-white">{PRIORITY_LABEL[1]}</span>}
+                    </div>
+                    <p className={`mt-1 ${done ? 'text-slate-500' : 'text-slate-900'}`}>{q.text}</p>
+                    {q.listenFor && <p className="mt-1 text-xs text-slate-500"><b>Figyelj:</b> {q.listenFor}</p>}
+                    {q.followUps.length > 0 && (
+                      <ul className="mt-1 list-inside list-disc text-xs text-slate-500">
+                        {q.followUps.map((f) => <li key={f}>{f}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+
+      <aside className="space-y-4 print:hidden">
+        <Card title="Mire épül a kérdéslista?" icon={<ListChecks className="h-4 w-4" />}>
+          <ul className="space-y-1 text-sm text-slate-600">
+            <li>• {props.identifiedCount} azonosított red flag (Red Flag mátrix)</li>
+            <li>• {SAMPLE_MISSING_DOCUMENTS.length} hiányzó dokumentum</li>
+            <li>• {props.facts.length} dokumentumokból ismert tény</li>
+            <li>• az interjúalany szerepköre és az átvilágítás típusa</li>
+          </ul>
+        </Card>
+        <FactsEditor facts={props.facts} onChange={props.onFactsChange} />
+      </aside>
+    </section>
+  );
+}
+
+function FactsEditor({ facts, onChange }: { facts: KnownFact[]; onChange: (f: KnownFact[]) => void }) {
+  const [text, setText] = useState('');
+  const [pillar, setPillar] = useState<Pillar>('FINANCE');
+  const add = () => {
+    if (!text.trim()) return;
+    onChange([...facts, { id: `K${facts.length + 1}-${Date.now().toString(36)}`, pillar, statement: text.trim(), source: 'Tanácsadói rögzítés' }]);
+    setText('');
+  };
+  return (
+    <Card title="Ismert tények (dokumentumokból)" icon={<FileText className="h-4 w-4" />}>
+      <p className="mb-2 text-xs text-slate-500">
+        Ezekkel veti össze az elemzés az interjúban elhangzottakat. Élesben a dokumentumok AI-előszűréséből töltődnek.
+      </p>
+      <ul className="space-y-2 text-xs">
+        {facts.map((f) => (
+          <li key={f.id} className="rounded border border-slate-100 bg-slate-50 p-2">
+            <div className="flex justify-between gap-2">
+              <span className="font-medium text-slate-500">{f.id} · {PILLAR_LABEL[f.pillar]}</span>
+              <button onClick={() => onChange(facts.filter((x) => x.id !== f.id))} className="text-slate-400 hover:text-red-600" aria-label="Törlés">✕</button>
+            </div>
+            <p className="mt-0.5 text-slate-700">{f.statement}</p>
+            <p className="mt-0.5 text-slate-400">{f.source}</p>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-2 flex gap-1">
+        <select value={pillar} onChange={(e) => setPillar(e.target.value as Pillar)} className="rounded border border-slate-200 text-xs">
+          {PILLARS.map((p) => <option key={p} value={p}>{PILLAR_LABEL[p]}</option>)}
+        </select>
+        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Új tény…" className="min-w-0 flex-1 rounded border border-slate-200 px-2 py-1 text-xs" />
+        <button onClick={add} aria-label="Hozzáadás" className="rounded bg-slate-900 px-2 text-white"><Plus className="h-3.5 w-3.5" /></button>
+      </div>
+    </Card>
+  );
+}
+
+// ── Elemzés fül ───────────────────────────────────────────────────
+
+function AnalysisTab({
+  analysis,
+  isSample,
+  accepted,
+  onAccept,
+  facts,
+}: {
+  analysis: InterviewAnalysis;
+  isSample: boolean;
+  accepted: Set<string>;
+  onAccept: (f: SuggestedRedFlag, key: string) => void;
+  facts: KnownFact[];
+}) {
+  const factById = new Map(facts.map((f) => [f.id, f]));
+  return (
+    <section className="space-y-4">
+      {isSample && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <b>Minta-elemzés:</b> előre elkészített eredmény a kitalált mintainterjúhoz, nem élő AI-hívás. Így néz ki a kimenet, ha
+          az AI-kulcs be van állítva. Az idézet-ellenőrzés ezen is lefutott.
+        </div>
+      )}
+
+      <Card title="Összefoglaló" icon={<Sparkles className="h-4 w-4" />}>
+        <p className="text-sm leading-relaxed text-slate-700">{analysis.summary}</p>
+        <p className="mt-3 flex items-center gap-1.5 text-xs text-slate-500">
+          <ShieldCheck className="h-4 w-4 text-emerald-600" />
+          Minden tétel mögött szó szerinti idézet van a leiratból.
+          {analysis.discardedUnverified > 0 && ` ${analysis.discardedUnverified} nem igazolható tételt a rendszer kiszűrt.`}
+        </p>
+      </Card>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card title={`Ellentmondások a dokumentumokkal (${analysis.contradictions.length})`} icon={<AlertTriangle className="h-4 w-4 text-red-600" />}>
+          {analysis.contradictions.length === 0 && <p className="text-sm text-slate-400">Nincs talált ellentmondás.</p>}
+          <ul className="space-y-3">
+            {analysis.contradictions.map((c, i) => (
+              <li key={i} className={`rounded-md border p-3 text-sm ${c.severity === 'HIGH' ? 'border-red-200 bg-red-50/60' : c.severity === 'MEDIUM' ? 'border-amber-200 bg-amber-50/60' : 'border-slate-200'}`}>
+                <div className="flex items-center justify-between text-[11px] font-medium">
+                  <span className="text-slate-500">{PILLAR_LABEL[c.pillar]}</span>
+                  <span className={c.severity === 'HIGH' ? 'text-red-700' : c.severity === 'MEDIUM' ? 'text-amber-800' : 'text-slate-500'}>
+                    {{ HIGH: 'Súlyos', MEDIUM: 'Közepes', LOW: 'Enyhe' }[c.severity]}
+                  </span>
+                </div>
+                <p className="mt-1 text-slate-900"><b>Elhangzott:</b> „{c.quote}” {c.startMs != null && <span className="font-mono text-xs text-slate-400">[{formatMs(c.startMs)}]</span>}</p>
+                <p className="mt-1 text-slate-700"><b>Dokumentum:</b> {factById.get(c.conflictingFactId)?.statement ?? c.conflictingFactId}</p>
+                <p className="mt-0.5 text-xs text-slate-500">{c.conflictingSource}</p>
+                <p className="mt-2 text-slate-700">{c.explanation}</p>
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+        <Card title={`Javasolt red flagek (${analysis.suggestedRedFlags.length})`} icon={<Bot className="h-4 w-4 text-indigo-600" />}>
+          {analysis.suggestedRedFlags.length === 0 && <p className="text-sm text-slate-400">Nincs javaslat.</p>}
+          <ul className="space-y-3">
+            {analysis.suggestedRedFlags.map((f, i) => {
+              const key = `${f.templateCode ?? f.title}-${i}`;
+              const done = accepted.has(key);
+              return (
+                <li key={key} className="rounded-md border border-slate-200 p-3 text-sm">
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="text-slate-500">
+                      {f.templateCode ?? 'Új tétel'} · {PILLAR_LABEL[f.pillar]} · V{f.likelihood}×H{f.impact}
+                    </span>
+                    <span className="text-slate-400">biztosság {Math.round(f.confidence * 100)}%</span>
+                  </div>
+                  <p className="mt-1 font-medium text-slate-900">{f.title}</p>
+                  <p className="mt-0.5 text-slate-600">{f.rationale}</p>
+                  <p className="mt-1 text-xs italic text-slate-500">
+                    „{f.quote}” {f.startMs != null && <span className="font-mono not-italic">[{formatMs(f.startMs)}]</span>}
+                  </p>
+                  <button
+                    onClick={() => onAccept(f, key)}
+                    disabled={done}
+                    className={`mt-2 inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium ${
+                      done ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-900 text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    {done ? <><Check className="h-3.5 w-3.5" /> Átvéve a Red Flag mátrixba</> : 'Elfogadás → Red Flag mátrix'}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card title="Kulcsállítások pillérenként" icon={<MessageSquareQuote className="h-4 w-4" />}>
+          <ul className="space-y-2 text-sm">
+            {analysis.statements.map((s, i) => (
+              <li key={i}>
+                <span className="text-[11px] text-slate-500">{PILLAR_LABEL[s.pillar]} · {s.speaker} {s.startMs != null && `· ${formatMs(s.startMs)}`}</span>
+                <p className="text-slate-800">{s.summary}</p>
+              </li>
+            ))}
+          </ul>
+        </Card>
+        <Card title="Tisztázandó a következő körben" icon={<ListChecks className="h-4 w-4" />}>
+          <ul className="list-inside list-disc space-y-1 text-sm text-slate-700">
+            {analysis.followUpQuestions.map((q) => <li key={q}>{q}</li>)}
+          </ul>
+        </Card>
+      </div>
+    </section>
+  );
+}
+
+// ── Apró elemek ───────────────────────────────────────────────────
+
+function Card({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">{icon}{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function TabButton({ active, onClick, icon, disabled, children }: { active: boolean; onClick: () => void; icon: ReactNode; disabled?: boolean; children: ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium ${
+        active ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'
+      } disabled:cursor-not-allowed disabled:opacity-40`}
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
+
+function ServiceBadge({ ok, label }: { ok: boolean | undefined; label: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
+        ok ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+      }`}
+      title={ok ? 'Beállítva a szerveren' : 'Nincs beállítva – demó mód'}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${ok ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+      {label}
+    </span>
+  );
+}

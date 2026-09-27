@@ -34,7 +34,13 @@ export interface RiskItem {
   division: Division;
   /** Becsült ICT szolgáltatási díj a remediációra, Ft (nettó). */
   serviceFeeHuf: number;
+  /** Honnan származik a tétel. Hiányzik = katalógus / kézi. */
+  source?: RiskSource;
+  /** Bizonyíték: idézet + hivatkozás (dokumentum oldal, interjú időbélyeg). */
+  evidence?: string;
 }
+
+export type RiskSource = 'MANUAL' | 'CHECKLIST' | 'AI_DOCUMENT' | 'AI_INTERVIEW';
 
 export interface ScoredRisk extends RiskItem {
   score: number;              // likelihood × impact, 1–25
