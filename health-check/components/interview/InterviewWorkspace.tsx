@@ -193,7 +193,7 @@ export default function InterviewWorkspace() {
   const acceptFlag = (f: SuggestedRedFlag, key: string) => {
     const when = f.startMs != null ? `, ${formatMs(f.startMs)}` : '';
     const evidence = `„${f.quote}” – ${ROLE_LABEL[role]} interjú${when}`;
-    updateWs({ ...ws, items: applySuggestion(ws.items, f, evidence) });
+    updateWs({ ...ws, items: applySuggestion(ws.items, f, evidence, ws.company) });
     setAccepted((s) => new Set(s).add(key));
   };
 

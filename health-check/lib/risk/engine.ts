@@ -9,6 +9,7 @@ import type {
   Scale5,
   ScoredRisk,
 } from './types';
+import { DEFAULT_COMPANY, resolveExposure, type CompanyProfile } from './valuation';
 
 export const PILLARS: Pillar[] = ['FINANCE', 'LEGAL', 'OPERATIONS', 'HR'];
 export const DIVISIONS: Division[] = ['LEGAL', 'TAX', 'ACCOUNTING', 'HR', 'ADVISORY'];
@@ -37,12 +38,15 @@ export interface EngineOptions {
   quickWinMaxDays: number;
   /** A beszámítható audit díj. */
   auditFeeHuf: number;
+  /** Cégadatok a forintosító képletekhez. */
+  company: CompanyProfile;
 }
 
 export const DEFAULT_OPTIONS: EngineOptions = {
   materialityHuf: 50_000_000,
   quickWinMaxDays: 5,
   auditFeeHuf: AUDIT_FEE_HUF,
+  company: DEFAULT_COMPANY,
 };
 
 export function ragFromScore(score: number): Rag {
@@ -59,7 +63,8 @@ export function worstRag(a: Rag, b: Rag): Rag {
 
 export function scoreRisk(risk: RiskItem, opts: EngineOptions = DEFAULT_OPTIONS): Omit<ScoredRisk, 'priority'> {
   const score = risk.likelihood * risk.impact;
-  const exposure = Math.max(0, risk.exposureHuf || 0);
+  const resolved = resolveExposure(risk, opts.company);
+  const exposure = resolved.valueHuf;
   let rag = ragFromScore(score);
   if (exposure >= opts.materialityHuf) rag = 'RED';
 
@@ -73,7 +78,18 @@ export function scoreRisk(risk: RiskItem, opts: EngineOptions = DEFAULT_OPTIONS)
   else if (rag === 'AMBER') window = 'D61_90';
   else window = 'BACKLOG';
 
-  return { ...risk, exposureHuf: exposure, score, rag, probability, expectedLossHuf, quickWin, window };
+  return {
+    ...risk,
+    exposureHuf: exposure,
+    exposureSource: resolved.source,
+    exposureExplanation: resolved.explanation,
+    score,
+    rag,
+    probability,
+    expectedLossHuf,
+    quickWin,
+    window,
+  };
 }
 
 /**

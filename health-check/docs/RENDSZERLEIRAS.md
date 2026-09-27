@@ -112,7 +112,7 @@ A jogosultságokat az adatbázis érvényesíti sorszintű jogosultságkezeléss
 - **Operáció:** beszállítói koncentráció, technológiai adósság pontozása.
 - **HR:** HR 361 kulcsember-függőségi értékelés, álnévvel kezelt személyekkel.
 
-### M3 · Kockázati motor és Red Flag riport ✅ (motor és felület) / ⬜ (PDF)
+### M3 · Kockázati motor és Red Flag riport ✅
 - 16 tételes alapkatalógus (4 pillér × 4 tétel), és egyedi tétel is felvehető.
 - A szakértő bepipálja a fennálló kockázatokat, és megadja:
   - a valószínűséget és a hatást (1–5),
@@ -120,7 +120,9 @@ A jogosultságokat az adatbázis érvényesíti sorszintű jogosultságkezeléss
   - a javítás munkanapjait,
   - a felelős ICT divíziót és a becsült díjat.
 - **Azonnali számítás:** besorolás közlekedési lámpa szerint (zöld / sárga / piros), bruttó kitettség, várható veszteség, egészségpontszám pillérenként, kattintható 5×5-ös mátrix, 90 napos akcióterv, keresztértékesítési pipeline, kreditbeszámítás.
-- A PDF-export (5 oldal) még terv; most nyomtatás és JSON-export működik.
+- **Forintosító képletek** ✅: a projekt fejlécében megadott árbevétel, fedezet és DSO alapján automatikus becslés (árbevétel-arány, darabszám × tételösszeg, forgótőke-különbség), tételenként felülírható. Jogszabályi összeget nem kódolunk: az egységösszegek jóváhagyandó szakértői paraméterek.
+- **Előtöltött szakmai indoklás** ✅ minden katalógustételhez, szerkeszthető; ez kerül a riportba.
+- **Egykattintásos PDF-riport** ✅: címlap és vezetői összefoglaló, pillér-scorecard mátrixszal, Red Flag részletező, 90 napos akcióterv, ajánlat és beszámítás, módszertan. Nem jóváhagyott paraméter esetén „TERVEZET” jelölés. A záró workshop diasora még terv.
 
 ### M4 · Egységgazdaságtan és időrögzítés 🟡
 - Óraszámkeret pillérenként, időrögzítés, keretfogyás és fedezet számítása (adatbázis-nézetekkel, tesztelve).
@@ -203,13 +205,14 @@ A jogosultságokat az adatbázis érvényesíti sorszintű jogosultságkezeléss
 - **Webes alkalmazás:** Next.js (React), Tailwind; magyar nyelvű felület, mobilon is használható.
 - **Adatbázis és fájltár:** Supabase (PostgreSQL, EU régió), sorszintű jogosultságkezeléssel és audit naplóval.
 - **AI:** Claude API (elemzés, kérdésjavaslat); Azure AI Speech (magyar leirat).
-- **Tesztelés:** 29 automatikus teszt, plusz adatbázis-jogosultsági tesztek.
+- **Tesztelés:** 50 automatikus teszt (köztük tényleges PDF-generálás), plusz adatbázis-jogosultsági tesztek.
+- **Bejelentkezés:** Supabase (céges Microsoft-fiók vagy e-mailes link); az AI-végpontok csak belső felhasználónak érhetők el, beállítás nélkül zárva vannak.
 
 ---
 
 ## 10. Ami már kipróbálható
 
-- **Red Flag mátrix:** pipálás, pontozás, forintosítás, mátrix, akcióterv, pipeline, kredit, típusválasztó.
+- **Red Flag mátrix:** pipálás, pontozás, forintosítás képletekkel és felülírással, szerkeszthető indoklás, mátrix, akcióterv, pipeline, kredit, típusválasztó, **PDF-riport egy kattintással**.
 - **Interjúk oldal:** kérdéslista szerepkör és típus szerint; minta-interjú betöltése; minta-elemzés ellentmondásokkal; elfogadott javaslat átvétele a mátrixba.
 - Élő AI-elemzéshez és hangfeldolgozáshoz API-kulcsok kellenek. Ezek nélkül a program demó módban, egyértelmű „Minta” jelöléssel fut.
 

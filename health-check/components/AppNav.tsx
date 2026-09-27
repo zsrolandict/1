@@ -25,6 +25,9 @@ export default function AppNav() {
             {l.label}
           </Link>
         ))}
+        <Link href="/login" className="ml-auto py-3 text-sm text-slate-500 hover:text-slate-800">
+          Belépés
+        </Link>
       </div>
     </nav>
   );

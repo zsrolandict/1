@@ -1,3 +1,5 @@
+import type { Valuation } from './valuation';
+
 // Kockázati motor – domain típusok.
 // Tiszta TypeScript: kliensen (azonnali számolás) és szerveren (PDF export,
 // Supabase Edge Function) is ugyanez a kód fut, így a riport és a UI nem térhet el.
@@ -38,11 +40,18 @@ export interface RiskItem {
   source?: RiskSource;
   /** Bizonyíték: idézet + hivatkozás (dokumentum oldal, interjú időbélyeg). */
   evidence?: string;
+  /** Szakmai indoklás a riportba – a katalógusból előtöltve, szerkeszthető. */
+  reasoning?: string;
+  /** Forintosító képlet + szakértői felülírás. Hiányzik = kézi `exposureHuf`. */
+  valuation?: Valuation;
 }
 
 export type RiskSource = 'MANUAL' | 'CHECKLIST' | 'AI_DOCUMENT' | 'AI_INTERVIEW';
 
 export interface ScoredRisk extends RiskItem {
+  /** Honnan jön a kitettség összege (képlet / felülírás / kézi) és a levezetés. */
+  exposureSource: 'FORMULA' | 'OVERRIDE' | 'MANUAL';
+  exposureExplanation: string;
   score: number;              // likelihood × impact, 1–25
   rag: Rag;
   probability: number;        // likelihood → valószínűség (0–1)

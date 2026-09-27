@@ -1,11 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Banknote,
   BriefcaseBusiness,
   CalendarClock,
   CheckSquare,
+  ChevronDown,
+  ChevronRight,
+  Pencil,
+  Calculator,
   Download,
   Filter,
   Gauge,
@@ -20,9 +24,12 @@ import {
   Zap,
 } from 'lucide-react';
 import { assess, AUDIT_FEE_HUF, DIVISIONS, formatHuf, formatHufShort, PILLARS, ragFromScore, WINDOWS } from '@/lib/risk/engine';
-import { DEFAULT_CATALOG, DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
+import { catalogDefault, DEFAULT_CATALOG, DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
 import type { Division, Pillar, Rag, RiskItem, RiskSource, Scale5, ScoredRisk } from '@/lib/risk/types';
 import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace } from '@/lib/risk/store';
+import { EXPERT_PARAMETERS } from '@/lib/risk/parameters';
+import { computeFormula, resolveExposure, type CompanyProfile, type Formula } from '@/lib/risk/valuation';
+import ExportPdfButton from '@/components/report/ExportPdfButton';
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 
 const SOURCE_LABEL: Partial<Record<RiskSource, string>> = {
@@ -61,8 +68,11 @@ interface Props {
   onChange?: (items: RiskItem[]) => void;
 }
 
-export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyName = 'Minta Gyártó Kft.', onChange }: Props) {
+export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyName: initialName = DEFAULT_WORKSPACE.companyName, onChange }: Props) {
   const [items, setItems] = useState<RiskItem[]>(initialItems);
+  const [companyName, setCompanyName] = useState(initialName);
+  const [company, setCompany] = useState<CompanyProfile>(DEFAULT_WORKSPACE.company);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [materialityHuf, setMaterialityHuf] = useState(DEFAULT_WORKSPACE.materialityHuf);
   const [kind, setKind] = useState<EngagementKind>(DEFAULT_WORKSPACE.kind);
   const [pillarFilter, setPillarFilter] = useState<Pillar | 'ALL'>('ALL');
@@ -79,16 +89,18 @@ export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyN
     setItems(ws.items);
     setMaterialityHuf(ws.materialityHuf);
     setKind(ws.kind);
+    setCompanyName(ws.companyName);
+    setCompany(ws.company);
     setHydrated(true);
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
-    saveWorkspace({ kind, materialityHuf, items });
+    saveWorkspace({ companyName, company, kind, materialityHuf, items });
     onChangeRef.current?.(items);
-  }, [items, materialityHuf, kind, hydrated]);
+  }, [items, materialityHuf, kind, companyName, company, hydrated]);
 
-  const result = useMemo(() => assess(items, { materialityHuf }), [items, materialityHuf]);
+  const result = useMemo(() => assess(items, { materialityHuf, company }), [items, materialityHuf, company]);
   const scoredById = useMemo(() => new Map(result.risks.map((r) => [r.id, r])), [result]);
 
   const visible = items.filter((r) => {
@@ -114,7 +126,7 @@ export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyN
         id, code: `CUS-${String(n).padStart(2, '0')}`, pillar,
         title: 'Egyedi kockázat', description: '',
         identified: true, likelihood: 3, impact: 3, exposureHuf: 0, remediationDays: 5,
-        remediation: '', division: 'ADVISORY', serviceFeeHuf: 0,
+        remediation: '', division: 'ADVISORY', serviceFeeHuf: 0, reasoning: '',
       },
       ...xs,
     ]);
@@ -122,12 +134,13 @@ export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyN
 
   const reset = () => {
     setItems(initialItems);
+    setCompany(DEFAULT_WORKSPACE.company);
     setMaterialityHuf(DEFAULT_WORKSPACE.materialityHuf);
     setCell(null);
   };
 
   const exportJson = () => {
-    const blob = new Blob([JSON.stringify({ companyName, kind, generatedAt: new Date().toISOString(), materialityHuf, ...result }, null, 2)], {
+    const blob = new Blob([JSON.stringify({ companyName, kind, company, generatedAt: new Date().toISOString(), materialityHuf, ...result }, null, 2)], {
       type: 'application/json',
     });
     const url = URL.createObjectURL(blob);
@@ -148,7 +161,15 @@ export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyN
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
             {ENGAGEMENT_KINDS[kind].label} · Red Flag Mátrix
           </p>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-900">{companyName}</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-slate-900">
+            <input
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              aria-label="Cégnév"
+              className="w-full min-w-[280px] rounded bg-transparent outline-none hover:bg-slate-100 focus:bg-white focus:ring-2 focus:ring-slate-300 print:hidden"
+            />
+            <span className="hidden print:inline">{companyName}</span>
+          </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
           <select
@@ -159,17 +180,42 @@ export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyN
           >
             {ENGAGEMENT_KIND_LIST.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
           </select>
-          <label className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600">
-            Lényegességi küszöb
-            <HufInput value={materialityHuf} onChange={setMaterialityHuf} className="w-32 text-right font-medium text-slate-900" />
-          </label>
           <ToolbarButton onClick={reset} icon={<RotateCcw className="h-4 w-4" />}>Alaphelyzet</ToolbarButton>
           <ToolbarButton onClick={exportJson} icon={<Download className="h-4 w-4" />}>JSON</ToolbarButton>
-          <ToolbarButton onClick={() => window.print()} icon={<Printer className="h-4 w-4" />} primary>
-            Riport nyomtatása
+          <ToolbarButton onClick={() => window.print()} icon={<Printer className="h-4 w-4" />}>
+            Nyomtatás
           </ToolbarButton>
+          <ExportPdfButton
+            input={{ companyName, kind, company, materialityHuf, assessment: result }}
+          />
         </div>
       </header>
+
+      {/* ── Cégadatok a forintosításhoz ─────────────────────────── */}
+      <section className="flex flex-wrap items-end gap-x-5 gap-y-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm print:hidden">
+        <span className="flex items-center gap-1.5 self-center text-sm font-semibold text-slate-700">
+          <Calculator className="h-4 w-4" /> Cégadatok
+        </span>
+        <Field label="Éves árbevétel (Ft)">
+          <HufInput value={company.revenueHuf} onChange={(v) => setCompany((c) => ({ ...c, revenueHuf: v }))} className="w-40 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
+        </Field>
+        <Field label="Fedezeti hányad (%)">
+          <PercentInput value={company.grossMarginPct} onChange={(v) => setCompany((c) => ({ ...c, grossMarginPct: v }))} />
+        </Field>
+        <Field label="DSO tényleges / iparági (nap)">
+          <span className="flex items-center gap-1">
+            <NumberInput value={company.actualDsoDays} onChange={(v) => setCompany((c) => ({ ...c, actualDsoDays: v }))} />
+            <span className="text-slate-400">/</span>
+            <NumberInput value={company.industryDsoDays} onChange={(v) => setCompany((c) => ({ ...c, industryDsoDays: v }))} />
+          </span>
+        </Field>
+        <Field label="Lényegességi küszöb (Ft)">
+          <HufInput value={materialityHuf} onChange={setMaterialityHuf} className="w-36 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
+        </Field>
+        <p className="ml-auto max-w-xs self-center text-xs text-slate-500">
+          A képletek kiinduló becslést adnak; tételenként felülírhatók.
+        </p>
+      </section>
 
       {/* ── KPI sáv ─────────────────────────────────────────────── */}
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -280,7 +326,7 @@ export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyN
           <table className="w-full min-w-[1100px] text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="w-10 px-3 py-2" />
+                <th className="w-16 px-3 py-2" />
                 <th className="px-3 py-2">Kockázat</th>
                 <th className="px-2 py-2 text-center" title="Valószínűség 1–5">Valósz.</th>
                 <th className="px-2 py-2 text-center" title="Hatás 1–5">Hatás</th>
@@ -297,6 +343,16 @@ export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyN
                 <RiskRow
                   key={r.id}
                   risk={r}
+                  company={company}
+                  expanded={expanded.has(r.id)}
+                  onToggleExpand={() =>
+                    setExpanded((s) => {
+                      const n = new Set(s);
+                      if (n.has(r.id)) n.delete(r.id);
+                      else n.add(r.id);
+                      return n;
+                    })
+                  }
                   scored={scoredById.get(r.id)}
                   onChange={(patch) => update(r.id, patch)}
                   onDelete={r.id.startsWith('CUS-') ? () => setItems((xs) => xs.filter((x) => x.id !== r.id)) : undefined}
@@ -395,30 +451,51 @@ export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyN
 
 function RiskRow({
   risk: r,
+  company,
+  expanded,
+  onToggleExpand,
   scored,
   onChange,
   onDelete,
 }: {
   risk: RiskItem;
+  company: CompanyProfile;
+  expanded: boolean;
+  onToggleExpand: () => void;
   scored?: ScoredRisk;
   onChange: (patch: Partial<RiskItem>) => void;
   onDelete?: () => void;
 }) {
   const score = r.likelihood * r.impact;
+  const exposure = resolveExposure(r, company);
+  const hasFormula = Boolean(r.valuation && r.valuation.formula.type !== 'MANUAL');
+  const setExposure = (v: number) =>
+    hasFormula ? onChange({ valuation: { ...r.valuation!, overrideHuf: v } }) : onChange({ exposureHuf: v });
   // A nem azonosított sorokon is mutatjuk, milyen besorolást kapna – halványan.
   const rag: Rag = scored?.rag ?? ragFromScore(score);
   const isCustom = r.id.startsWith('CUS-');
 
   return (
+    <Fragment>
     <tr className={r.identified ? 'bg-white' : 'bg-white text-slate-400'}>
       <td className="px-3 py-2 align-top">
-        <button
-          onClick={() => onChange({ identified: !r.identified })}
-          aria-label={r.identified ? 'Kockázat kivétele' : 'Kockázat azonosítva'}
-          className="mt-0.5 text-slate-700 hover:text-slate-900"
-        >
-          {r.identified ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5 text-slate-300" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onToggleExpand}
+            aria-label={expanded ? 'Részletek bezárása' : 'Indoklás és képlet'}
+            aria-expanded={expanded}
+            className="mt-0.5 text-slate-400 hover:text-slate-900"
+          >
+            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={() => onChange({ identified: !r.identified })}
+            aria-label={r.identified ? 'Kockázat kivétele' : 'Kockázat azonosítva'}
+            className="mt-0.5 text-slate-700 hover:text-slate-900"
+          >
+            {r.identified ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5 text-slate-300" />}
+          </button>
+        </div>
       </td>
       <td className="max-w-[420px] px-3 py-2 align-top">
         <div className="flex items-center gap-2">
@@ -474,7 +551,23 @@ function RiskRow({
         </span>
       </td>
       <td className="px-2 py-2 text-right align-top">
-        <HufInput value={r.exposureHuf} onChange={(v) => onChange({ exposureHuf: v })} className="w-36 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
+        <HufInput value={exposure.valueHuf} onChange={setExposure} className="w-36 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
+        <div className="mt-0.5 flex justify-end gap-1 text-[10px]" title={exposure.explanation}>
+          {exposure.source === 'FORMULA' && (
+            <button onClick={onToggleExpand} className="inline-flex items-center gap-0.5 text-sky-700 hover:underline">
+              <Calculator className="h-3 w-3" /> képlet{exposure.unapprovedParameter && ' · jóváhagyandó'}
+            </button>
+          )}
+          {exposure.source === 'OVERRIDE' && (
+            <button
+              onClick={() => onChange({ valuation: { ...r.valuation!, overrideHuf: null } })}
+              className="inline-flex items-center gap-0.5 text-amber-700 hover:underline"
+              title={`${exposure.explanation} – kattintásra vissza a képletre`}
+            >
+              <Pencil className="h-3 w-3" /> felülírva · visszaállít
+            </button>
+          )}
+        </div>
       </td>
       <td className="px-2 py-2 text-right align-top tabular-nums">{scored ? formatHufShort(scored.expectedLossHuf) : '—'}</td>
       <td className="px-2 py-2 text-center align-top">
@@ -505,6 +598,179 @@ function RiskRow({
         )}
       </td>
     </tr>
+    {expanded && (
+      <tr className="bg-slate-50/70">
+        <td />
+        <td colSpan={9} className="px-3 pb-4 pt-1">
+          <RiskDetails risk={r} company={company} onChange={onChange} />
+        </td>
+      </tr>
+    )}
+    </Fragment>
+  );
+}
+
+/** Lenyitott sor: indoklás (előtöltve), forintosító képlet paraméterei, javaslat. */
+function RiskDetails({
+  risk: r,
+  company,
+  onChange,
+}: {
+  risk: RiskItem;
+  company: CompanyProfile;
+  onChange: (patch: Partial<RiskItem>) => void;
+}) {
+  const def = catalogDefault(r.code);
+  const formula = r.valuation?.formula;
+  const setFormula = (f: Formula) => onChange({ valuation: { formula: f, overrideHuf: r.valuation?.overrideHuf ?? null } });
+  const computed = formula ? computeFormula(formula, company) : null;
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <div className="space-y-3">
+        <label className="block">
+          <span className="flex items-center justify-between text-xs font-medium text-slate-600">
+            Szakmai indoklás (a riportba kerül)
+            {def?.reasoning && r.reasoning !== def.reasoning && (
+              <button onClick={() => onChange({ reasoning: def.reasoning })} className="font-normal text-sky-700 hover:underline">
+                alapszöveg visszaállítása
+              </button>
+            )}
+          </span>
+          <textarea
+            value={r.reasoning ?? ''}
+            onChange={(e) => onChange({ reasoning: e.target.value })}
+            rows={4}
+            placeholder="Miért kockázat ez az adott cégnél? 1–3 mondat."
+            className="mt-1 w-full rounded-md border border-slate-200 bg-white p-2 text-sm leading-relaxed text-slate-800 outline-none focus:border-slate-400"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs font-medium text-slate-600">Javasolt intézkedés (akcióterv)</span>
+          <textarea
+            value={r.remediation}
+            onChange={(e) => onChange({ remediation: e.target.value })}
+            rows={2}
+            className="mt-1 w-full rounded-md border border-slate-200 bg-white p-2 text-sm text-slate-800 outline-none focus:border-slate-400"
+          />
+        </label>
+      </div>
+
+      <div className="rounded-md border border-slate-200 bg-white p-3 text-sm">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+            <Calculator className="h-3.5 w-3.5" /> Forintosítás
+          </span>
+          <select
+            value={formula?.type ?? 'MANUAL'}
+            onChange={(e) => setFormula(defaultFormula(e.target.value as Formula['type'], def?.valuation?.formula))}
+            className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs"
+          >
+            <option value="MANUAL">Kézi becslés</option>
+            <option value="REVENUE_SHARE">Árbevétel-arány</option>
+            <option value="PER_ITEM">Darabszám × tételösszeg</option>
+            <option value="DSO_GAP">DSO-különbség (forgótőke)</option>
+          </select>
+        </div>
+
+        {formula?.type === 'REVENUE_SHARE' && (
+          <div className="space-y-2">
+            <Field label={`Arány: ${formula.label}`}>
+              <PercentInput value={formula.share} onChange={(v) => setFormula({ ...formula, share: v })} />
+            </Field>
+            <label className="flex items-center gap-2 text-xs text-slate-600">
+              <input type="checkbox" checked={formula.marginBased} onChange={(e) => setFormula({ ...formula, marginBased: e.target.checked })} className="accent-slate-900" />
+              Veszteség = elmaradó fedezet (nem a teljes árbevétel)
+            </label>
+          </div>
+        )}
+        {formula?.type === 'PER_ITEM' && (
+          <div className="flex flex-wrap gap-3">
+            <Field label={`Darab (${formula.label})`}>
+              <NumberInput value={formula.count} onChange={(v) => setFormula({ ...formula, count: v })} />
+            </Field>
+            <Field label="Tételösszeg (Ft)">
+              <HufInput value={formula.unitAmountHuf} onChange={(v) => setFormula({ ...formula, unitAmountHuf: v })} className="w-32 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
+            </Field>
+          </div>
+        )}
+        {formula?.type === 'DSO_GAP' && (
+          <p className="text-xs text-slate-500">A cégadatok DSO-értékeiből számol (fent).</p>
+        )}
+        {(!formula || formula.type === 'MANUAL') && (
+          <p className="text-xs text-slate-500">A kitettség a táblázatban kézzel adható meg.</p>
+        )}
+
+        {computed && computed.valueHuf != null && (
+          <div className="mt-3 rounded bg-slate-50 p-2 text-xs text-slate-600">
+            <div className="font-medium text-slate-900">≈ {formatHuf(computed.valueHuf)}</div>
+            <div className="mt-0.5">{computed.explanation}</div>
+            {computed.unapprovedParameter && formula?.type === 'PER_ITEM' && formula.paramKey && (
+              <div className="mt-1 text-amber-700">
+                ⚠ Nem jóváhagyott paraméter ({EXPERT_PARAMETERS[formula.paramKey].owner}):{' '}
+                {EXPERT_PARAMETERS[formula.paramKey].note}
+              </div>
+            )}
+            {r.valuation?.overrideHuf != null && (
+              <div className="mt-1 text-amber-700">Felülírva: {formatHuf(r.valuation.overrideHuf)}</div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function defaultFormula(type: Formula['type'], catalogFormula?: Formula): Formula {
+  if (catalogFormula?.type === type) return catalogFormula;
+  switch (type) {
+    case 'REVENUE_SHARE':
+      return { type, share: 0.1, marginBased: true, label: 'érintett árbevétel' };
+    case 'PER_ITEM':
+      return { type, count: 1, unitAmountHuf: 1_000_000, label: 'tétel' };
+    case 'DSO_GAP':
+      return { type, label: 'lekötött forgótőke' };
+    default:
+      return { type: 'MANUAL' };
+  }
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="flex flex-col gap-1 text-xs text-slate-500">
+      {label}
+      {children}
+    </label>
+  );
+}
+
+function NumberInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <input
+      type="number"
+      min={0}
+      value={value}
+      onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
+      className="w-20 rounded border border-slate-200 bg-white px-2 py-1 text-right text-sm tabular-nums text-slate-900"
+    />
+  );
+}
+
+/** Százalék mező: a felületen 38, a modellben 0,38. */
+function PercentInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <span className="flex items-center gap-1">
+      <input
+        type="number"
+        min={0}
+        max={100}
+        step={1}
+        value={Math.round(value * 1000) / 10}
+        onChange={(e) => onChange(Math.min(100, Math.max(0, Number(e.target.value) || 0)) / 100)}
+        className="w-20 rounded border border-slate-200 bg-white px-2 py-1 text-right text-sm tabular-nums text-slate-900"
+      />
+      <span className="text-slate-400">%</span>
+    </span>
   );
 }
 

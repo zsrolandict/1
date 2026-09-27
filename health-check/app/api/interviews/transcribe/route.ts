@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { MAX_AUDIO_BYTES } from '@/lib/interview/schemas';
 import { azureSpeech, isTranscriptionConfigured } from '@/lib/interview/transcribe.server';
+import { requireStaff } from '@/lib/auth/guard.server';
 import { errorResponse } from '../_errors';
 
 export const maxDuration = 300;
@@ -10,6 +11,8 @@ export const maxDuration = 300;
  * és a hangot nem tároljuk: csak a leirat megy vissza a kliensnek.
  */
 export async function POST(req: Request) {
+  const access = await requireStaff();
+  if (!access.ok) return access.response;
   if (!isTranscriptionConfigured()) {
     return NextResponse.json({ error: 'A leiratkészítés nincs beállítva (AZURE_SPEECH_KEY, AZURE_SPEECH_REGION).' }, { status: 503 });
   }
