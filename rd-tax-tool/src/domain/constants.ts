@@ -15,7 +15,7 @@ import type {
 } from './types';
 
 /** Bump when a rule changes; stored in every seal. */
-export const ENGINE_VERSION = '2026.2';
+export const ENGINE_VERSION = '2026.3';
 
 export const TAX_RATES = {
   /** Szociális hozzájárulási adó – Szocho tv. */
@@ -37,6 +37,29 @@ export const TAX_RATES = {
   HIPA_MAX: 0.02,
   /** Innovációs járulék – Inno. tv., base equals the HIPA base. */
   INNOVATION_CONTRIBUTION: 0.003,
+  /** Tao: K+F with a higher-education institution / research institute – 3× the direct cost… */
+  UNIVERSITY_MULTIPLIER: 3,
+  /** …at most 50 M Ft (de minimis aid). */
+  UNIVERSITY_CAP: 50_000_000,
+  /** Tao: carried-forward losses may offset at most 50% of the later tax base. */
+  LOSS_OFFSET_LIMIT: 0.5,
+} as const;
+
+/**
+ * IP-box (jogdíj / bejelentett immateriális jószág) rules.
+ * Items marked VERIFY were not confirmed against the statute text.
+ */
+export const IP_RULES = {
+  /** 50% of the royalty profit is deductible… */
+  ROYALTY_DEDUCTION_SHARE: 0.5,
+  /** …capped at 50% of the pre-tax profit. */
+  ROYALTY_PROFIT_CAP_SHARE: 0.5,
+  /** OECD modified nexus uplift on qualifying spend. VERIFY for the Hungarian rule. */
+  NEXUS_UPLIFT: 1.3,
+  /** Notification to NAV after acquisition / creation; cannot be made up later. */
+  NOTIFICATION_DAYS: 60,
+  /** Minimum holding period before a tax-free sale. */
+  MIN_HOLDING_YEARS: 1,
 } as const;
 
 export const LEGAL_REFERENCES = {
@@ -46,6 +69,14 @@ export const LEGAL_REFERENCES = {
   CIT: 'Tao. tv. 7. § (1) t)',
   HIPA: 'Htv. 39. §',
   INNOVATION: 'Inno. tv. 17. §',
+  IP_ROYALTY: 'Tao. tv. 7. § – jogdíj',
+  IP_SALE: 'Tao. tv. 7. § – IP-eladás',
+} as const;
+
+export const IP_ASSET_LABELS = {
+  SOFTWARE: 'Szoftver (szerzői jog)',
+  PATENT: 'Szabadalom / használati minta',
+  OTHER: 'Egyéb oltalmazott szellemi termék',
 } as const;
 
 export const COMPANY_SIZE_OPTIONS: { value: CompanySize; label: string; description: string }[] = [

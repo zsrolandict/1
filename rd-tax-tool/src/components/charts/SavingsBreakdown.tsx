@@ -19,6 +19,9 @@ export function savingsRows(savings: SavingsResult): BreakdownRow[] {
     { key: 'szocho', label: 'Szocho – kutatói kedvezmény', reference: LEGAL_REFERENCES.SZOCHO, value: savings.szocho.totalSaving },
     { key: 'hipa', label: 'HIPA – adóalap-csökkentés', reference: LEGAL_REFERENCES.HIPA, value: savings.hipaSaving },
     { key: 'inno', label: 'Innovációs járulék', reference: LEGAL_REFERENCES.INNOVATION, value: savings.innovationContributionSaving },
+    ...(savings.ipBox.enabled
+      ? [{ key: 'ip', label: 'IP-box – jogdíjkedvezmény', reference: LEGAL_REFERENCES.IP_ROYALTY, value: savings.ipBox.annualSaving }]
+      : []),
   ];
 }
 

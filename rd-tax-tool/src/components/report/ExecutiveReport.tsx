@@ -5,6 +5,7 @@
 import type { ActionStep } from '../../domain/actionPlan';
 import { COMPANY_SIZE_LABELS, FRASCATI_CRITERIA, INDUSTRY_LABELS, RISK_LABELS } from '../../domain/constants';
 import { formatHuf, formatPercent } from '../../domain/format';
+import { IP_RULES } from '../../domain/constants';
 import type { Assessment, AuditResult, SavingsResult } from '../../domain/types';
 import { RiskGauge } from '../charts/RiskGauge';
 import { savingsRows } from '../charts/SavingsBreakdown';
@@ -81,6 +82,14 @@ export function ExecutiveReport({ assessment, savings, audit, actionPlan, sealSt
               </td>
               <td className="pt-2.5 text-right text-base font-bold text-navy-900">{formatHuf(savings.totalAnnualSaving)}</td>
             </tr>
+            {savings.netAfterCitEffect !== savings.totalAnnualSaving && (
+              <tr>
+                <td className="pt-1 text-xs text-slate-500" colSpan={2}>
+                  Tao-hatással korrigált nettó megtakarítás (a kisebb szocho-, HIPA- és járulékköltség növeli a Tao-alapot)
+                </td>
+                <td className="pt-1 text-right text-xs font-medium text-slate-600">{formatHuf(savings.netAfterCitEffect)}</td>
+              </tr>
+            )}
           </tbody>
         </table>
         {savings.warnings.length > 0 && (
@@ -91,6 +100,8 @@ export function ExecutiveReport({ assessment, savings, audit, actionPlan, sealSt
           </ul>
         )}
       </section>
+
+      {savings.ipBox.enabled && <ReportIpBox savings={savings} assetName={assessment.ip.assetName} />}
 
       {/* SZTNH readiness */}
       <section className="avoid-break mt-8">
@@ -187,5 +198,41 @@ function KeyFigure({ label, value, emphasis = false }: { label: string; value: s
       <p className={`text-[10px] font-medium tracking-[0.12em] uppercase ${emphasis ? 'text-navy-100/80' : 'text-slate-500'}`}>{label}</p>
       <p className={`tabular mt-1 font-serif text-xl font-bold ${emphasis ? 'text-white' : 'text-navy-900'}`}>{value}</p>
     </div>
+  );
+}
+
+/** IP-box summary with the notification deadline status. */
+function ReportIpBox({ savings, assetName }: { savings: SavingsResult; assetName: string }) {
+  const ip = savings.ipBox;
+  const { status, dueDate, daysLeft } = ip.deadline;
+  const deadlineText = {
+    NO_DATE: 'szerzési dátum nincs rögzítve',
+    OPEN: `bejelentendő ${dueDate}-ig (még ${daysLeft} nap) – utólag nem pótolható`,
+    MISSED: `a ${IP_RULES.NOTIFICATION_DAYS} napos határidő ${dueDate}-én lejárt`,
+    REPORTED_ON_TIME: 'határidőben bejelentve',
+    REPORTED_LATE: 'késve bejelentve – eladási kedvezmény nem jár',
+  }[status];
+  const alert = status === 'OPEN' || status === 'MISSED' || status === 'REPORTED_LATE';
+
+  return (
+    <section className="avoid-break mt-6 rounded-lg border border-slate-200 px-4 py-3 text-[13px]">
+      <p className="mb-1.5 font-semibold text-navy-900">Szellemi termék (IP-box){assetName ? ` – ${assetName}` : ''}</p>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+        <span className="text-slate-500">Nexus-arány</span>
+        <span className="tabular text-right">{formatPercent(ip.nexusRatio)}</span>
+        <span className="text-slate-500">Jogdíjkedvezmény (Tao) / év</span>
+        <span className="tabular text-right">{formatHuf(ip.royaltyCitSaving)}</span>
+        <span className="text-slate-500">Tényleges Tao a jogdíjnyereségen</span>
+        <span className="tabular text-right">{formatPercent(ip.effectiveRoyaltyCitRate, 2)}</span>
+        {ip.sale.citSaving > 0 && (
+          <>
+            <span className="text-slate-500">Egyszeri eladási megtakarítás</span>
+            <span className="tabular text-right">{formatHuf(ip.sale.citSaving)}</span>
+          </>
+        )}
+        <span className="text-slate-500">NAV-bejelentés</span>
+        <span className={`text-right ${alert ? 'font-semibold text-risk-red' : ''}`}>{deadlineText}</span>
+      </div>
+    </section>
   );
 }

@@ -60,6 +60,14 @@ export interface RdCostInputs {
   prototypeCosts: number;
   /** Fees paid to independent R&D subcontractors. */
   subcontractorCosts: number;
+  /** Part of the above financed from non-refundable grants (excluded from the reliefs). */
+  grantFundedCosts: number;
+  /**
+   * Part of the above incurred under a contract with a higher-education
+   * institution or research institute: Tao allows 3× this cost, max 50 M Ft
+   * (de minimis aid).
+   */
+  universityJointCosts: number;
 }
 
 /**
@@ -82,6 +90,80 @@ export interface TaxParameters {
   includeEmployerContribution: boolean;
   /** Number of past open tax years to model for self-revision (0–5). */
   selfRevisionYears: number;
+  /**
+   * HIPA: a cost may reduce the HIPA base only once. When the material cost
+   * is already deducted under the general "anyagköltség" line, it cannot be
+   * deducted again as R&D cost (NAV guidance).
+   */
+  hipaMaterialAlreadyDeducted: boolean;
+  /** Same for R&D subcontractor fees booked as "alvállalkozói teljesítés". */
+  hipaSubcontractorAlreadyDeducted: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// 2b. Intellectual property (IP-box)
+// ---------------------------------------------------------------------------
+
+export type IpAssetType = 'SOFTWARE' | 'PATENT' | 'OTHER';
+
+export interface IpBoxInputs {
+  enabled: boolean;
+  assetType: IpAssetType;
+  assetName: string;
+  /** Annual royalty income from the qualifying intangible (jogdíjbevétel). */
+  royaltyIncome: number;
+  /** Costs attributable to that royalty income. */
+  royaltyRelatedCosts: number;
+  /** Nexus: own R&D spend on the asset, incl. unrelated subcontractors. */
+  nexusOwnCosts: number;
+  /** Nexus: R&D bought from related parties. */
+  nexusRelatedPartyCosts: number;
+  /** Nexus: cost of acquiring the intangible (or parts of it). */
+  nexusAcquisitionCosts: number;
+  /** Date of acquisition / creation (ISO yyyy-mm-dd); starts the 60-day notification window. */
+  acquiredOn: string;
+  /** Date the asset was notified to NAV ('' if not yet). */
+  reportedOn: string;
+  /** Expected gain on a planned sale / contribution in kind. */
+  plannedSaleGain: number;
+  /** Planned sale date ('' if none). */
+  plannedSaleDate: string;
+  /**
+   * Share of royalty income that reduces the HIPA base (0–1). Not verified
+   * against the Htv.; default 0 until the tax team confirms.
+   */
+  hipaRoyaltyReliefShare: number;
+}
+
+export type IpDeadlineStatus = 'NO_DATE' | 'OPEN' | 'MISSED' | 'REPORTED_ON_TIME' | 'REPORTED_LATE';
+
+export interface IpBoxResult {
+  enabled: boolean;
+  /** min(1, own × 1.3 / (own + related + acquisition)). */
+  nexusRatio: number;
+  royaltyProfit: number;
+  /** min(50% × royalty profit × nexus, 50% × pre-tax profit). */
+  royaltyDeduction: number;
+  royaltyCitSaving: number;
+  /** Effective Tao rate on the royalty profit (e.g. 4.5% with full nexus). */
+  effectiveRoyaltyCitRate: number;
+  hipaSaving: number;
+  innovationContributionSaving: number;
+  /** Recurring annual IP saving (counted in the annual total). */
+  annualSaving: number;
+  deadline: {
+    status: IpDeadlineStatus;
+    dueDate: string;
+    daysLeft: number;
+  };
+  sale: {
+    eligible: boolean;
+    reasons: string[];
+    deduction: number;
+    /** One-off saving; not part of the annual total. */
+    citSaving: number;
+  };
+  warnings: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -117,7 +199,7 @@ export interface EngineerRouteComparison {
 }
 
 export interface CorporateTaxResult {
-  /** Direct R&D cost deducted a second time from the CIT base. */
+  /** Extra deduction from the CIT base (incl. the 3× university uplift). */
   deductibleBase: number;
   /** Nominal saving: deductibleBase × 9% (the headline figure). */
   nominalSaving: number;
@@ -131,15 +213,25 @@ export interface SavingsResult {
   /** Base for HIPA and the innovation contribution. */
   directRdCost: number;
   personnelCost: number;
-  /** Base for the Tao deduction (engineer wages removed on the SZOCHO_16 route). */
+  /** R&D cost eligible for the Tao deduction (grant-funded part and, on the SZOCHO_16 route, engineer wages removed). */
   citDeductibleBase: number;
+  /** Extra deduction from the university 3× rule on top of citDeductibleBase. */
+  universityUplift: number;
+  /** R&D cost that reduces the HIPA / innovation-contribution base (no double deduction). */
+  hipaDeductibleBase: number;
   engineerRoutes: EngineerRouteComparison;
   szocho: SzochoResult;
   corporateTax: CorporateTaxResult;
   hipaSaving: number;
   innovationContributionSaving: number;
-  /** Szocho + Tao (nominal) + HIPA + innovation contribution. */
+  ipBox: IpBoxResult;
+  /** Szocho + Tao (nominal) + HIPA + innovation contribution + IP-box (annual part). */
   totalAnnualSaving: number;
+  /**
+   * The szocho, HIPA and innovation savings lower deductible costs, so they
+   * raise the Tao base: net = total − 9% × those savings (profitable clients).
+   */
+  netAfterCitEffect: number;
   /** Total saving as a share of the direct R&D cost (0–1). */
   effectiveSubsidyRate: number;
   /** totalAnnualSaving × (1 + selfRevisionYears): current + past years. */
@@ -238,6 +330,7 @@ export interface Assessment {
   costs: RdCostInputs;
   params: TaxParameters;
   audit: AuditAnswers;
+  ip: IpBoxInputs;
   /** Present while the case is sealed (read-only). */
   seal: AuditSeal | null;
   /** Earlier seals, kept when a sealed case is reopened as a new version. */

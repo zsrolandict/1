@@ -63,11 +63,22 @@ export function buildActionPlan(
   if (savings.innovationContributionSaving > 0) {
     revisionTasks.push('Innovációs járulék bevallásának korrekciója');
   }
+  if (savings.ipBox.enabled) {
+    revisionTasks.push('Tao-bevallás: jogdíjkedvezmény nexus-arányos érvényesítése');
+  }
   if (selfRevisionYears > 0) {
     revisionTasks.push(
       `Önellenőrzés az elmúlt ${selfRevisionYears} nyitott adóévre (elévülési időn belül)`,
     );
   }
+
+  const ipDeadline = savings.ipBox.enabled ? savings.ipBox.deadline : null;
+  const ipTask =
+    ipDeadline?.status === 'OPEN'
+      ? [`Immateriális jószág bejelentése a NAV-hoz ${ipDeadline.dueDate}-ig (${ipDeadline.daysLeft} nap) – nem pótolható`]
+      : ipDeadline?.status === 'NO_DATE'
+        ? ['Immateriális jószág szerzési dátumának rögzítése, 60 napos NAV-bejelentés ellenőrzése']
+        : [];
 
   return [
     {
@@ -93,8 +104,9 @@ export function buildActionPlan(
       title: 'Adóbevallás korrekció',
       duration: selfRevisionYears > 0 ? '4–6 hét' : '2–3 hét',
       summary: 'A kedvezmények érvényesítése a tárgyévi bevallásokban és szükség esetén önellenőrzéssel.',
-      tasks: revisionTasks,
-      priority: 'normal',
+      tasks: [...ipTask, ...revisionTasks],
+      // A pending IP notification is time-critical and cannot be made up later.
+      priority: ipTask.length > 0 ? 'high' : 'normal',
     },
   ];
 }

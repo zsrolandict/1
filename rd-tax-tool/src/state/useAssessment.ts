@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { buildActionPlan } from '../domain/actionPlan';
-import { demoAssessment, emptyAssessment } from '../domain/defaults';
+import { demoAssessment, emptyAssessment, emptyIpBox } from '../domain/defaults';
 import { calculateSavings } from '../domain/engine';
 import { scoreAudit } from '../domain/scoring';
 import { createSeal, verifySeal } from '../domain/seal';
@@ -18,6 +18,7 @@ import type {
   AuditSeal,
   ClientProfile,
   CompanySize,
+  IpBoxInputs,
   RdCostInputs,
   TaxParameters,
 } from '../domain/types';
@@ -29,6 +30,7 @@ type Action =
   | { type: 'costs'; patch: Partial<RdCostInputs> }
   | { type: 'params'; patch: Partial<TaxParameters> }
   | { type: 'audit'; patch: Partial<AuditAnswers> }
+  | { type: 'ip'; patch: Partial<IpBoxInputs> }
   | { type: 'seal'; seal: AuditSeal }
   | { type: 'reopen' }
   | { type: 'replace'; assessment: Assessment };
@@ -46,6 +48,8 @@ function reducer(state: Assessment, action: Action): Assessment {
       return { ...state, params: { ...state.params, ...action.patch } };
     case 'audit':
       return { ...state, audit: { ...state.audit, ...action.patch } };
+    case 'ip':
+      return { ...state, ip: { ...state.ip, ...action.patch } };
     case 'seal':
       return { ...state, seal: action.seal };
     case 'reopen':
@@ -77,6 +81,7 @@ export function normaliseAssessment(raw: unknown): Assessment {
       redFlags: { ...(r.audit?.redFlags ?? {}) },
       notes: typeof r.audit?.notes === 'string' ? r.audit.notes : '',
     },
+    ip: { ...emptyIpBox(), ...(r.ip ?? {}) },
     seal: r.seal && typeof r.seal.hash === 'string' ? r.seal : null,
     sealHistory: Array.isArray(r.sealHistory) ? r.sealHistory : [],
   };
@@ -124,8 +129,8 @@ export function useAssessment() {
   }, [assessment]);
 
   const savings = useMemo(
-    () => calculateSavings(assessment.client, assessment.costs, assessment.params),
-    [assessment.client, assessment.costs, assessment.params],
+    () => calculateSavings(assessment.client, assessment.costs, assessment.params, assessment.ip),
+    [assessment.client, assessment.costs, assessment.params, assessment.ip],
   );
   const audit = useMemo(
     () => scoreAudit(assessment.audit, assessment.client.industry),
@@ -142,6 +147,7 @@ export function useAssessment() {
       updateCosts: (patch: Partial<RdCostInputs>) => dispatch({ type: 'costs', patch }),
       updateParams: (patch: Partial<TaxParameters>) => dispatch({ type: 'params', patch }),
       updateAudit: (patch: Partial<AuditAnswers>) => dispatch({ type: 'audit', patch }),
+      updateIp: (patch: Partial<IpBoxInputs>) => dispatch({ type: 'ip', patch }),
       reopen: () => dispatch({ type: 'reopen' }),
       reset: () => dispatch({ type: 'replace', assessment: emptyAssessment() }),
       loadDemo: () => dispatch({ type: 'replace', assessment: demoAssessment() }),

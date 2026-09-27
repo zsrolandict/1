@@ -1,11 +1,12 @@
-import { Building2, Calculator, Check, ClipboardCheck, FileText, type LucideIcon } from 'lucide-react';
+import { Building2, Calculator, Check, ClipboardCheck, Copyright, FileText, type LucideIcon } from 'lucide-react';
 
-export type StepId = 'client' | 'costs' | 'audit' | 'results';
+export type StepId = 'client' | 'costs' | 'audit' | 'ip' | 'results';
 
 export const STEPS: { id: StepId; label: string; description: string; icon: LucideIcon }[] = [
   { id: 'client', label: 'Ügyféladatok', description: 'Cég és projekt', icon: Building2 },
   { id: 'costs', label: 'Költség & bér', description: 'Megtakarítási kalkulátor', icon: Calculator },
   { id: 'audit', label: 'SZTNH audit', description: 'Frascati-kockázat', icon: ClipboardCheck },
+  { id: 'ip', label: 'Szellemi termék', description: 'IP-box, jogdíj', icon: Copyright },
   { id: 'results', label: 'Eredménytábla', description: 'Vezetői riport', icon: FileText },
 ];
 
@@ -21,7 +22,7 @@ export function Stepper({ current, onSelect, incomplete }: StepperProps) {
 
   return (
     <nav aria-label="Folyamat lépései" className="no-print border-b border-slate-200 bg-white">
-      <ol className="mx-auto grid max-w-7xl grid-cols-4 px-2 sm:px-6">
+      <ol className="mx-auto grid max-w-7xl grid-cols-5 px-2 sm:px-6">
         {STEPS.map((step, index) => {
           const active = step.id === current;
           const done = index < currentIndex;
@@ -32,6 +33,7 @@ export function Stepper({ current, onSelect, incomplete }: StepperProps) {
                 type="button"
                 onClick={() => onSelect(step.id)}
                 aria-current={active ? 'step' : undefined}
+                aria-label={`${index + 1}. lépés: ${step.label}${incomplete[step.id] ? ' (figyelmet igényel)' : ''}`}
                 className={`group flex w-full items-center gap-3 border-b-2 px-2 py-3.5 text-left transition-colors ${
                   active ? 'border-navy-700' : 'border-transparent hover:border-slate-300'
                 }`}

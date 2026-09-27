@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { demoAssessment, emptyAssessment } from './defaults';
+import { demoAssessment, emptyAssessment, emptyIpBox } from './defaults';
 import { calculateCorporateTax, calculateSavings, calculateSzocho } from './engine';
 import { scoreAudit } from './scoring';
-import { canonicalJson, createSeal, verifySeal } from './seal';
-import type { AuditAnswers, RdCostInputs } from './types';
+import { calculateIpBox, nexusRatio, notificationDeadline } from './ipBox';
+import { canonicalJson, createSeal, sha256Hex, verifySeal } from './seal';
+import type { Assessment, AuditAnswers, RdCostInputs } from './types';
+
+/** calculateSavings for a whole assessment. */
+const savingsOf = (a: Assessment) => calculateSavings(a.client, a.costs, a.params, a.ip);
 import { normaliseAssessment } from '../state/useAssessment';
 
 const costs = (patch: Partial<RdCostInputs>): RdCostInputs => ({ ...emptyAssessment().costs, ...patch });
@@ -59,40 +63,48 @@ describe('calculateCorporateTax', () => {
 
 describe('calculateSavings', () => {
   it('reproduces the hand-checked demo case', () => {
-    const { client, costs: c, params } = demoAssessment();
-    const r = calculateSavings(client, c, params);
+    const r = savingsOf(demoAssessment());
 
     // Direct cost: 96M + 18M + 4.8M + 22M + 35M + 14M
     expect(r.directRdCost).toBe(189_800_000);
     expect(r.citDeductibleBase).toBe(189_800_000);
-    // Szocho: PhD 18M × 13% (cap 3 × 12 × 500k = 18M) + doctoral 4.8M × 6.5% (cap 4.8M); engineers on the Tao route
+    // University share 10M: 3 × 10M = 30M (≤ 50M) → +20M on top of the normal deduction
+    expect(r.universityUplift).toBe(20_000_000);
+    // Szocho: PhD 18M × 13% (cap 3 × 12 × 500k = 18M) + doctoral 4.8M × 6.5%; engineers on the Tao route
     expect(r.szocho.phdSaving).toBe(2_340_000);
     expect(r.szocho.doctoralSaving).toBe(312_000);
     expect(r.szocho.engineerSaving).toBe(0);
     expect(r.szocho.totalSaving).toBe(2_652_000);
-    expect(r.corporateTax.nominalSaving).toBe(17_082_000);
-    expect(r.hipaSaving).toBe(3_796_000);
-    // Large company → liable for the innovation contribution
-    expect(r.innovationContributionSaving).toBe(569_400);
-    expect(r.totalAnnualSaving).toBe(24_099_400);
-    expect(r.multiYearPotential).toBe(72_298_200);
+    // Tao: (189.8M + 20M) × 9%
+    expect(r.corporateTax.nominalSaving).toBe(18_882_000);
+    // HIPA: material (22M) is already deducted as anyagköltség → 167.8M × 2%
+    expect(r.hipaDeductibleBase).toBe(167_800_000);
+    expect(r.hipaSaving).toBe(3_356_000);
+    // Large company → innovation contribution 167.8M × 0.3%
+    expect(r.innovationContributionSaving).toBe(503_400);
+    // IP-box: (40M − 10M) × 50% × nexus(100 × 1.3 / 170) × 9%
+    expect(r.ipBox.royaltyCitSaving).toBe(1_032_353);
+    expect(r.totalAnnualSaving).toBe(26_425_753);
+    // Net: − 9% × (2.652M + 3.356M + 0.5034M)
+    expect(r.netAfterCitEffect).toBe(25_839_727);
+    expect(r.multiYearPotential).toBe(79_277_259);
     expect(r.engineerRoutes.recommended).toBe('CIT');
   });
 
   it('removes engineer wages from the Tao base on the 16. § route', () => {
     const a = demoAssessment();
     a.params.engineerRelief = 'SZOCHO_16';
-    const r = calculateSavings(a.client, a.costs, a.params);
+    const r = savingsOf(a);
     expect(r.citDeductibleBase).toBe(93_800_000);
     expect(r.szocho.engineerSaving).toBe(6_240_000);
     // HIPA base is unchanged
-    expect(r.hipaSaving).toBe(3_796_000);
+    expect(r.hipaSaving).toBe(3_356_000);
   });
 
   it('recommends the 16. § route for a loss-making client', () => {
     const a = demoAssessment();
     a.client.profitBeforeTax = -50_000_000;
-    const r = calculateSavings(a.client, a.costs, a.params);
+    const r = savingsOf(a);
     expect(r.engineerRoutes.citImmediate).toBe(0);
     expect(r.engineerRoutes.recommended).toBe('SZOCHO_16');
   });
@@ -100,9 +112,9 @@ describe('calculateSavings', () => {
   it('exempts micro and small enterprises from the innovation contribution, not medium ones', () => {
     const a = demoAssessment();
     a.client.companySize = 'MICRO_SMALL';
-    expect(calculateSavings(a.client, a.costs, a.params).innovationContributionSaving).toBe(0);
+    expect(savingsOf(a).innovationContributionSaving).toBe(0);
     a.client.companySize = 'MEDIUM';
-    expect(calculateSavings(a.client, a.costs, a.params).innovationContributionSaving).toBe(569_400);
+    expect(savingsOf(a).innovationContributionSaving).toBe(503_400);
   });
 
   it('clamps the HIPA rate to the 2% statutory maximum and warns', () => {
@@ -110,7 +122,8 @@ describe('calculateSavings', () => {
     a.client.annualRevenue = 1_000_000_000;
     a.costs.materialCosts = 10_000_000;
     a.params.hipaRate = 0.05;
-    const r = calculateSavings(a.client, a.costs, a.params);
+    a.params.hipaMaterialAlreadyDeducted = false;
+    const r = savingsOf(a);
     expect(r.hipaSaving).toBe(200_000);
     expect(r.warnings.some((w) => w.includes('2%'))).toBe(true);
   });
@@ -118,9 +131,113 @@ describe('calculateSavings', () => {
   it('ignores negative inputs', () => {
     const a = emptyAssessment();
     a.costs.materialCosts = -5_000_000;
-    const r = calculateSavings(a.client, a.costs, a.params);
+    const r = savingsOf(a);
     expect(r.directRdCost).toBe(0);
     expect(r.totalAnnualSaving).toBe(0);
+  });
+});
+
+describe('Tao / HIPA review rules', () => {
+  const base = () => {
+    const a = emptyAssessment();
+    a.client.annualRevenue = 1_000_000_000;
+    a.client.profitBeforeTax = 500_000_000;
+    a.costs.engineerGrossWages = 50_000_000;
+    a.costs.materialCosts = 10_000_000;
+    a.costs.subcontractorCosts = 20_000_000;
+    return a;
+  };
+
+  it('does not deduct material or subcontractor costs twice in the HIPA base', () => {
+    const a = base();
+    expect(savingsOf(a).hipaDeductibleBase).toBe(70_000_000); // material excluded by default
+    a.params.hipaSubcontractorAlreadyDeducted = true;
+    expect(savingsOf(a).hipaDeductibleBase).toBe(50_000_000);
+    a.params.hipaMaterialAlreadyDeducted = false;
+    expect(savingsOf(a).hipaDeductibleBase).toBe(60_000_000);
+  });
+
+  it('excludes grant-funded costs from Tao and HIPA', () => {
+    const a = base();
+    a.costs.grantFundedCosts = 30_000_000;
+    const r = savingsOf(a);
+    expect(r.citDeductibleBase).toBe(50_000_000);
+    expect(r.hipaDeductibleBase).toBe(40_000_000);
+  });
+
+  it('caps the university 3× deduction at 50 M Ft', () => {
+    const a = base();
+    a.costs.universityJointCosts = 20_000_000; // 3 × 20M = 60M → capped at 50M → uplift 30M
+    expect(savingsOf(a).universityUplift).toBe(30_000_000);
+    a.costs.universityJointCosts = 60_000_000; // above the cap: 3× gives nothing extra
+    expect(savingsOf(a).universityUplift).toBe(0);
+  });
+});
+
+describe('IP-box', () => {
+  const today = new Date('2026-09-27T10:00:00Z');
+  const ip = (patch: Partial<ReturnType<typeof emptyIpBox>> = {}) => ({ ...emptyIpBox(), enabled: true, ...patch });
+  const client = { profitBeforeTax: 1_000_000_000, annualRevenue: 2_000_000_000, companySize: 'LARGE' as const };
+
+  it('computes the nexus ratio with the 1.3 uplift, capped at 1', () => {
+    expect(nexusRatio({ nexusOwnCosts: 100, nexusRelatedPartyCosts: 30, nexusAcquisitionCosts: 70 })).toBeCloseTo(0.65);
+    expect(nexusRatio({ nexusOwnCosts: 100, nexusRelatedPartyCosts: 10, nexusAcquisitionCosts: 0 })).toBe(1);
+    expect(nexusRatio({ nexusOwnCosts: 0, nexusRelatedPartyCosts: 0, nexusAcquisitionCosts: 0 })).toBe(0);
+  });
+
+  it('gives a 4.5% effective Tao rate on royalty profit with full nexus', () => {
+    const r = calculateIpBox(ip({ royaltyIncome: 100_000_000, nexusOwnCosts: 50_000_000 }), client, 0.02, today);
+    expect(r.royaltyDeduction).toBe(50_000_000);
+    expect(r.royaltyCitSaving).toBe(4_500_000);
+    expect(r.effectiveRoyaltyCitRate).toBeCloseTo(0.045);
+  });
+
+  it('caps the royalty deduction at 50% of the pre-tax profit', () => {
+    const r = calculateIpBox(
+      ip({ royaltyIncome: 100_000_000, nexusOwnCosts: 1 }),
+      { ...client, profitBeforeTax: 40_000_000 },
+      0.02,
+      today,
+    );
+    expect(r.royaltyDeduction).toBe(20_000_000);
+  });
+
+  it('tracks the 60-day notification deadline', () => {
+    expect(notificationDeadline({ acquiredOn: '2026-09-01', reportedOn: '' }, today)).toEqual({
+      status: 'OPEN',
+      dueDate: '2026-10-31',
+      daysLeft: 34,
+    });
+    expect(notificationDeadline({ acquiredOn: '2026-06-01', reportedOn: '' }, today).status).toBe('MISSED');
+    expect(notificationDeadline({ acquiredOn: '2026-06-01', reportedOn: '2026-07-20' }, today).status).toBe('REPORTED_ON_TIME');
+    expect(notificationDeadline({ acquiredOn: '2026-06-01', reportedOn: '2026-08-15' }, today).status).toBe('REPORTED_LATE');
+    expect(notificationDeadline({ acquiredOn: '', reportedOn: '' }, today).status).toBe('NO_DATE');
+  });
+
+  it('allows the sale relief only after timely notification and a 1-year holding period', () => {
+    const sale = { nexusOwnCosts: 1, plannedSaleGain: 10_000_000 };
+    const ok = calculateIpBox(ip({ ...sale, acquiredOn: '2025-03-01', reportedOn: '2025-04-01', plannedSaleDate: '2026-06-01' }), client, 0.02, today);
+    expect(ok.sale.eligible).toBe(true);
+    expect(ok.sale.citSaving).toBe(900_000);
+
+    const tooEarly = calculateIpBox(ip({ ...sale, acquiredOn: '2026-03-01', reportedOn: '2026-04-01', plannedSaleDate: '2026-12-01' }), client, 0.02, today);
+    expect(tooEarly.sale.eligible).toBe(false);
+
+    const late = calculateIpBox(ip({ ...sale, acquiredOn: '2025-03-01', reportedOn: '2025-06-01', plannedSaleDate: '2026-06-01' }), client, 0.02, today);
+    expect(late.sale.eligible).toBe(false);
+  });
+
+  it('adds nothing to the HIPA until the share is set', () => {
+    const r = calculateIpBox(ip({ royaltyIncome: 100_000_000, nexusOwnCosts: 1 }), client, 0.02, today);
+    expect(r.hipaSaving).toBe(0);
+    const r2 = calculateIpBox(ip({ royaltyIncome: 100_000_000, nexusOwnCosts: 1, hipaRoyaltyReliefShare: 0.5 }), client, 0.02, today);
+    expect(r2.hipaSaving).toBe(1_000_000);
+  });
+
+  it('is excluded from totals when disabled', () => {
+    const a = demoAssessment();
+    a.ip.enabled = false;
+    expect(savingsOf(a).totalAnnualSaving).toBe(26_425_753 - 1_032_353);
   });
 });
 
@@ -203,6 +320,23 @@ describe('seal', () => {
     a.seal = await createSeal(a, 'Teszt Tanácsadó');
     const reloaded = normaliseAssessment(JSON.parse(JSON.stringify(a)));
     expect(await verifySeal(reloaded)).toBe(true);
+  });
+});
+
+describe('seal compatibility', () => {
+  it('still verifies a case sealed by engine 2026.2 (before the IP-box fields existed)', async () => {
+    const current = demoAssessment();
+    // Shape of a 2026.2 file: no ip, no grant / university / HIPA double-count fields.
+    const { grantFundedCosts: _g, universityJointCosts: _u, ...oldCosts } = current.costs;
+    const { hipaMaterialAlreadyDeducted: _m, hipaSubcontractorAlreadyDeducted: _s, ...oldParams } = current.params;
+    const meta = { algorithm: 'SHA-256' as const, sealedAt: '2026-09-27T12:00:00.000Z', sealedBy: 'Régi', engineVersion: '2026.2' };
+    const oldData = { client: current.client, costs: oldCosts, params: oldParams, audit: current.audit, sealHistory: [] };
+    const hash = await sha256Hex(canonicalJson({ data: oldData, seal: meta }));
+    const oldFile = { ...oldData, seal: { ...meta, hash } };
+
+    const loaded = normaliseAssessment(JSON.parse(JSON.stringify(oldFile)));
+    expect(loaded.costs.grantFundedCosts).toBe(0); // back-filled
+    expect(await verifySeal(loaded)).toBe(true);
   });
 });
 

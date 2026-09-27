@@ -13,6 +13,7 @@ import { ExecutiveReport } from './components/report/ExecutiveReport';
 import { AuditStep } from './components/steps/AuditStep';
 import { ClientStep, clientErrors } from './components/steps/ClientStep';
 import { CostStep } from './components/steps/CostStep';
+import { IpStep } from './components/steps/IpStep';
 import { ResultsStep } from './components/steps/ResultsStep';
 import { Button } from './components/ui/Button';
 import { useAssessment, type SealStatus } from './state/useAssessment';
@@ -31,6 +32,7 @@ export default function App() {
     updateCosts,
     updateParams,
     updateAudit,
+    updateIp,
     reset,
     loadDemo,
     load,
@@ -63,7 +65,7 @@ export default function App() {
           }}
           onDemo={loadDemo}
         />
-        <Stepper current={step} onSelect={goTo} incomplete={{ client: missingClientData }} />
+        <Stepper current={step} onSelect={goTo} incomplete={{ client: missingClientData, ip: ['OPEN', 'MISSED', 'REPORTED_LATE'].includes(savings.ipBox.deadline.status) && savings.ipBox.enabled }} />
         {assessment.seal && <SealBanner status={sealStatus} onOpen={() => goTo('results')} />}
 
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -101,6 +103,7 @@ export default function App() {
                     onChange={updateAudit}
                   />
                 )}
+                {step === 'ip' && <IpStep ip={assessment.ip} result={savings.ipBox} onChange={updateIp} />}
               </fieldset>
               <LiveSummary savings={savings} audit={audit} />
             </div>

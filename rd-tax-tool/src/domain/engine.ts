@@ -6,10 +6,12 @@
  * never drift from the calculator.
  */
 import { isInnovationContributionLiable, TAX_RATES } from './constants';
+import { calculateIpBox } from './ipBox';
 import type {
   ClientProfile,
   CorporateTaxResult,
   EngineerRouteComparison,
+  IpBoxInputs,
   RdCostInputs,
   SavingsResult,
   SzochoResult,
@@ -74,16 +76,26 @@ export function calculateSzocho(costs: RdCostInputs, params: Pick<TaxParameters,
 
 /**
  * Direct R&D cost: own personnel cost + materials + prototypes/testing +
- * independent subcontractors. This is the HIPA and innovation-contribution base.
+ * independent subcontractors.
  *
- * The Tao base is the same, except on the SZOCHO_16 route, where the engineer
- * wages (and their szocho) are excluded because they already got the 16. § relief.
+ * - Tao base: the direct cost less the grant-funded part and, on the
+ *   SZOCHO_16 route, the engineer wages (and their szocho) that already got
+ *   the 16. § relief. The university share may be deducted 3× (max 50 M Ft).
+ * - HIPA / innovation-contribution base: the direct cost less the grant-funded
+ *   part and less any item the HIPA base already reduces under another line
+ *   (material cost, subcontractor performance) – a cost counts only once.
  */
 export function calculateDirectRdCost(
   costs: RdCostInputs,
   params: TaxParameters,
   szocho: SzochoResult,
-): { directRdCost: number; personnelCost: number; citDeductibleBase: number } {
+): {
+  directRdCost: number;
+  personnelCost: number;
+  citDeductibleBase: number;
+  universityUplift: number;
+  hipaDeductibleBase: number;
+} {
   const engineerWages = nonNegative(costs.engineerGrossWages);
   const grossWages = engineerWages + nonNegative(costs.phdGrossWages) + nonNegative(costs.doctoralGrossWages);
   const personnelCost =
@@ -94,17 +106,31 @@ export function calculateDirectRdCost(
     nonNegative(costs.materialCosts) +
     nonNegative(costs.prototypeCosts) +
     nonNegative(costs.subcontractorCosts);
+  const grantFunded = Math.min(nonNegative(costs.grantFundedCosts), directRdCost);
 
-  let citDeductibleBase = directRdCost;
+  let citBase = directRdCost - grantFunded;
   if (params.engineerRelief === 'SZOCHO_16') {
     const engineerPayableSzocho = engineerWages * TAX_RATES.SZOCHO - szocho.engineerSaving;
-    citDeductibleBase -= engineerWages + (params.includeEmployerContribution ? engineerPayableSzocho : 0);
+    citBase -= engineerWages + (params.includeEmployerContribution ? engineerPayableSzocho : 0);
   }
+  citBase = Math.max(0, citBase);
+
+  // University / research-institute contract: 3× the cost instead of 1×, capped at 50 M Ft.
+  const jointCost = Math.min(nonNegative(costs.universityJointCosts), citBase);
+  const tripled = Math.min(jointCost * TAX_RATES.UNIVERSITY_MULTIPLIER, TAX_RATES.UNIVERSITY_CAP);
+  const universityUplift = Math.max(0, tripled - jointCost);
+
+  const alreadyDeductedInHipa =
+    (params.hipaMaterialAlreadyDeducted ? nonNegative(costs.materialCosts) : 0) +
+    (params.hipaSubcontractorAlreadyDeducted ? nonNegative(costs.subcontractorCosts) : 0);
+  const hipaDeductibleBase = Math.max(0, directRdCost - grantFunded - alreadyDeductedInHipa);
 
   return {
     directRdCost: round(directRdCost),
     personnelCost: round(personnelCost),
-    citDeductibleBase: round(Math.max(0, citDeductibleBase)),
+    citDeductibleBase: round(citBase),
+    universityUplift: round(universityUplift),
+    hipaDeductibleBase: round(hipaDeductibleBase),
   };
 }
 
@@ -134,7 +160,7 @@ export function calculateCorporateTax(
 }
 
 /**
- * Htv. 39. § – the direct R&D cost reduces the HIPA base.
+ * Htv. 39. § – the R&D cost not already deducted elsewhere reduces the HIPA base.
  * Capped at the revenue-based upper bound: the HIPA base cannot go below zero.
  */
 export function calculateHipa(directRdCost: number, hipaRate: number, annualRevenue: number): number {
@@ -172,8 +198,10 @@ export function compareEngineerRoutes(
 
   const szochoCit = calculateSzocho(costs, withCit);
   const szocho16 = calculateSzocho(costs, withSzocho);
-  const baseCit = calculateDirectRdCost(costs, withCit, szochoCit).citDeductibleBase;
-  const base16 = calculateDirectRdCost(costs, withSzocho, szocho16).citDeductibleBase;
+  const dCit = calculateDirectRdCost(costs, withCit, szochoCit);
+  const d16 = calculateDirectRdCost(costs, withSzocho, szocho16);
+  const baseCit = dCit.citDeductibleBase + dCit.universityUplift;
+  const base16 = d16.citDeductibleBase + d16.universityUplift;
   const taoCit = calculateCorporateTax(baseCit, profitBeforeTax);
   const tao16 = calculateCorporateTax(base16, profitBeforeTax);
 
@@ -201,16 +229,26 @@ export function calculateSavings(
   client: ClientProfile,
   costs: RdCostInputs,
   params: TaxParameters,
+  ip: IpBoxInputs,
+  today: Date = new Date(),
 ): SavingsResult {
   const szocho = calculateSzocho(costs, params);
-  const { directRdCost, personnelCost, citDeductibleBase } = calculateDirectRdCost(costs, params, szocho);
-  const corporateTax = calculateCorporateTax(citDeductibleBase, client.profitBeforeTax);
-  const hipaSaving = calculateHipa(directRdCost, params.hipaRate, client.annualRevenue);
-  const innovationContributionSaving = calculateInnovationContribution(directRdCost, client);
+  const { directRdCost, personnelCost, citDeductibleBase, universityUplift, hipaDeductibleBase } =
+    calculateDirectRdCost(costs, params, szocho);
+  const corporateTax = calculateCorporateTax(citDeductibleBase + universityUplift, client.profitBeforeTax);
+  const hipaSaving = calculateHipa(hipaDeductibleBase, params.hipaRate, client.annualRevenue);
+  const innovationContributionSaving = calculateInnovationContribution(hipaDeductibleBase, client);
   const engineerRoutes = compareEngineerRoutes(costs, params, client.profitBeforeTax);
+  const ipBox = calculateIpBox(ip, client, params.hipaRate, today);
 
   const totalAnnualSaving =
-    szocho.totalSaving + corporateTax.nominalSaving + hipaSaving + innovationContributionSaving;
+    szocho.totalSaving + corporateTax.nominalSaving + hipaSaving + innovationContributionSaving + ipBox.annualSaving;
+
+  // Lower szocho / HIPA / innovation costs raise the taxable profit by the same amount.
+  const costSideSavings =
+    szocho.totalSaving + hipaSaving + innovationContributionSaving + ipBox.hipaSaving + ipBox.innovationContributionSaving;
+  const netAfterCitEffect =
+    client.profitBeforeTax > 0 ? totalAnnualSaving - costSideSavings * TAX_RATES.CIT : totalAnnualSaving;
 
   const years = Math.max(0, Math.min(5, Math.floor(nonNegative(params.selfRevisionYears))));
 
@@ -219,7 +257,26 @@ export function calculateSavings(
     warnings.push(
       `Az adózás előtti eredmény nem fedezi a teljes kétszeres levonást: ${huf(
         corporateTax.deferredSaving,
-      )} Tao-hatás csak elhatárolt veszteségként, későbbi években érvényesíthető.`,
+      )} Tao-hatás csak elhatárolt veszteségként érvényesíthető; a későbbi években a veszteség legfeljebb az adóalap ${Math.round(
+        TAX_RATES.LOSS_OFFSET_LIMIT * 100,
+      )}%-áig írható le.`,
+    );
+  }
+  if (nonNegative(costs.grantFundedCosts) > 0) {
+    warnings.push(
+      'A vissza nem térítendő támogatásból fedezett K+F költség a Tao- és a HIPA-kedvezmény alapjából kimaradt (konzervatív feltételezés – a támogatási szerződés szerint ellenőrizendő).',
+    );
+  }
+  if (universityUplift > 0) {
+    warnings.push(
+      `Felsőoktatási / kutatóintézeti együttműködés: a költség háromszorosa (legfeljebb ${huf(
+        TAX_RATES.UNIVERSITY_CAP,
+      )}) vonható le. A többletkedvezmény csekély összegű (de minimis) támogatásnak minősül – a keret ellenőrizendő.`,
+    );
+  }
+  if (params.hipaMaterialAlreadyDeducted && nonNegative(costs.materialCosts) > 0) {
+    warnings.push(
+      'HIPA: a K+F anyagköltség már az általános anyagköltség-soron csökkenti az adóalapot, ezért K+F költségként nem vonható le még egyszer.',
     );
   }
   if (nonNegative(costs.phdGrossWages) > 0 && Math.floor(nonNegative(costs.phdHeadcount)) === 0) {
@@ -249,7 +306,8 @@ export function calculateSavings(
           )}).`,
     );
   }
-  if (directRdCost > nonNegative(client.annualRevenue) && directRdCost > 0) {
+  warnings.push(...ipBox.warnings);
+  if (hipaDeductibleBase > nonNegative(client.annualRevenue) && hipaDeductibleBase > 0) {
     warnings.push(
       'A közvetlen K+F költség meghaladja az árbevételt: a HIPA- és innovációsjárulék-megtakarítás az árbevételig korlátozva szerepel.',
     );
@@ -267,13 +325,18 @@ export function calculateSavings(
     directRdCost,
     personnelCost,
     citDeductibleBase,
+    universityUplift,
+    hipaDeductibleBase,
     engineerRoutes,
     szocho,
     corporateTax,
     hipaSaving,
     innovationContributionSaving,
+    ipBox,
     totalAnnualSaving,
-    effectiveSubsidyRate: directRdCost > 0 ? totalAnnualSaving / directRdCost : 0,
+    netAfterCitEffect: round(netAfterCitEffect),
+    // R&D reliefs only: the IP-box saving comes from income, not from the R&D spend.
+    effectiveSubsidyRate: directRdCost > 0 ? (totalAnnualSaving - ipBox.annualSaving) / directRdCost : 0,
     multiYearPotential: totalAnnualSaving * (1 + years),
     warnings,
   };

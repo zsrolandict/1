@@ -37,10 +37,28 @@ export async function sha256Hex(text: string): Promise<string> {
 
 type SealMeta = Omit<AuditSeal, 'hash'>;
 
-/** The exact byte string that is hashed: case data + seal metadata. */
+const omit = <T extends object>(obj: T, keys: readonly string[]): Partial<T> =>
+  Object.fromEntries(Object.entries(obj).filter(([k]) => !keys.includes(k))) as Partial<T>;
+
+/**
+ * The exact byte string that is hashed: case data + seal metadata. The data
+ * shape follows the engine version stored in the seal: fields added later
+ * (and back-filled with defaults on load) are left out, so older seals keep
+ * verifying.
+ */
 function sealPayload(assessment: Assessment, meta: SealMeta): string {
-  const { client, costs, params, audit, sealHistory } = assessment;
-  return canonicalJson({ data: { client, costs, params, audit, sealHistory }, seal: meta });
+  const { client, costs, params, audit, ip, sealHistory } = assessment;
+  if (meta.engineVersion === '2026.2') {
+    const data = {
+      client,
+      costs: omit(costs, ['grantFundedCosts', 'universityJointCosts']),
+      params: omit(params, ['hipaMaterialAlreadyDeducted', 'hipaSubcontractorAlreadyDeducted']),
+      audit,
+      sealHistory,
+    };
+    return canonicalJson({ data, seal: meta });
+  }
+  return canonicalJson({ data: { client, costs, params, audit, ip, sealHistory }, seal: meta });
 }
 
 export async function createSeal(assessment: Assessment, sealedBy: string, now = new Date()): Promise<AuditSeal> {

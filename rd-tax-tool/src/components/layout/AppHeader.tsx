@@ -60,7 +60,14 @@ export function AppHeader({ onExport, onImport, onReset, onDemo }: AppHeaderProp
 
 function HeaderAction({ icon, label, onClick }: { icon: typeof Download; label: string; onClick: () => void }) {
   return (
-    <Button variant="ghost" icon={icon} onClick={onClick} className="text-navy-100 hover:bg-white/10 hover:text-white">
+    <Button
+      variant="ghost"
+      icon={icon}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="text-navy-100 hover:bg-white/10 hover:text-white"
+    >
       <span className="hidden md:inline">{label}</span>
     </Button>
   );

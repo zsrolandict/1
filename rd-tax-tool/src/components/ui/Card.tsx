@@ -17,8 +17,8 @@ export function Card({ title, subtitle, icon: Icon, aside, children, className =
       className={`rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-900/[0.03] ${className}`}
     >
       {title && (
-        <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-4">
-          <div className="flex items-start gap-3">
+        <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-slate-100 px-6 py-4">
+          <div className="flex min-w-0 flex-1 basis-64 items-start gap-3">
             {Icon && (
               <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-navy-50 text-navy-700">
                 <Icon className="size-4" aria-hidden />

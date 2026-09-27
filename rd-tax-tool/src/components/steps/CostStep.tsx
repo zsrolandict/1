@@ -143,6 +143,25 @@ export function CostStep({ costs, params, savings, onCostsChange, onParamsChange
             sliderMax={200_000_000}
           />
         </div>
+        <div className="mt-6 grid gap-6 border-t border-slate-100 pt-5 sm:grid-cols-2">
+          <CurrencyInput
+            label="Ebből: vissza nem térítendő támogatásból fedezett rész"
+            value={costs.grantFundedCosts}
+            onChange={(grantFundedCosts) => onCostsChange({ grantFundedCosts })}
+            hint="Kimarad a Tao- és a HIPA-kedvezmény alapjából (konzervatív, a támogatási szerződés szerint ellenőrizendő)"
+          />
+          <CurrencyInput
+            label="Ebből: egyetemmel / kutatóintézettel kötött szerződés keretében"
+            value={costs.universityJointCosts}
+            onChange={(universityJointCosts) => onCostsChange({ universityJointCosts })}
+            hint={`Tao: a költség háromszorosa vonható le, legfeljebb ${formatHuf(TAX_RATES.UNIVERSITY_CAP)} (de minimis)`}
+            annotation={
+              savings.universityUplift > 0 ? (
+                <SavingNote label="Többletlevonás" value={savings.universityUplift} />
+              ) : undefined
+            }
+          />
+        </div>
       </Card>
 
       <Card title="Adóparaméterek" subtitle="Önkormányzati kulcs és számítási feltevések" icon={Scale} aside={<LegalBadge>{LEGAL_REFERENCES.HIPA}</LegalBadge>}>
@@ -170,6 +189,18 @@ export function CostStep({ costs, params, savings, onCostsChange, onParamsChange
             description="A kedvezmény utáni munkáltatói szocho a közvetlen személyi költség része. Alapértelmezetten ki (konzervatív)."
             checked={params.includeEmployerContribution}
             onChange={(includeEmployerContribution) => onParamsChange({ includeEmployerContribution })}
+          />
+          <Toggle
+            label="HIPA: az anyagköltséget az általános soron már levonják"
+            description="Egy költség a HIPA-alapot csak egyszer csökkentheti. Bekapcsolva a K+F anyagköltség nem kerül be még egyszer K+F-levonásként (NAV-gyakorlat)."
+            checked={params.hipaMaterialAlreadyDeducted}
+            onChange={(hipaMaterialAlreadyDeducted) => onParamsChange({ hipaMaterialAlreadyDeducted })}
+          />
+          <Toggle
+            label="HIPA: a K+F alvállalkozói díj alvállalkozói teljesítésként levonva"
+            description="Ha a díjat a HIPA-bevallásban alvállalkozói teljesítésként már levonják, K+F költségként nem vonható le újra."
+            checked={params.hipaSubcontractorAlreadyDeducted}
+            onChange={(hipaSubcontractorAlreadyDeducted) => onParamsChange({ hipaSubcontractorAlreadyDeducted })}
           />
         </div>
       </Card>
@@ -199,7 +230,7 @@ export function Warnings({ warnings }: { warnings: string[] }) {
 }
 
 export function DerivationTable({ savings, hipaRate }: { savings: SavingsResult; hipaRate: number }) {
-  const base = formatHuf(savings.directRdCost);
+  const base = formatHuf(savings.hipaDeductibleBase);
   const rows = [
     {
       label: 'Szocho – PhD (15. §)',
@@ -218,7 +249,10 @@ export function DerivationTable({ savings, hipaRate }: { savings: SavingsResult;
     },
     {
       label: 'Tao – kétszeres levonás',
-      formula: `${formatHuf(savings.citDeductibleBase)} × ${formatPercent(TAX_RATES.CIT, 0)}`,
+      formula:
+        savings.universityUplift > 0
+          ? `(${formatHuf(savings.citDeductibleBase)} + ${formatHuf(savings.universityUplift)} egyetemi többlet) × ${formatPercent(TAX_RATES.CIT, 0)}`
+          : `${formatHuf(savings.citDeductibleBase)} × ${formatPercent(TAX_RATES.CIT, 0)}`,
       value: savings.corporateTax.nominalSaving,
     },
     {
@@ -234,6 +268,24 @@ export function DerivationTable({ savings, hipaRate }: { savings: SavingsResult;
           : 'mikro- / kisvállalkozás – mentes',
       value: savings.innovationContributionSaving,
     },
+    ...(savings.ipBox.enabled
+      ? [
+          {
+            label: 'IP-box – jogdíj (Tao)',
+            formula: `${formatHuf(savings.ipBox.royaltyProfit)} × 50% × nexus ${formatPercent(savings.ipBox.nexusRatio)} × 9%`,
+            value: savings.ipBox.royaltyCitSaving,
+          },
+          ...(savings.ipBox.hipaSaving + savings.ipBox.innovationContributionSaving > 0
+            ? [
+                {
+                  label: 'IP-box – HIPA / innovációs járulék',
+                  formula: 'jogdíjbevétel × beállított hányad × kulcs',
+                  value: savings.ipBox.hipaSaving + savings.ipBox.innovationContributionSaving,
+                },
+              ]
+            : []),
+        ]
+      : []),
   ];
 
   return (
@@ -262,6 +314,14 @@ export function DerivationTable({ savings, hipaRate }: { savings: SavingsResult;
             </td>
             <td className="tabular pt-3 text-right text-base font-bold text-navy-900">{formatHuf(savings.totalAnnualSaving)}</td>
           </tr>
+          {savings.netAfterCitEffect !== savings.totalAnnualSaving && (
+            <tr>
+              <td className="pt-1 text-xs text-slate-500" colSpan={2}>
+                Tao-hatással korrigált nettó megtakarítás (a kisebb szocho-, HIPA- és járulékköltség 9%-kal növeli a Tao-alapot)
+              </td>
+              <td className="tabular pt-1 text-right text-xs font-medium text-slate-600">{formatHuf(savings.netAfterCitEffect)}</td>
+            </tr>
+          )}
           {savings.corporateTax.deferredSaving > 0 && (
             <tr>
               <td className="pt-1 text-xs text-slate-500" colSpan={2}>

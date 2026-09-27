@@ -1,6 +1,24 @@
 /** Blank and demo assessments. */
 import { TAX_RATES } from './constants';
-import type { Assessment } from './types';
+import type { Assessment, IpBoxInputs } from './types';
+
+const isoDaysAgo = (days: number): string => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+
+export const emptyIpBox = (): IpBoxInputs => ({
+  enabled: false,
+  assetType: 'SOFTWARE',
+  assetName: '',
+  royaltyIncome: 0,
+  royaltyRelatedCosts: 0,
+  nexusOwnCosts: 0,
+  nexusRelatedPartyCosts: 0,
+  nexusAcquisitionCosts: 0,
+  acquiredOn: '',
+  reportedOn: '',
+  plannedSaleGain: 0,
+  plannedSaleDate: '',
+  hipaRoyaltyReliefShare: 0,
+});
 
 export const emptyAssessment = (): Assessment => ({
   client: {
@@ -24,18 +42,23 @@ export const emptyAssessment = (): Assessment => ({
     materialCosts: 0,
     prototypeCosts: 0,
     subcontractorCosts: 0,
+    grantFundedCosts: 0,
+    universityJointCosts: 0,
   },
   params: {
     engineerRelief: 'CIT',
     hipaRate: TAX_RATES.HIPA_DEFAULT,
     includeEmployerContribution: false,
     selfRevisionYears: 0,
+    hipaMaterialAlreadyDeducted: true,
+    hipaSubcontractorAlreadyDeducted: false,
   },
   audit: {
     ratings: { NOVELTY: 2, CREATIVITY: 2, UNCERTAINTY: 2, SYSTEMATIC: 2, TRANSFERABILITY: 2 },
     redFlags: {},
     notes: '',
   },
+  ip: emptyIpBox(),
   seal: null,
   sealHistory: [],
 });
@@ -63,17 +86,33 @@ export const demoAssessment = (): Assessment => ({
     materialCosts: 22_000_000,
     prototypeCosts: 35_000_000,
     subcontractorCosts: 14_000_000,
+    grantFundedCosts: 0,
+    universityJointCosts: 10_000_000,
   },
   params: {
     engineerRelief: 'CIT',
     hipaRate: 0.02,
     includeEmployerContribution: false,
     selfRevisionYears: 2,
+    hipaMaterialAlreadyDeducted: true,
+    hipaSubcontractorAlreadyDeducted: false,
   },
   audit: {
     ratings: { NOVELTY: 3, CREATIVITY: 3, UNCERTAINTY: 4, SYSTEMATIC: 2, TRANSFERABILITY: 3 },
     redFlags: { NO_TIME_TRACKING: true },
     notes: '',
+  },
+  // Licensed machine-vision software; created 40 days ago and not yet notified to NAV.
+  ip: {
+    ...emptyIpBox(),
+    enabled: true,
+    assetName: 'Gépi látás vezérlőszoftver',
+    royaltyIncome: 40_000_000,
+    royaltyRelatedCosts: 10_000_000,
+    nexusOwnCosts: 100_000_000,
+    nexusRelatedPartyCosts: 30_000_000,
+    nexusAcquisitionCosts: 40_000_000,
+    acquiredOn: isoDaysAgo(40),
   },
   seal: null,
   sealHistory: [],
