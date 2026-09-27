@@ -2,14 +2,18 @@ import { Download, FlaskConical, RotateCcw, Upload } from 'lucide-react';
 import { useRef } from 'react';
 import { Button } from '../ui/Button';
 
+import type { AppMode } from '../../App';
+
 interface AppHeaderProps {
+  mode: AppMode;
+  onModeChange: (mode: AppMode) => void;
   onExport: () => void;
   onImport: (data: unknown) => void;
   onReset: () => void;
   onDemo: () => void;
 }
 
-export function AppHeader({ onExport, onImport, onReset, onDemo }: AppHeaderProps) {
+export function AppHeader({ onExport, onImport, onReset, onDemo, mode, onModeChange }: AppHeaderProps) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File | undefined) => {
@@ -33,6 +37,27 @@ export function AppHeader({ onExport, onImport, onReset, onDemo }: AppHeaderProp
             <p className="font-serif text-lg leading-tight font-semibold tracking-wide">ICT Európa</p>
             <p className="text-xs text-navy-100/80">K+F Adódiagnosztika · Belső szakértői eszköz</p>
           </div>
+        </div>
+        <div role="radiogroup" aria-label="Nézet" className="flex rounded-lg border border-white/15 bg-white/5 p-0.5 text-sm">
+          {(
+            [
+              ['full', 'Teljes átvilágítás'],
+              ['royalty', 'Szoftverjogdíj-kalkulátor'],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={mode === value}
+              onClick={() => onModeChange(value)}
+              className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                mode === value ? 'bg-white text-navy-900' : 'text-navy-100 hover:text-white'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
         <div className="flex flex-wrap items-center gap-1">
           <HeaderAction icon={FlaskConical} label="Demó eset" onClick={onDemo} />

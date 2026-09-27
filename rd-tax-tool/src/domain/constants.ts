@@ -15,7 +15,7 @@ import type {
 } from './types';
 
 /** Bump when a rule changes; stored in every seal. */
-export const ENGINE_VERSION = '2026.3';
+export const ENGINE_VERSION = '2026.4';
 
 export const TAX_RATES = {
   /** Szociális hozzájárulási adó – Szocho tv. */
@@ -46,19 +46,22 @@ export const TAX_RATES = {
 } as const;
 
 /**
- * IP-box (jogdíj / bejelentett immateriális jószág) rules.
- * Items marked VERIFY were not confirmed against the statute text.
+ * Software IP-box rules (jogdíj / bejelentett immateriális jószág), as
+ * confirmed by the tax team in September 2026.
  */
 export const IP_RULES = {
-  /** 50% of the royalty profit is deductible… */
+  /** Tao. tv. 7. § (1) s): 50% of the royalty profit is deductible… */
   ROYALTY_DEDUCTION_SHARE: 0.5,
   /** …capped at 50% of the pre-tax profit. */
   ROYALTY_PROFIT_CAP_SHARE: 0.5,
-  /** OECD modified nexus uplift on qualifying spend. VERIFY for the Hungarian rule. */
+  /** Tao. tv. 7. § (22)–(25): cumulative nexus with the OECD 30% uplift (Tao only, not HIPA). */
   NEXUS_UPLIFT: 1.3,
-  /** Notification to NAV after acquisition / creation; cannot be made up later. */
-  NOTIFICATION_DAYS: 60,
-  /** Minimum holding period before a tax-free sale. */
+  /**
+   * Tao. tv. 4. § 5.: notification of a notified intangible and of each
+   * capitalised value increase (továbbfejlesztés); jogvesztő, cannot be made up.
+   */
+  NOTIFICATION_DAYS: 75,
+  /** Tao. tv. 7. § (1): minimum holding period, counted from the original acquisition. */
   MIN_HOLDING_YEARS: 1,
 } as const;
 
@@ -69,14 +72,16 @@ export const LEGAL_REFERENCES = {
   CIT: 'Tao. tv. 7. § (1) t)',
   HIPA: 'Htv. 39. §',
   INNOVATION: 'Inno. tv. 17. §',
-  IP_ROYALTY: 'Tao. tv. 7. § – jogdíj',
-  IP_SALE: 'Tao. tv. 7. § – IP-eladás',
+  IP_ROYALTY: 'Tao. tv. 7. § (1) s)',
+  IP_NOTIFY: 'Tao. tv. 4. § 5.',
+  IP_SALE: 'Tao. tv. 7. § (1) – eladás',
+  IP_HIPA: 'Htv. 39. § (1) – jogdíj',
 } as const;
 
-export const IP_ASSET_LABELS = {
-  SOFTWARE: 'Szoftver (szerzői jog)',
-  PATENT: 'Szabadalom / használati minta',
-  OTHER: 'Egyéb oltalmazott szellemi termék',
+export const REVENUE_MODEL_LABELS = {
+  LICENSE: 'Licencdíj (letölthető szoftver, SDK, dedikált példány)',
+  SAAS: 'SaaS-előfizetés (felhőszolgáltatás)',
+  MIXED: 'Vegyes (licenc + szolgáltatás)',
 } as const;
 
 export const COMPANY_SIZE_OPTIONS: { value: CompanySize; label: string; description: string }[] = [

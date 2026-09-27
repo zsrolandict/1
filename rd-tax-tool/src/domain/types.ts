@@ -98,70 +98,131 @@ export interface TaxParameters {
   hipaMaterialAlreadyDeducted: boolean;
   /** Same for R&D subcontractor fees booked as "alvállalkozói teljesítés". */
   hipaSubcontractorAlreadyDeducted: boolean;
-}
-
-// ---------------------------------------------------------------------------
-// 2b. Intellectual property (IP-box)
-// ---------------------------------------------------------------------------
-
-export type IpAssetType = 'SOFTWARE' | 'PATENT' | 'OTHER';
-
-export interface IpBoxInputs {
-  enabled: boolean;
-  assetType: IpAssetType;
-  assetName: string;
-  /** Annual royalty income from the qualifying intangible (jogdíjbevétel). */
-  royaltyIncome: number;
-  /** Costs attributable to that royalty income. */
-  royaltyRelatedCosts: number;
-  /** Nexus: own R&D spend on the asset, incl. unrelated subcontractors. */
-  nexusOwnCosts: number;
-  /** Nexus: R&D bought from related parties. */
-  nexusRelatedPartyCosts: number;
-  /** Nexus: cost of acquiring the intangible (or parts of it). */
-  nexusAcquisitionCosts: number;
-  /** Date of acquisition / creation (ISO yyyy-mm-dd); starts the 60-day notification window. */
-  acquiredOn: string;
-  /** Date the asset was notified to NAV ('' if not yet). */
-  reportedOn: string;
-  /** Expected gain on a planned sale / contribution in kind. */
-  plannedSaleGain: number;
-  /** Planned sale date ('' if none). */
-  plannedSaleDate: string;
   /**
-   * Share of royalty income that reduces the HIPA base (0–1). Not verified
-   * against the Htv.; default 0 until the tax team confirms.
+   * Tao. tv. 7. § (1) t): capitalised development may be deducted in full in
+   * the year incurred, or in line with the planned depreciation. Never both.
    */
-  hipaRoyaltyReliefShare: number;
+  citDeductionTiming: 'IMMEDIATE' | 'AMORTIZATION';
+  /** Straight-line depreciation period for the AMORTIZATION option (years). */
+  amortizationYears: number;
 }
 
-export type IpDeadlineStatus = 'NO_DATE' | 'OPEN' | 'MISSED' | 'REPORTED_ON_TIME' | 'REPORTED_LATE';
+// ---------------------------------------------------------------------------
+// 2b. Software asset (IP-box)
+// ---------------------------------------------------------------------------
 
-export interface IpBoxResult {
+/**
+ * One capitalised piece of the software: the original development or a later
+ * enhancement (aktivált továbbfejlesztés = value increase). Each must be
+ * notified to NAV separately within the notification window.
+ */
+export interface SoftwareComponent {
+  id: string;
+  kind: 'ORIGINAL' | 'ENHANCEMENT';
+  name: string;
+  /** Capitalisation / completion date (yyyy-mm-dd); starts the notification window. */
+  capitalizedOn: string;
+  /** NAV notification date ('' if not yet). */
+  reportedOn: string;
+  /** Capitalised value (bekerülési érték / értéknövekmény). */
+  capitalizedValue: number;
+  /** Nexus inputs for this component. */
+  ownCosts: number;
+  relatedPartyCosts: number;
+  acquisitionCosts: number;
+}
+
+/** Royalty income of one tax year. */
+export interface RoyaltyYear {
+  year: number;
+  /** Licence / royalty income qualifying as jogdíj. */
+  royaltyIncome: number;
+  /** Costs attributable to that income. */
+  relatedCosts: number;
+  /** Pre-tax profit of that year (caps the Tao deduction at 50%). */
+  profitBeforeTax: number;
+}
+
+/** LICENSE: licence fees; SAAS: cloud subscription; MIXED: both. */
+export type RevenueModel = 'LICENSE' | 'SAAS' | 'MIXED';
+
+export interface SoftwareAssetInputs {
   enabled: boolean;
-  /** min(1, own × 1.3 / (own + related + acquisition)). */
+  name: string;
+  revenueModel: RevenueModel;
+  /**
+   * For SaaS / mixed: the contracts (ÁSZF / EULA) grant a copyright licence
+   * and invoices separate the licence fee from hosting / SLA fees. Without
+   * this, SaaS income is a service, not royalty.
+   */
+  saasLicenceSeparated: boolean;
+  components: SoftwareComponent[];
+  royaltyYears: RoyaltyYear[];
+  /** HIPA: royalty income is deductible from net revenue (no nexus in the Htv.). */
+  hipaRoyaltyDeduction: boolean;
+  /** Planned sale / contribution in kind. */
+  saleDate: string;
+  salePrice: number;
+  /** Book value at sale (bekerülési érték − értékcsökkenés). */
+  saleBookValue: number;
+  /** Apply the nexus ratio to the sale gain as well (conservative default). */
+  applyNexusToSaleGain: boolean;
+}
+
+export type NotificationStatus = 'NO_DATE' | 'OPEN' | 'MISSED' | 'REPORTED_ON_TIME' | 'REPORTED_LATE';
+
+export interface NotificationDeadline {
+  status: NotificationStatus;
+  dueDate: string;
+  daysLeft: number;
+}
+
+export interface ComponentResult {
+  id: string;
+  name: string;
+  kind: SoftwareComponent['kind'];
+  capitalizedValue: number;
+  deadline: NotificationDeadline;
+}
+
+export interface RoyaltyYearResult {
+  year: number;
+  /** Cumulative nexus up to the end of this year. */
   nexusRatio: number;
   royaltyProfit: number;
-  /** min(50% × royalty profit × nexus, 50% × pre-tax profit). */
+  deduction: number;
+  citSaving: number;
+  hipaSaving: number;
+  innovationContributionSaving: number;
+  total: number;
+}
+
+export interface SoftwareResult {
+  enabled: boolean;
+  /** False for SaaS income without a separated licence fee. */
+  royaltyQualifies: boolean;
+  components: ComponentResult[];
+  years: RoyaltyYearResult[];
+  /** Figures of the tax year under review (feed the annual total). */
+  nexusRatio: number;
+  royaltyProfit: number;
   royaltyDeduction: number;
   royaltyCitSaving: number;
-  /** Effective Tao rate on the royalty profit (e.g. 4.5% with full nexus). */
   effectiveRoyaltyCitRate: number;
   hipaSaving: number;
   innovationContributionSaving: number;
-  /** Recurring annual IP saving (counted in the annual total). */
   annualSaving: number;
-  deadline: {
-    status: IpDeadlineStatus;
-    dueDate: string;
-    daysLeft: number;
-  };
+  /** Most urgent notification across all components. */
+  deadline: NotificationDeadline;
   sale: {
+    gain: number;
+    /** Share of the capitalised value notified on time (0–1). */
+    exemptShare: number;
+    deduction: number;
+    taxablePart: number;
+    citSaving: number;
     eligible: boolean;
     reasons: string[];
-    deduction: number;
-    /** One-off saving; not part of the annual total. */
-    citSaving: number;
   };
   warnings: string[];
 }
@@ -199,8 +260,10 @@ export interface EngineerRouteComparison {
 }
 
 export interface CorporateTaxResult {
-  /** Extra deduction from the CIT base (incl. the 3× university uplift). */
+  /** Extra deduction from the CIT base this year (incl. the 3× university uplift). */
   deductibleBase: number;
+  /** Deduction left for later years on the AMORTIZATION option. */
+  deferredToLaterYears: number;
   /** Nominal saving: deductibleBase × 9% (the headline figure). */
   nominalSaving: number;
   /** Portion realisable this year given the positive pre-tax profit. */
@@ -224,7 +287,7 @@ export interface SavingsResult {
   corporateTax: CorporateTaxResult;
   hipaSaving: number;
   innovationContributionSaving: number;
-  ipBox: IpBoxResult;
+  ipBox: SoftwareResult;
   /** Szocho + Tao (nominal) + HIPA + innovation contribution + IP-box (annual part). */
   totalAnnualSaving: number;
   /**
@@ -330,9 +393,15 @@ export interface Assessment {
   costs: RdCostInputs;
   params: TaxParameters;
   audit: AuditAnswers;
-  ip: IpBoxInputs;
+  software: SoftwareAssetInputs;
   /** Present while the case is sealed (read-only). */
   seal: AuditSeal | null;
   /** Earlier seals, kept when a sealed case is reopened as a new version. */
   sealHistory: AuditSeal[];
+  /**
+   * For cases sealed by an older engine: the data exactly as it was in the
+   * file, so the seal is verified against what was hashed (not re-hashed after
+   * migration to the current shape). Not itself part of any hash.
+   */
+  sealedSource: Record<string, unknown> | null;
 }

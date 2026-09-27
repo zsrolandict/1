@@ -10,6 +10,7 @@ import type { Assessment, AuditResult, SavingsResult } from '../../domain/types'
 import { RiskGauge } from '../charts/RiskGauge';
 import { savingsRows } from '../charts/SavingsBreakdown';
 import type { SealStatus } from '../../state/useAssessment';
+import { deadlineText } from '../software/shared';
 import { ActionPlan } from './ActionPlan';
 import { ReportSealLine } from './SealPanel';
 
@@ -101,7 +102,7 @@ export function ExecutiveReport({ assessment, savings, audit, actionPlan, sealSt
         )}
       </section>
 
-      {savings.ipBox.enabled && <ReportIpBox savings={savings} assetName={assessment.ip.assetName} />}
+      {savings.ipBox.enabled && <ReportIpBox savings={savings} assetName={assessment.software.name} />}
 
       {/* SZTNH readiness */}
       <section className="avoid-break mt-8">
@@ -201,38 +202,45 @@ function KeyFigure({ label, value, emphasis = false }: { label: string; value: s
   );
 }
 
-/** IP-box summary with the notification deadline status. */
+/** Software IP-box summary with every component's notification status. */
 function ReportIpBox({ savings, assetName }: { savings: SavingsResult; assetName: string }) {
   const ip = savings.ipBox;
-  const { status, dueDate, daysLeft } = ip.deadline;
-  const deadlineText = {
-    NO_DATE: 'szerzési dátum nincs rögzítve',
-    OPEN: `bejelentendő ${dueDate}-ig (még ${daysLeft} nap) – utólag nem pótolható`,
-    MISSED: `a ${IP_RULES.NOTIFICATION_DAYS} napos határidő ${dueDate}-én lejárt`,
-    REPORTED_ON_TIME: 'határidőben bejelentve',
-    REPORTED_LATE: 'késve bejelentve – eladási kedvezmény nem jár',
-  }[status];
-  const alert = status === 'OPEN' || status === 'MISSED' || status === 'REPORTED_LATE';
-
+  const alertStatuses = ['OPEN', 'MISSED', 'REPORTED_LATE'];
   return (
     <section className="avoid-break mt-6 rounded-lg border border-slate-200 px-4 py-3 text-[13px]">
-      <p className="mb-1.5 font-semibold text-navy-900">Szellemi termék (IP-box){assetName ? ` – ${assetName}` : ''}</p>
+      <p className="mb-1.5 font-semibold text-navy-900">Szoftver (IP-box){assetName ? ` – ${assetName}` : ''}</p>
+      {!ip.royaltyQualifies && (
+        <p className="mb-1.5 text-risk-red">A SaaS-bevétel elkülönített licencdíj nélkül szolgáltatás: jogdíjkedvezmény nem jár.</p>
+      )}
       <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-        <span className="text-slate-500">Nexus-arány</span>
+        <span className="text-slate-500">Kumulatív nexus-arány</span>
         <span className="tabular text-right">{formatPercent(ip.nexusRatio)}</span>
         <span className="text-slate-500">Jogdíjkedvezmény (Tao) / év</span>
         <span className="tabular text-right">{formatHuf(ip.royaltyCitSaving)}</span>
+        <span className="text-slate-500">HIPA + innovációs járulék / év</span>
+        <span className="tabular text-right">{formatHuf(ip.hipaSaving + ip.innovationContributionSaving)}</span>
         <span className="text-slate-500">Tényleges Tao a jogdíjnyereségen</span>
         <span className="tabular text-right">{formatPercent(ip.effectiveRoyaltyCitRate, 2)}</span>
-        {ip.sale.citSaving > 0 && (
+        {ip.sale.gain > 0 && (
           <>
-            <span className="text-slate-500">Egyszeri eladási megtakarítás</span>
-            <span className="tabular text-right">{formatHuf(ip.sale.citSaving)}</span>
+            <span className="text-slate-500">Eladás: mentes rész / egyszeri megtakarítás</span>
+            <span className="tabular text-right">
+              {formatPercent(ip.sale.exemptShare)} / {formatHuf(ip.sale.citSaving)}
+            </span>
           </>
         )}
-        <span className="text-slate-500">NAV-bejelentés</span>
-        <span className={`text-right ${alert ? 'font-semibold text-risk-red' : ''}`}>{deadlineText}</span>
       </div>
+      <p className="mt-2 mb-1 font-semibold text-navy-900">NAV-bejelentések ({IP_RULES.NOTIFICATION_DAYS} nap, jogvesztő)</p>
+      <ul className="space-y-0.5">
+        {ip.components.map((c) => (
+          <li key={c.id} className="flex justify-between gap-4">
+            <span>{c.name}</span>
+            <span className={alertStatuses.includes(c.deadline.status) ? 'font-semibold text-risk-red' : 'text-slate-600'}>
+              {deadlineText(c.deadline)}
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

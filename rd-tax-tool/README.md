@@ -14,7 +14,7 @@ A fejlécben a **Demó eset** gomb betölt egy kitalált gépipari ügyfelet.
 
 ## Architektúra
 
-A kód három rétegből áll. A folyamat öt lépés: Ügyféladatok → Költség & bér → SZTNH audit → Szellemi termék → Eredménytábla. Az üzleti logika React nélkül, önállóan tesztelhető.
+A kód három rétegből áll. A folyamat öt lépés: Ügyféladatok → Költség & bér → SZTNH audit → Szoftver (IP-box) → Eredménytábla. A fejlécben átváltható egy önálló Szoftverjogdíj-kalkulátor nézetre. Az üzleti logika React nélkül, önállóan tesztelhető.
 
 ```
 src/
@@ -24,7 +24,7 @@ src/
 │   ├── engine.ts           megtakarítási motor (Szocho, Tao, HIPA, innovációs járulék)
 │   ├── scoring.ts          SZTNH/Frascati kockázati pontozás (0–100)
 │   ├── seal.ts             SHA-256 lezárás és ellenőrzés (Web Crypto API)
-│   ├── ipBox.ts            IP-box: jogdíj, nexus, 60 napos bejelentés, értékesítés
+│   ├── software.ts         Szoftver IP-box: komponensek, 75 napos bejelentés, kumulatív nexus, éves jogdíj, eladás
 │   ├── actionPlan.ts       3 lépéses ütemterv a kockázati sáv alapján
 │   ├── format.ts           HUF-formázás, adószám-validáció
 │   ├── defaults.ts         üres és demó vizsgálat
@@ -33,7 +33,8 @@ src/
 │   └── useAssessment.ts    useReducer + localStorage-autosave + JSON export/import
 └── components/
     ├── layout/             AppHeader, Stepper, LiveSummary (valós idejű oldalpanel)
-    ├── steps/              ClientStep → CostStep → AuditStep → IpStep → ResultsStep
+    ├── steps/              ClientStep → CostStep → AuditStep → ResultsStep
+    ├── software/           SoftwareStep (4. lépés), RoyaltyCalculator (demó mód), közös elemek
     ├── charts/             RiskGauge, SavingsBreakdown, CriteriaBars (SVG/CSS, külső lib nélkül)
     ├── report/             ExecutiveReport (A4, nyomtatás/PDF), ActionPlan, SealPanel
     └── ui/                 Card, Button, űrlapmezők (CurrencyInput csúszkával, Segmented, Toggle)
@@ -51,7 +52,7 @@ App
 │   │   ├── CostStep       PhD / doktorandusz bér + létszám, mérnöki bér + kedvezményút, anyag, prototípus, alvállalkozó,
 │   │   │                  HIPA-kulcs, számítás levezetése, figyelmeztetések
 │   │   ├── AuditStep      5 Frascati-kérdés (0–4), általános + iparági NAV-kockázati csekklista, megjegyzés
-│   │   └── IpStep         jogdíj, nexus-arány, 60 napos NAV-bejelentés, értékesítés, HIPA-hányad
+│   │   └── SoftwareStep   eredeti + továbbfejlesztések (75 napos bejelentés), éves jogdíj, SaaS-feltétel, eladás
 │   └── [5. lépés] ResultsStep
 │       ├── KPI-sor        éves megtakarítás · többéves potenciál · SZTNH-mérő
 │       ├── SavingsBreakdown, CriteriaBars, SealPanel, javaslatok, ActionPlan, levezetés
@@ -73,7 +74,7 @@ Adatfolyam: a teljes vizsgálat egyetlen `Assessment` objektum. A `useAssessment
 | Tao – egyetemi együttműködés | az egyetemmel / kutatóintézettel közös rész 3×-a, legfeljebb 50 M Ft (de minimis) | Tao. tv. 7. § |
 | HIPA | (K+F költség − támogatásból fedezett rész − más soron már levont anyag / alvállalkozói díj) × helyi kulcs (max. 2%) | Htv. 39. § |
 | Innovációs járulék | ugyanaz az alap × 0,3%, csak közép- és nagyvállalatnál | Inno. tv. 17. § |
-| IP-box – jogdíj | min(jogdíjnyereség × 50% × nexus; adózás előtti eredmény × 50%) × 9% | Tao. tv. 7. § |
+| Szoftver – jogdíj | min(jogdíjnyereség × 50% × nexus; adózás előtti eredmény × 50%) × 9% + jogdíjbevétel × HIPA-kulcs | Tao. tv. 7. § (1) s), Htv. 39. § |
 | **Összesen** | Szocho + Tao + HIPA + innovációs járulék + IP-box (éves rész) | |
 | Nettó | összesen − 9% × (szocho + HIPA + járulék megtakarítás) – nyereséges cégnél | |
 
@@ -101,15 +102,28 @@ végső  = alap − Σ kockázati levonás       (0–100 közé szorítva)
 - **Iparági kockázati jelzők:** az ügyfél iparága szerint további 2-2 jellemző buktató jelenik meg (pl. gépiparban szerszámgyártás és CE-tanúsítás, vegyiparban scale-up, élelmiszeriparban receptvariáns, elektronikában alkatrész-kiváltás, szoftvernél rutinszerű hibajavítás és adatmigráció). Iparágváltáskor a másik iparág jelzői nem számítanak bele.
 - **Sávok:** Zöld 80–100 (adóálló) · Sárga 50–79 (kiegészítendő) · Piros <50 (NAV-kockázat).
 
-## Szellemi termék (IP-box)
+## Szoftver (IP-box)
 
-Külön lépés a jogdíjbevétellel vagy értékesítendő szellemi termékkel (szoftver, szabadalom) rendelkező cégeknek (`src/domain/ipBox.ts`).
+Külön lépés a saját fejlesztésű, hasznosított szoftverre, a teljes életúttal (`src/domain/software.ts`). A szabályokat az adócsapat 2026 szeptemberében megerősítette.
 
-- **Jogdíjkedvezmény:** a jogdíjból származó nyereség (bevétel − ráfordítás) 50%-a vonható le, legfeljebb az adózás előtti eredmény 50%-áig, nexus-arányosan. Teljes nexusnál ez kb. 4,5%-os tényleges Tao.
-- **Nexus-arány:** min(1; saját fejlesztés × 1,3 / (saját + kapcsolttól vett + megvásárolt)). A 1,3-es szorzó az OECD-módszer szerinti; a magyar alkalmazása ellenőrizendő.
-- **60 napos NAV-bejelentés:** a szerzés / létrehozás napjától számolt határidő, státusszal (nyitott, lejárt, határidőben / késve bejelentve). Utólag nem pótolható, ezért a lépés, az akcióterv és a riport is kiemeli. (A 75 napos határidő a bejelentett *részesedésre* vonatkozik, nem az immateriális jószágra – ellenőrizendő.)
-- **Értékesítés:** a bejelentett immateriális jószág eladási nyeresége × nexus levonható, ha a bejelentés határidőben megtörtént és a jószág legalább 1 évig a cégnél volt. Egyszeri tétel, nem része az éves összesnek.
-- **HIPA:** a jogdíjbevétel HIPA-kezelését nem sikerült forrásból megerősíteni, ezért egy csúszka állítja (alapérték 0%).
+| Téma | Szabály a motorban | Hivatkozás |
+|---|---|---|
+| Bejelentés | Az eredeti fejlesztést **és minden aktivált továbbfejlesztést külön**, az aktiválástól számított **75 napon** belül kell bejelenteni; jogvesztő | Tao. tv. 4. § 5. |
+| Nexus | **Kumulatív**: az adott év végéig aktivált összes fejlesztés költségéből, min(1; saját × 1,3 / (saját + kapcsolt + vásárolt)); csak Tao | Tao. tv. 7. § (22)–(25) |
+| Jogdíj – Tao | évente: min(jogdíjnyereség × 50% × nexus; adózás előtti eredmény × 50%) × 9%; teljes nexusnál 4,5% tényleges Tao | Tao. tv. 7. § (1) s) |
+| Jogdíj – HIPA | a jogdíjbevétel **100%-a** levonható, **nexus nélkül**; az innovációs járulék alapja ugyanez | Htv. 39. § (1) |
+| SaaS | alapesetben szolgáltatás, nem jogdíj; kedvezmény csak elkülönített szerzői jogi licencdíjra (ÁSZF + számla) | |
+| K+F + jogdíj | mindkettő jár: fejlesztési években K+F-kedvezmények, hasznosításkor jogdíjkedvezmény | |
+| Eladás | nyereség = ár − könyv szerinti érték; mentes, ha az eredeti határidőben bejelentve és az **eredeti szerzés óta** eltelt 1 év (továbbfejlesztés nem indítja újra); a be nem jelentett továbbfejlesztés értéknövekményére jutó nyereség adóköteles | Tao. tv. 7. § (1) |
+| Aktivált fejlesztés | a K+F Tao-levonás választhatóan a felmerülés évében egy összegben, vagy az értékcsökkenéssel arányosan; kettős levonás tilos | Tao. tv. 7. § (1) t) |
+
+- A lépésben a szoftverhez tetszőleges számú továbbfejlesztés vehető fel, mindegyik saját határidő-jelzővel. A lejáró határidők a lépéslistán, az akciótervben és a riportban is kiemelve jelennek meg.
+- A jogdíj évenként vihető fel (bevétel, kapcsolódó ráfordítás, adózás előtti eredmény). Az éves összesítőbe a vizsgált adóév sora kerül, a táblázat a többi év hatását is mutatja.
+- Az eladási nyereségre a nexus-arány alkalmazása kapcsolható (alapértelmezetten be, konzervatív).
+
+### Szoftverjogdíj-kalkulátor (demó mód)
+
+A fejlécben a **Szoftverjogdíj-kalkulátor** nézet egy oldalon számol: éves jogdíjbevétel − levonható ráfordítás → Tao-, HIPA- és innovációsjárulék-megtakarítás, tényleges adókulccsal és „kedvezmény nélkül / kedvezménnyel” összevetéssel. Ugyanazt a motort és adatot használja, mint a teljes átvilágítás; a bejelentéseket, továbbfejlesztéseket és az eladást a teljes nézet kezeli.
 
 ## Tao / HIPA szakmai review (2026. szeptember)
 
@@ -121,7 +135,7 @@ A teljes számítási motor átnézése a Tao- és HIPA-szabályok szerint. Jav�
 4. **Elhatárolt veszteség (pontosítva):** a figyelmeztetés jelzi, hogy a későbbi években a veszteség legfeljebb az adóalap 50%-áig írható le.
 5. **Nettó hatás (új):** a szocho-, HIPA- és járulékmegtakarítás csökkenti a költségeket, így növeli a Tao-alapot. A program a törvényi összeg mellett a Tao-hatással korrigált nettó összeget is kimutatja.
 6. **Hatékony támogatási arány (pontosítva):** csak a K+F-kedvezményekből számol, az IP-box jövedelmi kedvezményét nem veti a K+F költségre.
-7. **Pecsét-kompatibilitás:** a 2026.2-es motorral lezárt ügyek az új mezők után is érvényesen ellenőrizhetők (verziófüggő hash-mezőkészlet).
+7. **Pecsét-kompatibilitás:** a korábbi motorverziókkal (2026.2, 2026.3) lezárt ügyek a fájlban tárolt eredeti adatokon ellenőrződnek, így az új mezők és az adatmigráció után is érvényesek maradnak; a módosított régi fájl továbbra is érvénytelen.
 8. **Akadálymentesség:** telefonon a csak ikonnal megjelenő fejléc- és lépésgombok akadálymentes nevet kaptak.
 
 ## Lezárás (SHA-256 pecsét)
@@ -142,7 +156,8 @@ A 2026. szeptemberi változatban a szocho-plafonok és az innovációs járulék
 - **Szocho 15. §:** feltétele-e, hogy a munkáltató kutatóhelyként működjön.
 - **HIPA-alap:** az ELÁBÉ-t és a közvetített szolgáltatást az eszköz nem kéri be; a K+F-levonás felső korlátja az árbevétel.
 - **Támogatás:** pontosan mely jogszabályhely zárja ki a támogatásból fedezett költséget a Tao- és a HIPA-levonásból (az eszköz konzervatívan mindkettőből kizárja).
-- **IP-box:** a nexus-szorzó (1,3), a jogdíj HIPA-kezelése, és hogy az eladási nyereségre is nexus-arány vonatkozik-e.
+- **Bejelentési határidő:** az adócsapat szerint 75 nap; egy korábbi nyilvános forrás 60 napot említett. A hatályos szöveget érdemes egyszer ellenőrizni (`IP_RULES.NOTIFICATION_DAYS`).
+- **Eladás:** vonatkozik-e a nexus-arány az eladási nyereségre (kapcsolóval állítható).
 - **Kapcsolt vállalkozástól vett K+F szolgáltatás:** a Tao-levonás feltételei (az eszköz csak figyelmeztet).
 
 ## Nyomtatás / PDF

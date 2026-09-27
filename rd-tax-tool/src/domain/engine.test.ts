@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { demoAssessment, emptyAssessment, emptyIpBox } from './defaults';
+import { demoAssessment, emptyAssessment, emptySoftware, newComponent } from './defaults';
 import { calculateCorporateTax, calculateSavings, calculateSzocho } from './engine';
 import { scoreAudit } from './scoring';
-import { calculateIpBox, nexusRatio, notificationDeadline } from './ipBox';
+import { calculateSoftware, nexusRatio, notificationDeadline } from './software';
 import { canonicalJson, createSeal, sha256Hex, verifySeal } from './seal';
-import type { Assessment, AuditAnswers, RdCostInputs } from './types';
+import type { Assessment, AuditAnswers, RdCostInputs, SoftwareAssetInputs } from './types';
 
 /** calculateSavings for a whole assessment. */
-const savingsOf = (a: Assessment) => calculateSavings(a.client, a.costs, a.params, a.ip);
+const savingsOf = (a: Assessment) => calculateSavings(a.client, a.costs, a.params, a.software);
 import { normaliseAssessment } from '../state/useAssessment';
 
 const costs = (patch: Partial<RdCostInputs>): RdCostInputs => ({ ...emptyAssessment().costs, ...patch });
@@ -82,12 +82,16 @@ describe('calculateSavings', () => {
     expect(r.hipaSaving).toBe(3_356_000);
     // Large company → innovation contribution 167.8M × 0.3%
     expect(r.innovationContributionSaving).toBe(503_400);
-    // IP-box: (40M − 10M) × 50% × nexus(100 × 1.3 / 170) × 9%
+    // Software IP-box, tax year: (40M − 10M) × 50% × nexus(100 × 1.3 / 170) × 9%
+    // (v2.0 was capitalised this year, so it is not yet in last year's cumulative nexus)
     expect(r.ipBox.royaltyCitSaving).toBe(1_032_353);
-    expect(r.totalAnnualSaving).toBe(26_425_753);
-    // Net: − 9% × (2.652M + 3.356M + 0.5034M)
-    expect(r.netAfterCitEffect).toBe(25_839_727);
-    expect(r.multiYearPotential).toBe(79_277_259);
+    // HIPA: royalty income deductible in full, no nexus → 40M × 2% and 40M × 0.3%
+    expect(r.ipBox.hipaSaving).toBe(800_000);
+    expect(r.ipBox.innovationContributionSaving).toBe(120_000);
+    expect(r.totalAnnualSaving).toBe(27_345_753);
+    // Net: − 9% × (2.652M + 3.356M + 0.5034M + 0.8M + 0.12M)
+    expect(r.netAfterCitEffect).toBe(26_676_927);
+    expect(r.multiYearPotential).toBe(82_037_259);
     expect(r.engineerRoutes.recommended).toBe('CIT');
   });
 
@@ -174,70 +178,177 @@ describe('Tao / HIPA review rules', () => {
   });
 });
 
-describe('IP-box', () => {
+describe('software IP-box', () => {
   const today = new Date('2026-09-27T10:00:00Z');
-  const ip = (patch: Partial<ReturnType<typeof emptyIpBox>> = {}) => ({ ...emptyIpBox(), enabled: true, ...patch });
-  const client = { profitBeforeTax: 1_000_000_000, annualRevenue: 2_000_000_000, companySize: 'LARGE' as const };
-
-  it('computes the nexus ratio with the 1.3 uplift, capped at 1', () => {
-    expect(nexusRatio({ nexusOwnCosts: 100, nexusRelatedPartyCosts: 30, nexusAcquisitionCosts: 70 })).toBeCloseTo(0.65);
-    expect(nexusRatio({ nexusOwnCosts: 100, nexusRelatedPartyCosts: 10, nexusAcquisitionCosts: 0 })).toBe(1);
-    expect(nexusRatio({ nexusOwnCosts: 0, nexusRelatedPartyCosts: 0, nexusAcquisitionCosts: 0 })).toBe(0);
+  const client = { taxYear: 2025, profitBeforeTax: 1_000_000_000, annualRevenue: 2_000_000_000, companySize: 'LARGE' as const };
+  const comp = (kind: 'ORIGINAL' | 'ENHANCEMENT', patch: Partial<ReturnType<typeof newComponent>> = {}) => ({
+    ...newComponent(kind),
+    ...patch,
+  });
+  const sw = (patch: Partial<SoftwareAssetInputs> = {}): SoftwareAssetInputs => ({
+    ...emptySoftware(),
+    enabled: true,
+    components: [comp('ORIGINAL', { capitalizedOn: '2024-03-01', reportedOn: '2024-04-01', ownCosts: 100 })],
+    royaltyYears: [{ year: 2025, royaltyIncome: 100_000_000, relatedCosts: 0, profitBeforeTax: 1_000_000_000 }],
+    ...patch,
   });
 
-  it('gives a 4.5% effective Tao rate on royalty profit with full nexus', () => {
-    const r = calculateIpBox(ip({ royaltyIncome: 100_000_000, nexusOwnCosts: 50_000_000 }), client, 0.02, today);
-    expect(r.royaltyDeduction).toBe(50_000_000);
+  it('uses the 75-day notification window', () => {
+    expect(notificationDeadline('2026-09-01', '', today)).toEqual({ status: 'OPEN', dueDate: '2026-11-15', daysLeft: 49 });
+    expect(notificationDeadline('2026-06-01', '', today).status).toBe('MISSED');
+    expect(notificationDeadline('2026-06-01', '2026-08-10', today).status).toBe('REPORTED_ON_TIME');
+    expect(notificationDeadline('2026-06-01', '2026-08-20', today).status).toBe('REPORTED_LATE');
+    expect(notificationDeadline('', '', today).status).toBe('NO_DATE');
+  });
+
+  it('computes a cumulative nexus with the 1.3 uplift, capped at 1', () => {
+    expect(nexusRatio([{ ownCosts: 100, relatedPartyCosts: 30, acquisitionCosts: 70 }])).toBeCloseTo(0.65);
+    expect(
+      nexusRatio([
+        { ownCosts: 100, relatedPartyCosts: 30, acquisitionCosts: 70 },
+        { ownCosts: 100, relatedPartyCosts: 0, acquisitionCosts: 0 },
+      ]),
+    ).toBeCloseTo(0.8667); // 200 × 1.3 / 300
+    expect(nexusRatio([{ ownCosts: 100, relatedPartyCosts: 10, acquisitionCosts: 0 }])).toBe(1);
+  });
+
+  it('keeps past own development in the nexus of later, passive years', () => {
+    const r = calculateSoftware(
+      sw({
+        components: [comp('ORIGINAL', { capitalizedOn: '2022-01-10', reportedOn: '2022-02-01', ownCosts: 100 })],
+        royaltyYears: [
+          { year: 2022, royaltyIncome: 10_000_000, relatedCosts: 0, profitBeforeTax: 1e9 },
+          { year: 2025, royaltyIncome: 10_000_000, relatedCosts: 0, profitBeforeTax: 1e9 },
+        ],
+      }),
+      client,
+      0.02,
+      today,
+    );
+    expect(r.years.map((y) => y.nexusRatio)).toEqual([1, 1]);
+  });
+
+  it('gives a 4.5% effective Tao rate and full HIPA deduction on qualifying royalty', () => {
+    const r = calculateSoftware(sw(), client, 0.02, today);
     expect(r.royaltyCitSaving).toBe(4_500_000);
     expect(r.effectiveRoyaltyCitRate).toBeCloseTo(0.045);
+    expect(r.hipaSaving).toBe(2_000_000);
+    expect(r.innovationContributionSaving).toBe(300_000);
+  });
+
+  it('applies no nexus in the HIPA', () => {
+    const r = calculateSoftware(
+      sw({ components: [comp('ORIGINAL', { capitalizedOn: '2024-03-01', ownCosts: 10, acquisitionCosts: 90 })] }),
+      client,
+      0.02,
+      today,
+    );
+    expect(r.nexusRatio).toBeCloseTo(0.13);
+    expect(r.hipaSaving).toBe(2_000_000);
+  });
+
+  it('gives no royalty relief on SaaS income without a separated licence fee', () => {
+    const saas = calculateSoftware(sw({ revenueModel: 'SAAS' }), client, 0.02, today);
+    expect(saas.royaltyQualifies).toBe(false);
+    expect(saas.annualSaving).toBe(0);
+    const licensed = calculateSoftware(sw({ revenueModel: 'SAAS', saasLicenceSeparated: true }), client, 0.02, today);
+    expect(licensed.annualSaving).toBeGreaterThan(0);
   });
 
   it('caps the royalty deduction at 50% of the pre-tax profit', () => {
-    const r = calculateIpBox(
-      ip({ royaltyIncome: 100_000_000, nexusOwnCosts: 1 }),
-      { ...client, profitBeforeTax: 40_000_000 },
+    const r = calculateSoftware(
+      sw({ royaltyYears: [{ year: 2025, royaltyIncome: 100_000_000, relatedCosts: 0, profitBeforeTax: 40_000_000 }] }),
+      client,
       0.02,
       today,
     );
     expect(r.royaltyDeduction).toBe(20_000_000);
   });
 
-  it('tracks the 60-day notification deadline', () => {
-    expect(notificationDeadline({ acquiredOn: '2026-09-01', reportedOn: '' }, today)).toEqual({
-      status: 'OPEN',
-      dueDate: '2026-10-31',
-      daysLeft: 34,
+  describe('sale', () => {
+    const sale = { saleDate: '2026-06-01', salePrice: 110_000_000, saleBookValue: 10_000_000, applyNexusToSaleGain: false };
+
+    it('exempts the gain when the original was notified and held for a year', () => {
+      const r = calculateSoftware(
+        sw({ ...sale, components: [comp('ORIGINAL', { capitalizedOn: '2024-03-01', reportedOn: '2024-04-01', capitalizedValue: 100, ownCosts: 1 })] }),
+        client,
+        0.02,
+        today,
+      );
+      expect(r.sale.gain).toBe(100_000_000);
+      expect(r.sale.deduction).toBe(100_000_000);
+      expect(r.sale.citSaving).toBe(9_000_000);
     });
-    expect(notificationDeadline({ acquiredOn: '2026-06-01', reportedOn: '' }, today).status).toBe('MISSED');
-    expect(notificationDeadline({ acquiredOn: '2026-06-01', reportedOn: '2026-07-20' }, today).status).toBe('REPORTED_ON_TIME');
-    expect(notificationDeadline({ acquiredOn: '2026-06-01', reportedOn: '2026-08-15' }, today).status).toBe('REPORTED_LATE');
-    expect(notificationDeadline({ acquiredOn: '', reportedOn: '' }, today).status).toBe('NO_DATE');
-  });
 
-  it('allows the sale relief only after timely notification and a 1-year holding period', () => {
-    const sale = { nexusOwnCosts: 1, plannedSaleGain: 10_000_000 };
-    const ok = calculateIpBox(ip({ ...sale, acquiredOn: '2025-03-01', reportedOn: '2025-04-01', plannedSaleDate: '2026-06-01' }), client, 0.02, today);
-    expect(ok.sale.eligible).toBe(true);
-    expect(ok.sale.citSaving).toBe(900_000);
+    it('does not restart the holding period with an enhancement', () => {
+      const r = calculateSoftware(
+        sw({
+          ...sale,
+          components: [
+            comp('ORIGINAL', { capitalizedOn: '2024-03-01', reportedOn: '2024-04-01', capitalizedValue: 100, ownCosts: 1 }),
+            comp('ENHANCEMENT', { capitalizedOn: '2026-03-01', reportedOn: '2026-04-01', capitalizedValue: 100, ownCosts: 1 }),
+          ],
+        }),
+        client,
+        0.02,
+        today,
+      );
+      expect(r.sale.exemptShare).toBe(1);
+      expect(r.sale.eligible).toBe(true);
+    });
 
-    const tooEarly = calculateIpBox(ip({ ...sale, acquiredOn: '2026-03-01', reportedOn: '2026-04-01', plannedSaleDate: '2026-12-01' }), client, 0.02, today);
-    expect(tooEarly.sale.eligible).toBe(false);
+    it('makes the un-notified enhancement share of the gain taxable', () => {
+      const r = calculateSoftware(
+        sw({
+          ...sale,
+          components: [
+            comp('ORIGINAL', { capitalizedOn: '2024-03-01', reportedOn: '2024-04-01', capitalizedValue: 75, ownCosts: 1 }),
+            comp('ENHANCEMENT', { capitalizedOn: '2025-03-01', reportedOn: '', capitalizedValue: 25, ownCosts: 1 }),
+          ],
+        }),
+        client,
+        0.02,
+        today,
+      );
+      expect(r.sale.exemptShare).toBe(0.75);
+      expect(r.sale.deduction).toBe(75_000_000);
+      expect(r.sale.taxablePart).toBe(25_000_000);
+    });
 
-    const late = calculateIpBox(ip({ ...sale, acquiredOn: '2025-03-01', reportedOn: '2025-06-01', plannedSaleDate: '2026-06-01' }), client, 0.02, today);
-    expect(late.sale.eligible).toBe(false);
-  });
-
-  it('adds nothing to the HIPA until the share is set', () => {
-    const r = calculateIpBox(ip({ royaltyIncome: 100_000_000, nexusOwnCosts: 1 }), client, 0.02, today);
-    expect(r.hipaSaving).toBe(0);
-    const r2 = calculateIpBox(ip({ royaltyIncome: 100_000_000, nexusOwnCosts: 1, hipaRoyaltyReliefShare: 0.5 }), client, 0.02, today);
-    expect(r2.hipaSaving).toBe(1_000_000);
+    it('blocks the relief when the original was not notified in time or the year is not up', () => {
+      const late = calculateSoftware(
+        sw({ ...sale, components: [comp('ORIGINAL', { capitalizedOn: '2024-03-01', reportedOn: '2024-07-01', ownCosts: 1 })] }),
+        client,
+        0.02,
+        today,
+      );
+      expect(late.sale.eligible).toBe(false);
+      const early = calculateSoftware(
+        sw({ ...sale, components: [comp('ORIGINAL', { capitalizedOn: '2025-09-01', reportedOn: '2025-10-01', ownCosts: 1 })] }),
+        client,
+        0.02,
+        today,
+      );
+      expect(early.sale.eligible).toBe(false);
+    });
   });
 
   it('is excluded from totals when disabled', () => {
     const a = demoAssessment();
-    a.ip.enabled = false;
-    expect(savingsOf(a).totalAnnualSaving).toBe(26_425_753 - 1_032_353);
+    a.software.enabled = false;
+    expect(savingsOf(a).totalAnnualSaving).toBe(27_345_753 - 1_032_353 - 800_000 - 120_000);
+  });
+});
+
+describe('capitalised development timing', () => {
+  it('spreads the Tao deduction over the amortisation years', () => {
+    const a = demoAssessment();
+    a.params.citDeductionTiming = 'AMORTIZATION';
+    a.params.amortizationYears = 3;
+    const r = savingsOf(a);
+    // (189.8M + 20M) / 3 this year
+    expect(r.corporateTax.deductibleBase).toBe(69_933_333);
+    expect(r.corporateTax.deferredToLaterYears).toBe(139_866_667);
   });
 });
 
@@ -337,6 +448,24 @@ describe('seal compatibility', () => {
     const loaded = normaliseAssessment(JSON.parse(JSON.stringify(oldFile)));
     expect(loaded.costs.grantFundedCosts).toBe(0); // back-filled
     expect(await verifySeal(loaded)).toBe(true);
+  });
+});
+
+describe('seal compatibility 2026.3', () => {
+  it('verifies a 2026.3 seal (single-asset ip) after migration to the software model', async () => {
+    const current = demoAssessment();
+    const ip = { enabled: true, assetName: 'X', royaltyIncome: 1, royaltyRelatedCosts: 0, nexusOwnCosts: 1, nexusRelatedPartyCosts: 0, nexusAcquisitionCosts: 0, acquiredOn: '2026-01-01', reportedOn: '', plannedSaleGain: 0, plannedSaleDate: '', hipaRoyaltyReliefShare: 0, assetType: 'SOFTWARE' };
+    const { software: _sw, seal: _s, sealHistory, sealedSource: _src, ...rest } = current;
+    const oldData = { ...rest, ip, sealHistory };
+    const meta = { algorithm: 'SHA-256' as const, sealedAt: '2026-09-27T12:00:00.000Z', sealedBy: 'Régi', engineVersion: '2026.3' };
+    const hash = await sha256Hex(canonicalJson({ data: { client: oldData.client, costs: oldData.costs, params: oldData.params, audit: oldData.audit, ip, sealHistory }, seal: meta }));
+    const loaded = normaliseAssessment(JSON.parse(JSON.stringify({ ...oldData, seal: { ...meta, hash } })));
+    expect(loaded.software.enabled).toBe(true); // migrated
+    expect(await verifySeal(loaded)).toBe(true);
+    // A tampered legacy file still fails
+    const tampered = JSON.parse(JSON.stringify({ ...oldData, seal: { ...meta, hash } }));
+    tampered.ip.royaltyIncome = 999;
+    expect(await verifySeal(normaliseAssessment(tampered))).toBe(false);
   });
 });
 

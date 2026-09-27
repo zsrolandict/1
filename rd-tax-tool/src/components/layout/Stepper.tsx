@@ -6,7 +6,7 @@ export const STEPS: { id: StepId; label: string; description: string; icon: Luci
   { id: 'client', label: 'Ügyféladatok', description: 'Cég és projekt', icon: Building2 },
   { id: 'costs', label: 'Költség & bér', description: 'Megtakarítási kalkulátor', icon: Calculator },
   { id: 'audit', label: 'SZTNH audit', description: 'Frascati-kockázat', icon: ClipboardCheck },
-  { id: 'ip', label: 'Szellemi termék', description: 'IP-box, jogdíj', icon: Copyright },
+  { id: 'ip', label: 'Szoftver (IP-box)', description: 'Jogdíj, bejelentés, eladás', icon: Copyright },
   { id: 'results', label: 'Eredménytábla', description: 'Vezetői riport', icon: FileText },
 ];
 

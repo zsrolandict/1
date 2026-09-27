@@ -6,12 +6,12 @@
  * never drift from the calculator.
  */
 import { isInnovationContributionLiable, TAX_RATES } from './constants';
-import { calculateIpBox } from './ipBox';
+import { calculateSoftware } from './software';
 import type {
   ClientProfile,
   CorporateTaxResult,
   EngineerRouteComparison,
-  IpBoxInputs,
+  SoftwareAssetInputs,
   RdCostInputs,
   SavingsResult,
   SzochoResult,
@@ -142,17 +142,24 @@ export function calculateDirectRdCost(
  * pre-tax profit; the remainder becomes a loss carry-forward. We report both
  * so advisors do not over-promise to loss-making clients.
  */
+/** Share of the total deduction taken this year (1 when deducted immediately). */
+export const deductionShareThisYear = (params: Pick<TaxParameters, 'citDeductionTiming' | 'amortizationYears'>): number =>
+  params.citDeductionTiming === 'AMORTIZATION' ? 1 / Math.max(1, Math.floor(nonNegative(params.amortizationYears)) || 1) : 1;
+
 export function calculateCorporateTax(
   deductibleBase: number,
   profitBeforeTax: number,
+  shareThisYear = 1,
 ): CorporateTaxResult {
-  const base = nonNegative(deductibleBase);
+  const total = nonNegative(deductibleBase);
+  const base = total * shareThisYear;
   const nominalSaving = base * TAX_RATES.CIT;
   const usableDeduction = Math.min(base, nonNegative(profitBeforeTax));
   const immediateSaving = usableDeduction * TAX_RATES.CIT;
 
   return {
     deductibleBase: round(base),
+    deferredToLaterYears: round(total - base),
     nominalSaving: round(nominalSaving),
     immediateSaving: round(immediateSaving),
     deferredSaving: round(nominalSaving - immediateSaving),
@@ -202,8 +209,9 @@ export function compareEngineerRoutes(
   const d16 = calculateDirectRdCost(costs, withSzocho, szocho16);
   const baseCit = dCit.citDeductibleBase + dCit.universityUplift;
   const base16 = d16.citDeductibleBase + d16.universityUplift;
-  const taoCit = calculateCorporateTax(baseCit, profitBeforeTax);
-  const tao16 = calculateCorporateTax(base16, profitBeforeTax);
+  const share = deductionShareThisYear(params);
+  const taoCit = calculateCorporateTax(baseCit, profitBeforeTax, share);
+  const tao16 = calculateCorporateTax(base16, profitBeforeTax, share);
 
   const citNominal = taoCit.nominalSaving - tao16.nominalSaving;
   const citImmediate = taoCit.immediateSaving - tao16.immediateSaving;
@@ -229,17 +237,21 @@ export function calculateSavings(
   client: ClientProfile,
   costs: RdCostInputs,
   params: TaxParameters,
-  ip: IpBoxInputs,
+  software: SoftwareAssetInputs,
   today: Date = new Date(),
 ): SavingsResult {
   const szocho = calculateSzocho(costs, params);
   const { directRdCost, personnelCost, citDeductibleBase, universityUplift, hipaDeductibleBase } =
     calculateDirectRdCost(costs, params, szocho);
-  const corporateTax = calculateCorporateTax(citDeductibleBase + universityUplift, client.profitBeforeTax);
+  const corporateTax = calculateCorporateTax(
+    citDeductibleBase + universityUplift,
+    client.profitBeforeTax,
+    deductionShareThisYear(params),
+  );
   const hipaSaving = calculateHipa(hipaDeductibleBase, params.hipaRate, client.annualRevenue);
   const innovationContributionSaving = calculateInnovationContribution(hipaDeductibleBase, client);
   const engineerRoutes = compareEngineerRoutes(costs, params, client.profitBeforeTax);
-  const ipBox = calculateIpBox(ip, client, params.hipaRate, today);
+  const ipBox = calculateSoftware(software, client, params.hipaRate, today);
 
   const totalAnnualSaving =
     szocho.totalSaving + corporateTax.nominalSaving + hipaSaving + innovationContributionSaving + ipBox.annualSaving;
@@ -260,6 +272,13 @@ export function calculateSavings(
       )} Tao-hatás csak elhatárolt veszteségként érvényesíthető; a későbbi években a veszteség legfeljebb az adóalap ${Math.round(
         TAX_RATES.LOSS_OFFSET_LIMIT * 100,
       )}%-áig írható le.`,
+    );
+  }
+  if (corporateTax.deferredToLaterYears > 0) {
+    warnings.push(
+      `Amortizációs ütemezés: a K+F Tao-levonásból idén ${huf(corporateTax.deductibleBase)}, a további években összesen ${huf(
+        corporateTax.deferredToLaterYears,
+      )} érvényesíthető (kettős levonás tilos).`,
     );
   }
   if (nonNegative(costs.grantFundedCosts) > 0) {

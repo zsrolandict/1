@@ -1,11 +1,13 @@
 /**
  * ICT Európa – K+F Adódiagnosztika (internal advisory tool).
  *
- * Flow: Ügyféladatok → Költség/Bér kalkulátor → SZTNH audit → Eredménytábla.
+ * Two modes:
+ * - Full assessment: Ügyféladatok → Költség & bér → SZTNH audit → Szoftver → Eredménytábla.
+ * - Royalty calculator: a one-page software royalty demo on the same data.
  * All figures are derived in `useAssessment` from the pure domain engine.
  */
 import { ChevronLeft, ChevronRight, Lock, ShieldX } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AppHeader } from './components/layout/AppHeader';
 import { LiveSummary } from './components/layout/LiveSummary';
 import { STEPS, Stepper, type StepId } from './components/layout/Stepper';
@@ -13,7 +15,8 @@ import { ExecutiveReport } from './components/report/ExecutiveReport';
 import { AuditStep } from './components/steps/AuditStep';
 import { ClientStep, clientErrors } from './components/steps/ClientStep';
 import { CostStep } from './components/steps/CostStep';
-import { IpStep } from './components/steps/IpStep';
+import { RoyaltyCalculator } from './components/software/RoyaltyCalculator';
+import { SoftwareStep } from './components/software/SoftwareStep';
 import { ResultsStep } from './components/steps/ResultsStep';
 import { Button } from './components/ui/Button';
 import { useAssessment, type SealStatus } from './state/useAssessment';
@@ -32,12 +35,21 @@ export default function App() {
     updateCosts,
     updateParams,
     updateAudit,
-    updateIp,
+    updateSoftware,
     reset,
     loadDemo,
     load,
   } = useAssessment();
   const [step, setStep] = useState<StepId>('client');
+  const [mode, setMode] = useState<AppMode>(loadMode);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(MODE_KEY, mode);
+    } catch {
+      // Remembering the mode is a convenience only.
+    }
+  }, [mode]);
 
   const stepIndex = STEPS.findIndex((s) => s.id === step);
   const missingClientData = Object.keys(clientErrors(assessment.client)).length > 0;
@@ -64,12 +76,35 @@ export default function App() {
             goTo('client');
           }}
           onDemo={loadDemo}
+          mode={mode}
+          onModeChange={setMode}
         />
-        <Stepper current={step} onSelect={goTo} incomplete={{ client: missingClientData, ip: ['OPEN', 'MISSED', 'REPORTED_LATE'].includes(savings.ipBox.deadline.status) && savings.ipBox.enabled }} />
+        {mode === 'full' && (
+          <Stepper
+            current={step}
+            onSelect={goTo}
+            incomplete={{
+              client: missingClientData,
+              ip: savings.ipBox.enabled && ['OPEN', 'MISSED', 'REPORTED_LATE'].includes(savings.ipBox.deadline.status),
+            }}
+          />
+        )}
         {assessment.seal && <SealBanner status={sealStatus} onOpen={() => goTo('results')} />}
 
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-          {step === 'results' ? (
+          {mode === 'royalty' ? (
+            <fieldset disabled={Boolean(assessment.seal)} className="m-0 min-w-0 border-0 p-0">
+              <RoyaltyCalculator
+                client={assessment.client}
+                params={assessment.params}
+                sw={assessment.software}
+                result={savings.ipBox}
+                onClient={updateClient}
+                onParams={updateParams}
+                onSoftware={updateSoftware}
+              />
+            </fieldset>
+          ) : step === 'results' ? (
             <ResultsStep
               assessment={assessment}
               savings={savings}
@@ -103,13 +138,21 @@ export default function App() {
                     onChange={updateAudit}
                   />
                 )}
-                {step === 'ip' && <IpStep ip={assessment.ip} result={savings.ipBox} onChange={updateIp} />}
+                {step === 'ip' && (
+                  <SoftwareStep
+                    sw={assessment.software}
+                    result={savings.ipBox}
+                    taxYear={assessment.client.taxYear}
+                    profitBeforeTax={assessment.client.profitBeforeTax}
+                    onChange={updateSoftware}
+                  />
+                )}
               </fieldset>
               <LiveSummary savings={savings} audit={audit} />
             </div>
           )}
 
-          <div className="mt-8 flex justify-between border-t border-slate-200 pt-6">
+          <div className={`mt-8 flex justify-between border-t border-slate-200 pt-6 ${mode === 'royalty' ? 'hidden' : ''}`}>
             {prev ? (
               <Button icon={ChevronLeft} onClick={() => goTo(prev.id)}>
                 {prev.label}
@@ -136,6 +179,17 @@ export default function App() {
       </div>
     </>
   );
+}
+
+export type AppMode = 'full' | 'royalty';
+const MODE_KEY = 'ict-rd-mode';
+
+function loadMode(): AppMode {
+  try {
+    return localStorage.getItem(MODE_KEY) === 'royalty' ? 'royalty' : 'full';
+  } catch {
+    return 'full';
+  }
 }
 
 /** Read-only notice shown on every step while the case is sealed. */

@@ -8,17 +8,17 @@
  */
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { buildActionPlan } from '../domain/actionPlan';
-import { demoAssessment, emptyAssessment, emptyIpBox } from '../domain/defaults';
+import { demoAssessment, emptyAssessment, emptySoftware, newComponent } from '../domain/defaults';
 import { calculateSavings } from '../domain/engine';
 import { scoreAudit } from '../domain/scoring';
-import { createSeal, verifySeal } from '../domain/seal';
+import { createSeal, isLegacySealVersion, verifySeal } from '../domain/seal';
 import type {
   Assessment,
   AuditAnswers,
   AuditSeal,
   ClientProfile,
   CompanySize,
-  IpBoxInputs,
+  SoftwareAssetInputs,
   RdCostInputs,
   TaxParameters,
 } from '../domain/types';
@@ -30,7 +30,7 @@ type Action =
   | { type: 'costs'; patch: Partial<RdCostInputs> }
   | { type: 'params'; patch: Partial<TaxParameters> }
   | { type: 'audit'; patch: Partial<AuditAnswers> }
-  | { type: 'ip'; patch: Partial<IpBoxInputs> }
+  | { type: 'software'; patch: Partial<SoftwareAssetInputs> }
   | { type: 'seal'; seal: AuditSeal }
   | { type: 'reopen' }
   | { type: 'replace'; assessment: Assessment };
@@ -48,12 +48,14 @@ function reducer(state: Assessment, action: Action): Assessment {
       return { ...state, params: { ...state.params, ...action.patch } };
     case 'audit':
       return { ...state, audit: { ...state.audit, ...action.patch } };
-    case 'ip':
-      return { ...state, ip: { ...state.ip, ...action.patch } };
+    case 'software':
+      return { ...state, software: { ...state.software, ...action.patch } };
     case 'seal':
       return { ...state, seal: action.seal };
     case 'reopen':
-      return state.seal ? { ...state, seal: null, sealHistory: [...state.sealHistory, state.seal] } : state;
+      return state.seal
+        ? { ...state, seal: null, sealedSource: null, sealHistory: [...state.sealHistory, state.seal] }
+        : state;
     case 'replace':
       return action.assessment;
   }
@@ -72,6 +74,7 @@ export function normaliseAssessment(raw: unknown): Assessment {
   const r = raw as Partial<Assessment>;
   const client = { ...base.client, ...(r.client ?? {}) };
   client.companySize = LEGACY_SIZES[client.companySize] ?? client.companySize;
+  const seal = r.seal && typeof r.seal.hash === 'string' ? r.seal : null;
   return {
     client,
     costs: { ...base.costs, ...(r.costs ?? {}) },
@@ -81,9 +84,72 @@ export function normaliseAssessment(raw: unknown): Assessment {
       redFlags: { ...(r.audit?.redFlags ?? {}) },
       notes: typeof r.audit?.notes === 'string' ? r.audit.notes : '',
     },
-    ip: { ...emptyIpBox(), ...(r.ip ?? {}) },
-    seal: r.seal && typeof r.seal.hash === 'string' ? r.seal : null,
+    software: normaliseSoftware(raw as Record<string, unknown>, client.taxYear, client.profitBeforeTax),
+    seal,
     sealHistory: Array.isArray(r.sealHistory) ? r.sealHistory : [],
+    sealedSource: legacySource(raw as Record<string, unknown>, seal),
+  };
+}
+
+/** Keeps the file's own data for seals made by an older engine. */
+function legacySource(raw: Record<string, unknown>, seal: Assessment['seal']): Record<string, unknown> | null {
+  if (!seal || !isLegacySealVersion(seal.engineVersion)) return null;
+  if (raw.sealedSource && typeof raw.sealedSource === 'object') return raw.sealedSource as Record<string, unknown>;
+  const { seal: _seal, sealedSource: _source, ...data } = raw;
+  return data;
+}
+
+/** Legacy single-asset IP-box data (engine 2026.3). */
+interface LegacyIp {
+  enabled?: boolean;
+  assetName?: string;
+  royaltyIncome?: number;
+  royaltyRelatedCosts?: number;
+  nexusOwnCosts?: number;
+  nexusRelatedPartyCosts?: number;
+  nexusAcquisitionCosts?: number;
+  acquiredOn?: string;
+  reportedOn?: string;
+  plannedSaleGain?: number;
+  plannedSaleDate?: string;
+}
+
+function normaliseSoftware(raw: Record<string, unknown>, taxYear: number, profitBeforeTax: number): SoftwareAssetInputs {
+  const base = emptySoftware();
+  const sw = raw.software as Partial<SoftwareAssetInputs> | undefined;
+  if (sw && typeof sw === 'object') {
+    return {
+      ...base,
+      ...sw,
+      components:
+        Array.isArray(sw.components) && sw.components.length > 0
+          ? sw.components.map((c) => ({ ...newComponent(c.kind === 'ENHANCEMENT' ? 'ENHANCEMENT' : 'ORIGINAL'), ...c }))
+          : base.components,
+      royaltyYears: Array.isArray(sw.royaltyYears) ? sw.royaltyYears : [],
+    };
+  }
+  const ip = raw.ip as LegacyIp | undefined;
+  if (!ip || typeof ip !== 'object') return base;
+  return {
+    ...base,
+    enabled: Boolean(ip.enabled),
+    name: ip.assetName ?? '',
+    components: [
+      {
+        ...newComponent('ORIGINAL'),
+        capitalizedOn: ip.acquiredOn ?? '',
+        reportedOn: ip.reportedOn ?? '',
+        ownCosts: ip.nexusOwnCosts ?? 0,
+        relatedPartyCosts: ip.nexusRelatedPartyCosts ?? 0,
+        acquisitionCosts: ip.nexusAcquisitionCosts ?? 0,
+      },
+    ],
+    royaltyYears:
+      (ip.royaltyIncome ?? 0) > 0
+        ? [{ year: taxYear, royaltyIncome: ip.royaltyIncome ?? 0, relatedCosts: ip.royaltyRelatedCosts ?? 0, profitBeforeTax }]
+        : [],
+    saleDate: ip.plannedSaleDate ?? '',
+    salePrice: ip.plannedSaleGain ?? 0,
   };
 }
 
@@ -129,8 +195,8 @@ export function useAssessment() {
   }, [assessment]);
 
   const savings = useMemo(
-    () => calculateSavings(assessment.client, assessment.costs, assessment.params, assessment.ip),
-    [assessment.client, assessment.costs, assessment.params, assessment.ip],
+    () => calculateSavings(assessment.client, assessment.costs, assessment.params, assessment.software),
+    [assessment.client, assessment.costs, assessment.params, assessment.software],
   );
   const audit = useMemo(
     () => scoreAudit(assessment.audit, assessment.client.industry),
@@ -147,7 +213,7 @@ export function useAssessment() {
       updateCosts: (patch: Partial<RdCostInputs>) => dispatch({ type: 'costs', patch }),
       updateParams: (patch: Partial<TaxParameters>) => dispatch({ type: 'params', patch }),
       updateAudit: (patch: Partial<AuditAnswers>) => dispatch({ type: 'audit', patch }),
-      updateIp: (patch: Partial<IpBoxInputs>) => dispatch({ type: 'ip', patch }),
+      updateSoftware: (patch: Partial<SoftwareAssetInputs>) => dispatch({ type: 'software', patch }),
       reopen: () => dispatch({ type: 'reopen' }),
       reset: () => dispatch({ type: 'replace', assessment: emptyAssessment() }),
       loadDemo: () => dispatch({ type: 'replace', assessment: demoAssessment() }),

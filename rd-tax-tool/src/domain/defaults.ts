@@ -1,23 +1,37 @@
 /** Blank and demo assessments. */
 import { TAX_RATES } from './constants';
-import type { Assessment, IpBoxInputs } from './types';
+import type { Assessment, SoftwareAssetInputs, SoftwareComponent } from './types';
 
 const isoDaysAgo = (days: number): string => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 
-export const emptyIpBox = (): IpBoxInputs => ({
-  enabled: false,
-  assetType: 'SOFTWARE',
-  assetName: '',
-  royaltyIncome: 0,
-  royaltyRelatedCosts: 0,
-  nexusOwnCosts: 0,
-  nexusRelatedPartyCosts: 0,
-  nexusAcquisitionCosts: 0,
-  acquiredOn: '',
+let idCounter = 0;
+/** Stable-enough id for list keys; persisted with the component. */
+export const newId = (): string => `c${Date.now().toString(36)}${(idCounter++).toString(36)}`;
+
+export const newComponent = (kind: SoftwareComponent['kind']): SoftwareComponent => ({
+  id: newId(),
+  kind,
+  name: kind === 'ORIGINAL' ? 'Eredeti fejlesztés' : '',
+  capitalizedOn: '',
   reportedOn: '',
-  plannedSaleGain: 0,
-  plannedSaleDate: '',
-  hipaRoyaltyReliefShare: 0,
+  capitalizedValue: 0,
+  ownCosts: 0,
+  relatedPartyCosts: 0,
+  acquisitionCosts: 0,
+});
+
+export const emptySoftware = (): SoftwareAssetInputs => ({
+  enabled: false,
+  name: '',
+  revenueModel: 'LICENSE',
+  saasLicenceSeparated: false,
+  components: [newComponent('ORIGINAL')],
+  royaltyYears: [],
+  hipaRoyaltyDeduction: true,
+  saleDate: '',
+  salePrice: 0,
+  saleBookValue: 0,
+  applyNexusToSaleGain: true,
 });
 
 export const emptyAssessment = (): Assessment => ({
@@ -52,15 +66,18 @@ export const emptyAssessment = (): Assessment => ({
     selfRevisionYears: 0,
     hipaMaterialAlreadyDeducted: true,
     hipaSubcontractorAlreadyDeducted: false,
+    citDeductionTiming: 'IMMEDIATE',
+    amortizationYears: 3,
   },
   audit: {
     ratings: { NOVELTY: 2, CREATIVITY: 2, UNCERTAINTY: 2, SYSTEMATIC: 2, TRANSFERABILITY: 2 },
     redFlags: {},
     notes: '',
   },
-  ip: emptyIpBox(),
+  software: emptySoftware(),
   seal: null,
   sealHistory: [],
+  sealedSource: null,
 });
 
 /** Fictitious mid-size machinery client used for demos and training. */
@@ -96,24 +113,46 @@ export const demoAssessment = (): Assessment => ({
     selfRevisionYears: 2,
     hipaMaterialAlreadyDeducted: true,
     hipaSubcontractorAlreadyDeducted: false,
+    citDeductionTiming: 'IMMEDIATE',
+    amortizationYears: 3,
   },
   audit: {
     ratings: { NOVELTY: 3, CREATIVITY: 3, UNCERTAINTY: 4, SYSTEMATIC: 2, TRANSFERABILITY: 3 },
     redFlags: { NO_TIME_TRACKING: true },
     notes: '',
   },
-  // Licensed machine-vision software; created 40 days ago and not yet notified to NAV.
-  ip: {
-    ...emptyIpBox(),
+  // Licensed machine-vision software: original version notified on time, a
+  // later enhancement still inside its 75-day window.
+  software: {
+    ...emptySoftware(),
     enabled: true,
-    assetName: 'Gépi látás vezérlőszoftver',
-    royaltyIncome: 40_000_000,
-    royaltyRelatedCosts: 10_000_000,
-    nexusOwnCosts: 100_000_000,
-    nexusRelatedPartyCosts: 30_000_000,
-    nexusAcquisitionCosts: 40_000_000,
-    acquiredOn: isoDaysAgo(40),
+    name: 'Gépi látás vezérlőszoftver',
+    components: [
+      {
+        ...newComponent('ORIGINAL'),
+        id: 'demo-original',
+        name: 'v1.0 – eredeti fejlesztés',
+        capitalizedOn: isoDaysAgo(500),
+        reportedOn: isoDaysAgo(460),
+        capitalizedValue: 120_000_000,
+        ownCosts: 100_000_000,
+        relatedPartyCosts: 30_000_000,
+        acquisitionCosts: 40_000_000,
+      },
+      {
+        ...newComponent('ENHANCEMENT'),
+        id: 'demo-v2',
+        name: 'v2.0 – mélytanulásos felismerés',
+        capitalizedOn: isoDaysAgo(40),
+        capitalizedValue: 45_000_000,
+        ownCosts: 45_000_000,
+      },
+    ],
+    royaltyYears: [
+      { year: new Date().getFullYear() - 1, royaltyIncome: 40_000_000, relatedCosts: 10_000_000, profitBeforeTax: 310_000_000 },
+    ],
   },
   seal: null,
   sealHistory: [],
+  sealedSource: null,
 });

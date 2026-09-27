@@ -190,6 +190,30 @@ export function CostStep({ costs, params, savings, onCostsChange, onParamsChange
             checked={params.includeEmployerContribution}
             onChange={(includeEmployerContribution) => onParamsChange({ includeEmployerContribution })}
           />
+          <div className="flex flex-col gap-3 sm:col-span-2">
+            <Segmented
+              label="Aktivált fejlesztés Tao-levonása (Tao. tv. 7. § (1) t))"
+              value={params.citDeductionTiming}
+              onChange={(citDeductionTiming) => onParamsChange({ citDeductionTiming })}
+              options={[
+                { value: 'IMMEDIATE', label: 'Felmerülés évében, egy összegben', description: 'Aktiválástól függetlenül az idei adóalapot csökkenti' },
+                { value: 'AMORTIZATION', label: 'Értékcsökkenéssel arányosan', description: 'A levonás az amortizációs évekre oszlik' },
+              ]}
+            />
+            {params.citDeductionTiming === 'AMORTIZATION' && (
+              <div className="max-w-xs">
+                <NumberInput
+                  label="Amortizációs idő"
+                  value={params.amortizationYears}
+                  onChange={(amortizationYears) => onParamsChange({ amortizationYears })}
+                  min={1}
+                  max={20}
+                  suffix="év"
+                  hint="Lineáris, terv szerinti leírás; kettős levonás tilos"
+                />
+              </div>
+            )}
+          </div>
           <Toggle
             label="HIPA: az anyagköltséget az általános soron már levonják"
             description="Egy költség a HIPA-alapot csak egyszer csökkentheti. Bekapcsolva a K+F anyagköltség nem kerül be még egyszer K+F-levonásként (NAV-gyakorlat)."

@@ -37,29 +37,29 @@ export async function sha256Hex(text: string): Promise<string> {
 
 type SealMeta = Omit<AuditSeal, 'hash'>;
 
-const omit = <T extends object>(obj: T, keys: readonly string[]): Partial<T> =>
-  Object.fromEntries(Object.entries(obj).filter(([k]) => !keys.includes(k))) as Partial<T>;
-
 /**
- * The exact byte string that is hashed: case data + seal metadata. The data
- * shape follows the engine version stored in the seal: fields added later
- * (and back-filled with defaults on load) are left out, so older seals keep
- * verifying.
+ * Which top-level fields each engine version hashed. When fields are added
+ * or renamed, older seals are verified against `sealedSource` (the data as it
+ * was in the file) using that version's field list.
  */
-function sealPayload(assessment: Assessment, meta: SealMeta): string {
-  const { client, costs, params, audit, ip, sealHistory } = assessment;
-  if (meta.engineVersion === '2026.2') {
-    const data = {
-      client,
-      costs: omit(costs, ['grantFundedCosts', 'universityJointCosts']),
-      params: omit(params, ['hipaMaterialAlreadyDeducted', 'hipaSubcontractorAlreadyDeducted']),
-      audit,
-      sealHistory,
-    };
-    return canonicalJson({ data, seal: meta });
-  }
-  return canonicalJson({ data: { client, costs, params, audit, ip, sealHistory }, seal: meta });
+const SEALED_FIELDS: Record<string, readonly string[]> = {
+  '2026.2': ['client', 'costs', 'params', 'audit', 'sealHistory'],
+  '2026.3': ['client', 'costs', 'params', 'audit', 'ip', 'sealHistory'],
+};
+const CURRENT_FIELDS = ['client', 'costs', 'params', 'audit', 'software', 'sealHistory'] as const;
+
+export const isLegacySealVersion = (version: string): boolean => version in SEALED_FIELDS;
+
+const pick = (source: Record<string, unknown>, fields: readonly string[]) =>
+  Object.fromEntries(fields.map((f) => [f, source[f]]));
+
+/** The exact byte string that is hashed: case data + seal metadata. */
+function sealPayload(source: Record<string, unknown>, meta: SealMeta): string {
+  const fields = SEALED_FIELDS[meta.engineVersion] ?? CURRENT_FIELDS;
+  return canonicalJson({ data: pick(source, fields), seal: meta });
 }
+
+const asRecord = (a: Assessment): Record<string, unknown> => a as unknown as Record<string, unknown>;
 
 export async function createSeal(assessment: Assessment, sealedBy: string, now = new Date()): Promise<AuditSeal> {
   const meta: SealMeta = {
@@ -68,7 +68,7 @@ export async function createSeal(assessment: Assessment, sealedBy: string, now =
     sealedBy: sealedBy.trim(),
     engineVersion: ENGINE_VERSION,
   };
-  return { ...meta, hash: await sha256Hex(sealPayload(assessment, meta)) };
+  return { ...meta, hash: await sha256Hex(sealPayload(asRecord(assessment), meta)) };
 }
 
 /** True when the stored hash still matches the case data. */
@@ -76,7 +76,10 @@ export async function verifySeal(assessment: Assessment): Promise<boolean> {
   const { seal } = assessment;
   if (!seal) return false;
   const { hash, ...meta } = seal;
-  return (await sha256Hex(sealPayload(assessment, meta))) === hash;
+  // Legacy seals are checked against the file content they were computed on.
+  const source = isLegacySealVersion(meta.engineVersion) ? assessment.sealedSource : asRecord(assessment);
+  if (!source) return false;
+  return (await sha256Hex(sealPayload(source, meta))) === hash;
 }
 
 /** 4f8a…9c21 */

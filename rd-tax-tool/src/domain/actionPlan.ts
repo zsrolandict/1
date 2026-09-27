@@ -1,6 +1,7 @@
 /**
  * ICT Európa 3-step implementation roadmap, tailored to the audit outcome.
  */
+import { IP_RULES } from './constants';
 import type { AuditAnswers, AuditResult, SavingsResult } from './types';
 
 export interface ActionStep {
@@ -72,13 +73,16 @@ export function buildActionPlan(
     );
   }
 
-  const ipDeadline = savings.ipBox.enabled ? savings.ipBox.deadline : null;
-  const ipTask =
-    ipDeadline?.status === 'OPEN'
-      ? [`Immateriális jószág bejelentése a NAV-hoz ${ipDeadline.dueDate}-ig (${ipDeadline.daysLeft} nap) – nem pótolható`]
-      : ipDeadline?.status === 'NO_DATE'
-        ? ['Immateriális jószág szerzési dátumának rögzítése, 60 napos NAV-bejelentés ellenőrzése']
-        : [];
+  // Every open or undated notification is time-critical and cannot be made up later.
+  const ipTask = savings.ipBox.enabled
+    ? savings.ipBox.components.flatMap((c) =>
+        c.deadline.status === 'OPEN'
+          ? [`NAV-bejelentés: „${c.name}” ${c.deadline.dueDate}-ig (${c.deadline.daysLeft} nap) – jogvesztő`]
+          : c.deadline.status === 'NO_DATE'
+            ? [`„${c.name}”: aktiválási dátum rögzítése, ${IP_RULES.NOTIFICATION_DAYS} napos NAV-bejelentés ellenőrzése`]
+            : [],
+      )
+    : [];
 
   return [
     {
