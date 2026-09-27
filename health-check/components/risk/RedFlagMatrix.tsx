@@ -29,7 +29,7 @@ import type { Division, Pillar, Rag, RiskItem, RiskSource, Scale5, ScoredRisk } 
 import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace } from '@/lib/risk/store';
 import { EXPERT_PARAMETERS } from '@/lib/risk/parameters';
 import { computeFormula, resolveExposure, type CompanyProfile, type Formula } from '@/lib/risk/valuation';
-import ExportPdfButton from '@/components/report/ExportPdfButton';
+import ExportPdfButton, { type SaveFile } from '@/components/report/ExportPdfButton';
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 
 const SOURCE_LABEL: Partial<Record<RiskSource, string>> = {
@@ -66,9 +66,22 @@ interface Props {
   companyName?: string;
   /** Mentés hook – élesben Supabase upsert / server action. */
   onChange?: (items: RiskItem[]) => void;
+  /** PDF átadása (alapból böngészős letöltés). */
+  savePdf?: SaveFile;
+  /** Betűkészletek mappája a PDF-hez. */
+  fontBase?: string;
+  /** Nyomtatás gomb (ahol a böngésző nyomtatása nem elérhető, rejtsük el). */
+  showPrint?: boolean;
 }
 
-export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyName: initialName = DEFAULT_WORKSPACE.companyName, onChange }: Props) {
+export default function RedFlagMatrix({
+  initialItems = DEFAULT_CATALOG,
+  companyName: initialName = DEFAULT_WORKSPACE.companyName,
+  onChange,
+  savePdf,
+  fontBase,
+  showPrint = true,
+}: Props) {
   const [items, setItems] = useState<RiskItem[]>(initialItems);
   const [companyName, setCompanyName] = useState(initialName);
   const [company, setCompany] = useState<CompanyProfile>(DEFAULT_WORKSPACE.company);
@@ -182,11 +195,15 @@ export default function RedFlagMatrix({ initialItems = DEFAULT_CATALOG, companyN
           </select>
           <ToolbarButton onClick={reset} icon={<RotateCcw className="h-4 w-4" />}>Alaphelyzet</ToolbarButton>
           <ToolbarButton onClick={exportJson} icon={<Download className="h-4 w-4" />}>JSON</ToolbarButton>
-          <ToolbarButton onClick={() => window.print()} icon={<Printer className="h-4 w-4" />}>
-            Nyomtatás
-          </ToolbarButton>
+          {showPrint && (
+            <ToolbarButton onClick={() => window.print()} icon={<Printer className="h-4 w-4" />}>
+              Nyomtatás
+            </ToolbarButton>
+          )}
           <ExportPdfButton
             input={{ companyName, kind, company, materialityHuf, assessment: result }}
+            saveFile={savePdf}
+            fontBase={fontBase}
           />
         </div>
       </header>

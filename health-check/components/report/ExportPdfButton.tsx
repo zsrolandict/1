@@ -4,18 +4,39 @@ import { useState } from 'react';
 import { FileDown, Loader2 } from 'lucide-react';
 import type { ReportInput } from '@/lib/report/model';
 
+/** Fájl átadása a felhasználónak. Alapból böngészős letöltés; az előnézet mást adhat. */
+export type SaveFile = (blob: Blob, filename: string) => Promise<void>;
+
+const browserDownload: SaveFile = async (blob, filename) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+};
+
 /**
  * Egykattintásos PDF-riport. A PDF-motort csak kattintáskor töltjük be
  * (nagy csomag), a generálás teljesen a böngészőben történik – az adatok
  * nem hagyják el a gépet.
  */
-export default function ExportPdfButton({ input }: { input: ReportInput }) {
+export default function ExportPdfButton({
+  input,
+  saveFile = browserDownload,
+  fontBase,
+}: {
+  input: ReportInput;
+  saveFile?: SaveFile;
+  /** A betűkészletek mappája (alapból: <origin>/fonts). */
+  fontBase?: string;
+}) {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<{ kind: 'error' | 'warn'; text: string } | null>(null);
 
   const generate = async () => {
     setBusy(true);
-    setError(null);
+    setNote(null);
     try {
       const [{ pdf }, { ReportDocument }, { buildReportModel }, { registerReportFonts }] = await Promise.all([
         import('@react-pdf/renderer'),
@@ -23,27 +44,16 @@ export default function ExportPdfButton({ input }: { input: ReportInput }) {
         import('@/lib/report/model'),
         import('@/lib/report/fonts'),
       ]);
-      registerReportFonts(`${window.location.origin}/fonts`);
+      registerReportFonts(fontBase ?? `${window.location.origin}/fonts`);
       const model = buildReportModel(input);
-      if (
-        model.unapprovedParameterRisks.length > 0 &&
-        !window.confirm(
-          'A riport nem jóváhagyott szakértői paraméterre épülő becslést tartalmaz, ezért TERVEZET jelölést kap. Folytatja?',
-        )
-      ) {
-        return;
-      }
       const blob = await pdf(<ReportDocument model={model} />).toBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const date = model.generatedAt.slice(0, 10);
-      a.download = `red-flag-riport-${slug(input.companyName)}-${date}.pdf`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      await saveFile(blob, `red-flag-riport-${slug(input.companyName)}-${model.generatedAt.slice(0, 10)}.pdf`);
+      if (model.unapprovedParameterRisks.length > 0) {
+        setNote({ kind: 'warn', text: 'TERVEZET: nem jóváhagyott szakértői paramétert tartalmaz.' });
+      }
     } catch (e) {
       console.error(e);
-      setError('A PDF előállítása nem sikerült.');
+      setNote({ kind: 'error', text: e instanceof Error && e.message ? e.message : 'A PDF előállítása nem sikerült.' });
     } finally {
       setBusy(false);
     }
@@ -59,7 +69,11 @@ export default function ExportPdfButton({ input }: { input: ReportInput }) {
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
         PDF riport
       </button>
-      {error && <span role="alert" className="mt-1 text-xs text-red-600">{error}</span>}
+      {note && (
+        <span role={note.kind === 'error' ? 'alert' : 'status'} className={`mt-1 text-xs ${note.kind === 'error' ? 'text-red-600' : 'text-amber-700'}`}>
+          {note.text}
+        </span>
+      )}
     </span>
   );
 }

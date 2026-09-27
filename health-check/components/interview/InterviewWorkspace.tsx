@@ -53,7 +53,7 @@ function sourceBadge(s: QuestionSource): { label: string; cls: string } {
   }
 }
 
-export default function InterviewWorkspace() {
+export default function InterviewWorkspace({ showPrint = true }: { showPrint?: boolean } = {}) {
   const [ws, setWs] = useState<Workspace>(DEFAULT_WORKSPACE);
   const [hydrated, setHydrated] = useState(false);
   const [role, setRole] = useState<IntervieweeRole>('OWNER_CEO');
@@ -253,6 +253,7 @@ export default function InterviewWorkspace() {
 
       {tab === 'guide' && (
         <GuideTab
+          showPrint={showPrint}
           role={role}
           questions={questions}
           asked={asked}
@@ -396,6 +397,7 @@ export default function InterviewWorkspace() {
 // ── Kérdések fül ──────────────────────────────────────────────────
 
 function GuideTab(props: {
+  showPrint: boolean;
   role: IntervieweeRole;
   questions: InterviewQuestion[];
   asked: Set<string>;
@@ -426,9 +428,11 @@ function GuideTab(props: {
             >
               {props.aiBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} AI-bővítés
             </button>
-            <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-slate-700 hover:bg-slate-50">
-              <Printer className="h-4 w-4" /> Nyomtatás
-            </button>
+            {props.showPrint && (
+              <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-slate-700 hover:bg-slate-50">
+                <Printer className="h-4 w-4" /> Nyomtatás
+              </button>
+            )}
           </div>
         </div>
 
