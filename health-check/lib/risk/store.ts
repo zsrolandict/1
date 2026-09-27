@@ -1,6 +1,7 @@
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { SuggestedRedFlag } from '@/lib/interview/types';
-import { catalogDefault, DEFAULT_CATALOG, PILLAR_LABEL } from './catalog';
+import { getScenario, GYARTO, type Scenario } from '@/lib/scenarios';
+import { catalogDefault, PILLAR_LABEL } from './catalog';
 import type { RiskItem, Scale5 } from './types';
 import { DEFAULT_COMPANY, resolveExposure, type CompanyProfile } from './valuation';
 
@@ -10,6 +11,8 @@ import { DEFAULT_COMPANY, resolveExposure, type CompanyProfile } from './valuati
  * csak ezen a modulon keresztül olvasnak/írnak, így a csere egy helyen történik.
  */
 export interface Workspace {
+  /** Melyik mintaesetből indult (dokumentum-tények, interjú-minta). */
+  scenarioId: string;
   companyName: string;
   company: CompanyProfile;
   kind: EngagementKind;
@@ -20,13 +23,19 @@ export interface Workspace {
 export const STORAGE_KEY = 'ict-hc:workspace:v2';
 const LEGACY_KEY = 'ict-hc:red-flag-matrix:v1';
 
-export const DEFAULT_WORKSPACE: Workspace = {
-  companyName: 'Minta Gyártó Kft.',
-  company: DEFAULT_COMPANY,
-  kind: 'VENDOR_DD',
-  materialityHuf: 50_000_000,
-  items: DEFAULT_CATALOG,
-};
+/** Mintaesetből induló, friss munkaállapot. */
+export function workspaceFromScenario(s: Scenario): Workspace {
+  return {
+    scenarioId: s.id,
+    companyName: s.companyName,
+    company: s.company,
+    kind: s.kind,
+    materialityHuf: s.materialityHuf,
+    items: s.items,
+  };
+}
+
+export const DEFAULT_WORKSPACE: Workspace = workspaceFromScenario(GYARTO);
 
 export function loadWorkspace(): Workspace {
   try {
@@ -34,6 +43,7 @@ export function loadWorkspace(): Workspace {
     if (!raw) return DEFAULT_WORKSPACE;
     const saved = JSON.parse(raw) as Partial<Workspace>;
     return {
+      scenarioId: getScenario(saved.scenarioId).id,
       companyName: typeof saved.companyName === 'string' ? saved.companyName : DEFAULT_WORKSPACE.companyName,
       company: { ...DEFAULT_COMPANY, ...(saved.company ?? {}) },
       kind: saved.kind ?? DEFAULT_WORKSPACE.kind,

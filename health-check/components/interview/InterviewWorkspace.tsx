@@ -21,7 +21,7 @@ import {
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 import { buildInterviewGuide, estimateMinutes } from '@/lib/interview/guide';
 import { ROLE_LABEL } from '@/lib/interview/questionBank';
-import { SAMPLE_ANALYSIS_RAW, SAMPLE_FACTS, SAMPLE_MISSING_DOCUMENTS, SAMPLE_NOTES } from '@/lib/interview/sample';
+import { getScenario, SCENARIOS } from '@/lib/scenarios';
 import { formatMs, notesToTranscript, verifyAnalysis } from '@/lib/interview/transcript';
 import type {
   InterviewAnalysis,
@@ -34,7 +34,7 @@ import type {
 } from '@/lib/interview/types';
 import { PILLAR_LABEL } from '@/lib/risk/catalog';
 import { PILLARS } from '@/lib/risk/engine';
-import { applySuggestion, DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, type Workspace } from '@/lib/risk/store';
+import { applySuggestion, DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario, type Workspace } from '@/lib/risk/store';
 import type { Pillar } from '@/lib/risk/types';
 
 type Tab = 'guide' | 'process' | 'analysis';
@@ -60,7 +60,8 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   const [tab, setTab] = useState<Tab>('guide');
   const [status, setStatus] = useState<{ ai: boolean; transcription: boolean } | null>(null);
 
-  const [facts, setFacts] = useState<KnownFact[]>(SAMPLE_FACTS);
+  const [facts, setFacts] = useState<KnownFact[]>(getScenario(DEFAULT_WORKSPACE.scenarioId).facts);
+  const scenario = getScenario(ws.scenarioId);
   const [aiQuestions, setAiQuestions] = useState<InterviewQuestion[]>([]);
   const [asked, setAsked] = useState<Set<string>>(new Set());
 
@@ -76,7 +77,9 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setWs(loadWorkspace());
+    const loaded = loadWorkspace();
+    setWs(loaded);
+    setFacts(getScenario(loaded.scenarioId).facts);
     setHydrated(true);
     fetch('/api/interviews/status')
       .then((r) => r.json())
@@ -90,8 +93,8 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   };
 
   const context = useMemo(
-    () => ({ kind: ws.kind, role, risks: ws.items, missingDocuments: SAMPLE_MISSING_DOCUMENTS, facts }),
-    [ws.kind, ws.items, role, facts],
+    () => ({ kind: ws.kind, role, risks: ws.items, missingDocuments: scenario.missingDocuments, facts }),
+    [ws.kind, ws.items, role, facts, scenario],
   );
   const questions = useMemo(() => [...buildInterviewGuide(context), ...aiQuestions], [context, aiQuestions]);
 
@@ -161,11 +164,11 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   };
 
   const loadSample = () => {
-    setNotes(SAMPLE_NOTES);
-    setTranscript(notesToTranscript(SAMPLE_NOTES));
+    setNotes(scenario.interview.notes);
+    setTranscript(notesToTranscript(scenario.interview.notes));
     setSpeakerNames({});
     setAnalysis(null);
-    setRole('OWNER_CEO');
+    setRole(scenario.interview.role);
   };
 
   const analyze = () =>
@@ -184,7 +187,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
 
   const showSampleAnalysis = () => {
     if (!namedTranscript) return;
-    setAnalysis(verifyAnalysis(SAMPLE_ANALYSIS_RAW, namedTranscript, facts));
+    setAnalysis(verifyAnalysis(scenario.interview.analysis, namedTranscript, facts));
     setAnalysisIsSample(true);
     setAccepted(new Set());
     setTab('analysis');
@@ -197,7 +200,21 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
     setAccepted((s) => new Set(s).add(key));
   };
 
-  const isSampleTranscript = notes === SAMPLE_NOTES && transcript?.origin === 'NOTES';
+  const isSampleTranscript = notes === scenario.interview.notes && transcript?.origin === 'NOTES';
+
+  const switchScenario = (id: string) => {
+    const sc = getScenario(id);
+    updateWs(workspaceFromScenario(sc));
+    setFacts(sc.facts);
+    setAiQuestions([]);
+    setAsked(new Set());
+    setNotes('');
+    setTranscript(null);
+    setAnalysis(null);
+    setAccepted(new Set());
+    setRole(sc.interview.role);
+    setTab('guide');
+  };
   const speakerLabels = transcript ? [...new Set(transcript.segments.map((s) => s.speaker))] : [];
 
   if (!hydrated) return null;
@@ -210,8 +227,18 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
             {ENGAGEMENT_KINDS[ws.kind].label} · Interjúk
           </p>
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">Interjú-előkészítés és elemzés</h1>
+          <p className="mt-1 text-sm text-slate-500">{ws.companyName} · {scenario.situation}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
+          <select
+            value={ws.scenarioId}
+            onChange={(e) => switchScenario(e.target.value)}
+            aria-label="Mintaeset"
+            title="Mintaeset betöltése (a jelenlegi módosítások elvesznek)"
+            className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm text-indigo-900"
+          >
+            {SCENARIOS.map((sc) => <option key={sc.id} value={sc.id}>Minta: {sc.label}</option>)}
+          </select>
           <select
             value={ws.kind}
             onChange={(e) => updateWs({ ...ws, kind: e.target.value as EngagementKind })}
@@ -259,6 +286,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
           asked={asked}
           onToggle={(id) => setAsked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; })}
           facts={facts}
+          missingCount={scenario.missingDocuments.length}
           onFactsChange={setFacts}
           aiAvailable={Boolean(status?.ai)}
           aiBusy={busy === 'ai-questions'}
@@ -403,6 +431,7 @@ function GuideTab(props: {
   asked: Set<string>;
   onToggle: (id: string) => void;
   facts: KnownFact[];
+  missingCount: number;
   onFactsChange: (f: KnownFact[]) => void;
   aiAvailable: boolean;
   aiBusy: boolean;
@@ -472,7 +501,7 @@ function GuideTab(props: {
         <Card title="Mire épül a kérdéslista?" icon={<ListChecks className="h-4 w-4" />}>
           <ul className="space-y-1 text-sm text-slate-600">
             <li>• {props.identifiedCount} azonosított red flag (Red Flag mátrix)</li>
-            <li>• {SAMPLE_MISSING_DOCUMENTS.length} hiányzó dokumentum</li>
+            <li>• {props.missingCount} hiányzó dokumentum</li>
             <li>• {props.facts.length} dokumentumokból ismert tény</li>
             <li>• az interjúalany szerepköre és az átvilágítás típusa</li>
           </ul>

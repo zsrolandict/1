@@ -26,7 +26,8 @@ import {
 import { assess, AUDIT_FEE_HUF, DIVISIONS, formatHuf, formatHufShort, PILLARS, ragFromScore, WINDOWS } from '@/lib/risk/engine';
 import { catalogDefault, DEFAULT_CATALOG, DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
 import type { Division, Pillar, Rag, RiskItem, RiskSource, Scale5, ScoredRisk } from '@/lib/risk/types';
-import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace } from '@/lib/risk/store';
+import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario } from '@/lib/risk/store';
+import { getScenario, SCENARIOS } from '@/lib/scenarios';
 import { EXPERT_PARAMETERS } from '@/lib/risk/parameters';
 import { computeFormula, resolveExposure, type CompanyProfile, type Formula } from '@/lib/risk/valuation';
 import ExportPdfButton, { type SaveFile } from '@/components/report/ExportPdfButton';
@@ -83,6 +84,7 @@ export default function RedFlagMatrix({
   showPrint = true,
 }: Props) {
   const [items, setItems] = useState<RiskItem[]>(initialItems);
+  const [scenarioId, setScenarioId] = useState(DEFAULT_WORKSPACE.scenarioId);
   const [companyName, setCompanyName] = useState(initialName);
   const [company, setCompany] = useState<CompanyProfile>(DEFAULT_WORKSPACE.company);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -104,14 +106,27 @@ export default function RedFlagMatrix({
     setKind(ws.kind);
     setCompanyName(ws.companyName);
     setCompany(ws.company);
+    setScenarioId(ws.scenarioId);
     setHydrated(true);
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
-    saveWorkspace({ companyName, company, kind, materialityHuf, items });
+    saveWorkspace({ scenarioId, companyName, company, kind, materialityHuf, items });
     onChangeRef.current?.(items);
-  }, [items, materialityHuf, kind, companyName, company, hydrated]);
+  }, [items, materialityHuf, kind, companyName, company, scenarioId, hydrated]);
+
+  const applyWorkspace = (id: string) => {
+    const ws = workspaceFromScenario(getScenario(id));
+    setScenarioId(ws.scenarioId);
+    setItems(ws.items);
+    setCompanyName(ws.companyName);
+    setCompany(ws.company);
+    setKind(ws.kind);
+    setMaterialityHuf(ws.materialityHuf);
+    setCell(null);
+    setExpanded(new Set());
+  };
 
   const result = useMemo(() => assess(items, { materialityHuf, company }), [items, materialityHuf, company]);
   const scoredById = useMemo(() => new Map(result.risks.map((r) => [r.id, r])), [result]);
@@ -145,12 +160,8 @@ export default function RedFlagMatrix({
     ]);
   };
 
-  const reset = () => {
-    setItems(initialItems);
-    setCompany(DEFAULT_WORKSPACE.company);
-    setMaterialityHuf(DEFAULT_WORKSPACE.materialityHuf);
-    setCell(null);
-  };
+  /** A kiválasztott mintaeset kiinduló állapota. */
+  const reset = () => applyWorkspace(scenarioId);
 
   const exportJson = () => {
     const blob = new Blob([JSON.stringify({ companyName, kind, company, generatedAt: new Date().toISOString(), materialityHuf, ...result }, null, 2)], {
@@ -183,8 +194,20 @@ export default function RedFlagMatrix({
             />
             <span className="hidden print:inline">{companyName}</span>
           </h1>
+          <p className="mt-1 max-w-2xl text-sm text-slate-500">
+            {getScenario(scenarioId).sector} · {getScenario(scenarioId).situation}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
+          <select
+            value={scenarioId}
+            onChange={(e) => applyWorkspace(e.target.value)}
+            aria-label="Mintaeset"
+            title="Mintaeset betöltése (a jelenlegi módosítások elvesznek)"
+            className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm text-indigo-900"
+          >
+            {SCENARIOS.map((sc) => <option key={sc.id} value={sc.id}>Minta: {sc.label}</option>)}
+          </select>
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value as EngagementKind)}
