@@ -3,7 +3,7 @@ import { CalendarClock, CircleCheck, CircleX } from 'lucide-react';
 import { useState } from 'react';
 import { IP_RULES } from '../../domain/constants';
 import { formatNumber, parseHufInput } from '../../domain/format';
-import type { NotificationDeadline } from '../../domain/types';
+import type { NotificationDeadline, SoftwareQualification } from '../../domain/types';
 
 /** Label-less forint input for table cells; the caller supplies an aria-label. */
 export function MoneyCell({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
@@ -75,5 +75,48 @@ export function DeadlineBadge({ deadline }: { deadline: NotificationDeadline }) 
       <Icon className="size-3.5" aria-hidden />
       {deadlineText(deadline)}
     </span>
+  );
+}
+
+const VERDICT: Record<SoftwareQualification['level'], { title: string; text: string; cls: string; icon: typeof CircleCheck }> = {
+  FULL: {
+    title: 'Teljesül',
+    text: 'Minden szoftveres kedvezmény teljes összegben érvényesíthető.',
+    cls: 'border-risk-green/30 bg-risk-green-soft text-risk-green',
+    icon: CircleCheck,
+  },
+  PARTIAL: {
+    title: 'Részben teljesül',
+    text: 'A kedvezmény egy része érvényesíthető – az alábbiak csökkentik vagy veszélyeztetik.',
+    cls: 'border-risk-yellow/40 bg-risk-yellow-soft text-risk-yellow',
+    icon: CalendarClock,
+  },
+  NONE: {
+    title: 'Nem teljesül',
+    text: 'Szoftveres (jogdíj / eladási) kedvezmény nem érvényesíthető; a K+F-költségkedvezmények ettől még járhatnak.',
+    cls: 'border-risk-red/30 bg-risk-red-soft text-risk-red',
+    icon: CircleX,
+  },
+};
+
+/** Overall software verdict with the reasons behind it. */
+export function QualificationBanner({ qualification, compact = false }: { qualification: SoftwareQualification; compact?: boolean }) {
+  const v = VERDICT[qualification.level];
+  const Icon = v.icon;
+  return (
+    <section className={`rounded-xl border px-5 py-4 ${v.cls}`} aria-label={`Szoftver-minősítés: ${v.title}`}>
+      <p className="flex items-center gap-2 text-sm font-bold">
+        <Icon className="size-4" aria-hidden />
+        Szoftver-minősítés: {v.title}
+      </p>
+      {!compact && <p className="mt-1 text-sm text-slate-700">{v.text}</p>}
+      {qualification.issues.length > 0 && (
+        <ul className="mt-2 list-disc space-y-0.5 pl-5 text-sm text-slate-700">
+          {qualification.issues.map((i) => (
+            <li key={i}>{i}</li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

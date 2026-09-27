@@ -9,6 +9,7 @@ import { formatHuf, formatPercent } from '../../domain/format';
 import type { ClientProfile, RoyaltyYear, SoftwareAssetInputs, SoftwareResult, TaxParameters } from '../../domain/types';
 import { Card } from '../ui/Card';
 import { CurrencyInput, Segmented, Toggle } from '../ui/fields';
+import { QualificationBanner } from './shared';
 
 interface RoyaltyCalculatorProps {
   client: ClientProfile;
@@ -171,6 +172,7 @@ export function RoyaltyCalculator({ client, params, sw, result, onClient, onPara
             <Line label="Innovációs járulék" value={formatHuf(result.innovationContributionSaving)} strong />
           </dl>
         </div>
+        {result.enabled && <QualificationBanner qualification={result.qualification} compact />}
         {result.warnings.length > 0 && (
           <ul className="rounded-xl border border-risk-yellow/30 bg-risk-yellow-soft px-5 py-3 text-xs text-slate-700">
             {result.warnings.map((w) => (

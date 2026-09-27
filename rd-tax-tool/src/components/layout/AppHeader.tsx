@@ -1,8 +1,10 @@
-import { Download, FlaskConical, RotateCcw, Upload } from 'lucide-react';
+import { Download, RotateCcw, Upload } from 'lucide-react';
 import { useRef } from 'react';
 import { Button } from '../ui/Button';
 
 import type { AppMode } from '../../App';
+import type { DemoDefinition } from '../../domain/demos';
+import { DemoMenu } from './DemoMenu';
 
 interface AppHeaderProps {
   mode: AppMode;
@@ -10,7 +12,7 @@ interface AppHeaderProps {
   onExport: () => void;
   onImport: (data: unknown) => void;
   onReset: () => void;
-  onDemo: () => void;
+  onDemo: (demo: DemoDefinition) => void;
 }
 
 export function AppHeader({ onExport, onImport, onReset, onDemo, mode, onModeChange }: AppHeaderProps) {
@@ -60,7 +62,7 @@ export function AppHeader({ onExport, onImport, onReset, onDemo, mode, onModeCha
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-1">
-          <HeaderAction icon={FlaskConical} label="Demó eset" onClick={onDemo} />
+          <DemoMenu onSelect={onDemo} />
           <HeaderAction icon={Upload} label="Megnyitás" onClick={() => fileRef.current?.click()} />
           <HeaderAction icon={Download} label="Mentés (JSON)" onClick={onExport} />
           <HeaderAction

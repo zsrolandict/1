@@ -197,8 +197,18 @@ export interface RoyaltyYearResult {
   total: number;
 }
 
+/** Overall verdict for the software reliefs: fully, partly or not available. */
+export type QualificationLevel = 'FULL' | 'PARTIAL' | 'NONE';
+
+export interface SoftwareQualification {
+  level: QualificationLevel;
+  /** Why the verdict is not FULL, most important first. */
+  issues: string[];
+}
+
 export interface SoftwareResult {
   enabled: boolean;
+  qualification: SoftwareQualification;
   /** False for SaaS income without a separated licence fee. */
   royaltyQualifies: boolean;
   components: ComponentResult[];

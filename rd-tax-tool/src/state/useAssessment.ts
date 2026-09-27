@@ -216,7 +216,7 @@ export function useAssessment() {
       updateSoftware: (patch: Partial<SoftwareAssetInputs>) => dispatch({ type: 'software', patch }),
       reopen: () => dispatch({ type: 'reopen' }),
       reset: () => dispatch({ type: 'replace', assessment: emptyAssessment() }),
-      loadDemo: () => dispatch({ type: 'replace', assessment: demoAssessment() }),
+      loadDemo: (build: () => Assessment = demoAssessment) => dispatch({ type: 'replace', assessment: build() }),
       load: (raw: unknown) => dispatch({ type: 'replace', assessment: normaliseAssessment(raw) }),
     }),
     [],

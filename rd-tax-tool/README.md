@@ -10,7 +10,18 @@ npm test           # a számítási motor, a pontozás és a pecsét egységtesz
 npm run build      # típusellenőrzés + produkciós build (dist/)
 ```
 
-A fejlécben a **Demó eset** gomb betölt egy kitalált gépipari ügyfelet.
+A fejléc **Demó esetek** menüjéből hat kitalált ügyfél tölthető be (`src/domain/demos.ts`):
+
+| Csoport | Demó | Kimenet |
+|---|---|---|
+| Csak szoftver | Szoftverház – licencdíj, 100% nexus, minden bejelentés határidőben, eladás 1 év után | Teljesül |
+| Csak szoftver | Felhőszolgáltató – vegyes SaaS + licenc, vásárolt kód (nexus < 100%), egy elmulasztott és egy folyamatban lévő bejelentés | Részben |
+| Csak szoftver | SaaS-startup – licencdíj nélküli SaaS, késve bejelentett eredeti fejlesztés; csak a K+F-kedvezmény marad | Nem teljesül |
+| Teljes K+F | Gépgyártó – PhD-s kutatók, egyetemi együttműködés, szoftver folyamatban lévő bejelentéssel | Kiegészítendő |
+| Teljes K+F | Szenzorgyártó – jól dokumentált IoT-fejlesztés | Adóálló (zöld) |
+| Teljes K+F | Élelmiszergyártó – veszteséges év, receptvariáns, gyártás-előkészítés | NAV-kockázat (piros) |
+
+A dátumok a mai naphoz viszonyítottak, így a határidők és tartási idők minden megnyitáskor ugyanúgy viselkednek. Egy teszt ellenőrzi, hogy minden demó a menüben jelzett kimenetet adja.
 
 ## Architektúra
 
@@ -120,6 +131,7 @@ Külön lépés a saját fejlesztésű, hasznosított szoftverre, a teljes élet
 - A lépésben a szoftverhez tetszőleges számú továbbfejlesztés vehető fel, mindegyik saját határidő-jelzővel. A lejáró határidők a lépéslistán, az akciótervben és a riportban is kiemelve jelennek meg.
 - A jogdíj évenként vihető fel (bevétel, kapcsolódó ráfordítás, adózás előtti eredmény). Az éves összesítőbe a vizsgált adóév sora kerül, a táblázat a többi év hatását is mutatja.
 - Az eladási nyereségre a nexus-arány alkalmazása kapcsolható (alapértelmezetten be, konzervatív).
+- **Szoftver-minősítés:** összesített ítélet – *Teljesül* (jogdíjkedvezmény 100% nexusszal, minden bejelentés határidőben, mentes eladás), *Részben* (van kedvezmény, de valami csökkenti vagy veszélyezteti), *Nem teljesül* (se jogdíj-, se eladási kedvezmény) – az okok felsorolásával a lépésben, a kalkulátorban és a riportban.
 
 ### Szoftverjogdíj-kalkulátor (demó mód)
 

@@ -75,7 +75,10 @@ export default function App() {
             reset();
             goTo('client');
           }}
-          onDemo={loadDemo}
+          onDemo={(demo) => {
+            loadDemo(demo.build);
+            goTo(demo.startStep);
+          }}
           mode={mode}
           onModeChange={setMode}
         />

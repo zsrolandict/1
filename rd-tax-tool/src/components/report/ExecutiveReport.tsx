@@ -10,6 +10,7 @@ import type { Assessment, AuditResult, SavingsResult } from '../../domain/types'
 import { RiskGauge } from '../charts/RiskGauge';
 import { savingsRows } from '../charts/SavingsBreakdown';
 import type { SealStatus } from '../../state/useAssessment';
+import { OUTCOME_LABELS } from '../layout/DemoMenu';
 import { deadlineText } from '../software/shared';
 import { ActionPlan } from './ActionPlan';
 import { ReportSealLine } from './SealPanel';
@@ -208,7 +209,12 @@ function ReportIpBox({ savings, assetName }: { savings: SavingsResult; assetName
   const alertStatuses = ['OPEN', 'MISSED', 'REPORTED_LATE'];
   return (
     <section className="avoid-break mt-6 rounded-lg border border-slate-200 px-4 py-3 text-[13px]">
-      <p className="mb-1.5 font-semibold text-navy-900">Szoftver (IP-box){assetName ? ` – ${assetName}` : ''}</p>
+      <p className="mb-1.5 flex flex-wrap items-center justify-between gap-2 font-semibold text-navy-900">
+        <span>Szoftver (IP-box){assetName ? ` – ${assetName}` : ''}</span>
+        <span className={`rounded px-2 py-0.5 text-[11px] ${OUTCOME_LABELS[ip.qualification.level].cls}`}>
+          {OUTCOME_LABELS[ip.qualification.level].label}
+        </span>
+      </p>
       {!ip.royaltyQualifies && (
         <p className="mb-1.5 text-risk-red">A SaaS-bevétel elkülönített licencdíj nélkül szolgáltatás: jogdíjkedvezmény nem jár.</p>
       )}

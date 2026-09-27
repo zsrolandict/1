@@ -22,9 +22,11 @@ import type {
   ComponentResult,
   NotificationDeadline,
   NotificationStatus,
+  QualificationLevel,
   RoyaltyYearResult,
   SoftwareAssetInputs,
   SoftwareComponent,
+  SoftwareQualification,
   SoftwareResult,
 } from './types';
 
@@ -227,13 +229,26 @@ export function calculateSoftware(
   }
 
   const annualSaving = current?.total ?? 0;
+  const currentNexus = current?.nexusRatio ?? nexusRatio(componentsUpTo(sw.components, client.taxYear));
+
+  const qualification = qualify({
+    royaltyQualifies,
+    components,
+    nexus: currentNexus,
+    hasRoyalty: (currentInput?.royaltyIncome ?? 0) > 0,
+    annualSaving,
+    gain,
+    saleDeduction,
+    exemptShare,
+  });
 
   return {
     enabled: sw.enabled,
+    qualification,
     royaltyQualifies,
     components,
     years,
-    nexusRatio: current?.nexusRatio ?? nexusRatio(componentsUpTo(sw.components, client.taxYear)),
+    nexusRatio: currentNexus,
     royaltyProfit: currentProfit,
     royaltyDeduction: current?.deduction ?? 0,
     royaltyCitSaving: current?.citSaving ?? 0,
@@ -256,9 +271,47 @@ export function calculateSoftware(
   };
 }
 
+/**
+ * Overall verdict:
+ *  NONE    – no software relief is available at all (no royalty relief and no exempt sale gain)
+ *  PARTIAL – some relief is available, but something reduces or endangers it
+ *  FULL    – royalty relief with 100% nexus, every notification on time, exempt sale (if planned)
+ */
+function qualify(input: {
+  royaltyQualifies: boolean;
+  components: ComponentResult[];
+  nexus: number;
+  hasRoyalty: boolean;
+  annualSaving: number;
+  gain: number;
+  saleDeduction: number;
+  exemptShare: number;
+}): SoftwareQualification {
+  const issues: string[] = [];
+  if (!input.royaltyQualifies) issues.push('A SaaS-bevétel elkülönített licencdíj nélkül szolgáltatás: jogdíjkedvezmény nem jár.');
+  for (const c of input.components) {
+    const s = c.deadline.status;
+    if (c.kind === 'ORIGINAL' && (s === 'MISSED' || s === 'REPORTED_LATE'))
+      issues.push('Az eredeti fejlesztés bejelentése elmaradt / késett: eladási kedvezmény nem jár.');
+    else if (s === 'MISSED' || s === 'REPORTED_LATE')
+      issues.push(`„${c.name}” nincs határidőben bejelentve: értéknövekménye eladáskor adóköteles.`);
+    else if (s === 'OPEN') issues.push(`„${c.name}” bejelentése folyamatban – még ${c.deadline.daysLeft} nap.`);
+    else if (s === 'NO_DATE') issues.push(`„${c.name}”: az aktiválás dátuma hiányzik.`);
+  }
+  if (input.royaltyQualifies && input.hasRoyalty && input.nexus < 1)
+    issues.push(`Nexus ${Math.round(input.nexus * 1000) / 10}%: a jogdíjkedvezmény arányosan kisebb.`);
+  if (input.gain > 0 && input.saleDeduction === 0) issues.push('A tervezett eladás nyeresége nem mentes.');
+  else if (input.gain > 0 && input.exemptShare < 1) issues.push('Az eladási nyereség csak részben mentes.');
+
+  const benefit = input.annualSaving > 0 || input.saleDeduction > 0;
+  const level: QualificationLevel = !benefit ? 'NONE' : issues.length > 0 ? 'PARTIAL' : 'FULL';
+  return { level, issues };
+}
+
 function disabledResult(components: ComponentResult[], deadline: NotificationDeadline): SoftwareResult {
   return {
     enabled: false,
+    qualification: { level: 'NONE', issues: [] },
     royaltyQualifies: false,
     components,
     years: [],

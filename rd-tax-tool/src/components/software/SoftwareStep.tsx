@@ -11,7 +11,7 @@ import type { RoyaltyYear, SoftwareAssetInputs, SoftwareComponent, SoftwareResul
 import { Button } from '../ui/Button';
 import { Card, LegalBadge } from '../ui/Card';
 import { CurrencyInput, Segmented, TextInput, Toggle } from '../ui/fields';
-import { DateField, DeadlineBadge, MoneyCell } from './shared';
+import { DateField, DeadlineBadge, MoneyCell, QualificationBanner } from './shared';
 
 interface SoftwareStepProps {
   sw: SoftwareAssetInputs;
@@ -75,6 +75,8 @@ export function SoftwareStep({ sw, result, taxYear, profitBeforeTax, onChange }:
 
       {sw.enabled && (
         <>
+          <QualificationBanner qualification={result.qualification} />
+
           <Card
             title="Fejlesztés és NAV-bejelentések"
             subtitle={`Az eredeti fejlesztést és minden aktivált továbbfejlesztést külön, ${IP_RULES.NOTIFICATION_DAYS} napon belül kell bejelenteni – jogvesztő határidő`}
@@ -304,7 +306,11 @@ function SaleCard({ sw, result, onChange }: Pick<SoftwareStepProps, 'sw' | 'resu
         />
       </div>
       {s.gain > 0 && (
-        <div className={`mt-4 rounded-lg px-4 py-3 text-sm ${s.eligible ? 'bg-risk-green-soft' : 'bg-risk-red-soft'}`}>
+        <div
+          className={`mt-4 rounded-lg px-4 py-3 text-sm ${
+            !s.eligible ? 'bg-risk-red-soft' : s.exemptShare < 1 ? 'bg-risk-yellow-soft' : 'bg-risk-green-soft'
+          }`}
+        >
           <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
             <Row label="Árfolyamnyereség" value={formatHuf(s.gain)} />
             <Row label="Bejelentett rész aránya" value={formatPercent(s.exemptShare)} />

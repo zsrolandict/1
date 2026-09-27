@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoAssessment, emptyAssessment, emptySoftware, newComponent } from './defaults';
+import { DEMOS, findDemo } from './demos';
 import { calculateCorporateTax, calculateSavings, calculateSzocho } from './engine';
 import { scoreAudit } from './scoring';
 import { calculateSoftware, nexusRatio, notificationDeadline } from './software';
@@ -474,5 +475,35 @@ describe('normaliseAssessment', () => {
     const legacy = { client: { companySize: 'SME' } };
     expect(normaliseAssessment(legacy).client.companySize).toBe('MICRO_SMALL');
     expect(normaliseAssessment({ client: { companySize: 'LIABLE' } }).client.companySize).toBe('LARGE');
+  });
+});
+
+describe('demo library', () => {
+  const levelForAudit = { FULL: 'GREEN', PARTIAL: 'YELLOW', NONE: 'RED' } as const;
+
+  for (const demo of DEMOS) {
+    it(`${demo.id} produces its advertised outcome (${demo.outcome})`, () => {
+      const a = demo.build();
+      const r = savingsOf(a);
+      if (demo.group === 'software') {
+        expect(r.ipBox.qualification.level).toBe(demo.outcome);
+      } else {
+        expect(scoreAudit(a.audit, a.client.industry).level).toBe(levelForAudit[demo.outcome]);
+      }
+      expect(Number.isFinite(r.totalAnnualSaving)).toBe(true);
+    });
+  }
+
+  it('keeps the K+F relief when the software relief is not available', () => {
+    const r = savingsOf(findDemo('software-none')!.build());
+    expect(r.ipBox.annualSaving).toBe(0);
+    expect(r.ipBox.sale.deduction).toBe(0);
+    expect(r.corporateTax.nominalSaving).toBeGreaterThan(0);
+  });
+
+  it('makes only the notified share of the sale gain exempt in the partial demo', () => {
+    const r = savingsOf(findDemo('software-partial')!.build());
+    expect(r.ipBox.sale.exemptShare).toBeCloseTo(120 / 170);
+    expect(r.ipBox.sale.taxablePart).toBeGreaterThan(0);
   });
 });
