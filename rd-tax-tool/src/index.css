@@ -1,0 +1,86 @@
+@import 'tailwindcss';
+
+/*
+ * ICT Európa brand tokens: deep navy + slate, with status colours reserved
+ * for risk bands only. Utilities: bg-navy-900, text-slate-600, etc.
+ */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Source Serif 4', ui-serif, Georgia, serif;
+
+  --color-navy-950: #06122a;
+  --color-navy-900: #0b1f3f;
+  --color-navy-800: #132d57;
+  --color-navy-700: #1c3d70;
+  --color-navy-600: #2a5190;
+  --color-navy-500: #3b68ad;
+  --color-navy-100: #dfe7f3;
+  --color-navy-50: #f0f4fa;
+
+  --color-accent: #b89a5a; /* muted brass – used sparingly for emphasis */
+
+  --color-risk-green: #1f7a4d;
+  --color-risk-green-soft: #e3f2ea;
+  --color-risk-yellow: #b7791f;
+  --color-risk-yellow-soft: #fbf1dd;
+  --color-risk-red: #b42318;
+  --color-risk-red-soft: #fbe6e4;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  @apply bg-slate-100 font-sans text-slate-800;
+}
+
+/* Numeric figures align in tables and tiles. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Range slider in brand colours. */
+input[type='range'] {
+  accent-color: var(--color-navy-700);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Print: only the executive report is printed, on A4.                    */
+/* ---------------------------------------------------------------------- */
+.print-only {
+  display: none;
+}
+
+@page {
+  size: A4;
+  margin: 14mm 14mm 16mm;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .report-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .avoid-break {
+    break-inside: avoid;
+  }
+  .page-break {
+    break-before: page;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
