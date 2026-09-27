@@ -8,6 +8,8 @@ import { RiskGauge } from '../charts/RiskGauge';
 import { SavingsBreakdown } from '../charts/SavingsBreakdown';
 import { ActionPlan } from '../report/ActionPlan';
 import { ExecutiveReport } from '../report/ExecutiveReport';
+import { SealPanel } from '../report/SealPanel';
+import type { SealStatus } from '../../state/useAssessment';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { DerivationTable, Warnings } from './CostStep';
@@ -18,10 +20,23 @@ interface ResultsStepProps {
   audit: AuditResult;
   actionPlan: ActionStep[];
   missingClientData: boolean;
+  sealStatus: SealStatus;
   onParamsChange: (patch: Partial<TaxParameters>) => void;
+  onSeal: (sealedBy: string) => Promise<void>;
+  onReopen: () => void;
 }
 
-export function ResultsStep({ assessment, savings, audit, actionPlan, missingClientData, onParamsChange }: ResultsStepProps) {
+export function ResultsStep({
+  assessment,
+  savings,
+  audit,
+  actionPlan,
+  missingClientData,
+  sealStatus,
+  onParamsChange,
+  onSeal,
+  onReopen,
+}: ResultsStepProps) {
   const [preview, setPreview] = useState(false);
   const years = assessment.params.selfRevisionYears;
 
@@ -52,7 +67,7 @@ export function ResultsStep({ assessment, savings, audit, actionPlan, missingCli
       )}
 
       {preview ? (
-        <ExecutiveReport assessment={assessment} savings={savings} audit={audit} actionPlan={actionPlan} />
+        <ExecutiveReport assessment={assessment} savings={savings} audit={audit} actionPlan={actionPlan} sealStatus={sealStatus} />
       ) : (
         <>
           {/* KPI row */}
@@ -79,6 +94,7 @@ export function ResultsStep({ assessment, savings, audit, actionPlan, missingCli
               </label>
               <input
                 id="self-revision"
+                disabled={Boolean(assessment.seal)}
                 type="range"
                 min={0}
                 max={5}
@@ -104,6 +120,16 @@ export function ResultsStep({ assessment, savings, audit, actionPlan, missingCli
               <CriteriaBars audit={audit} />
             </Card>
           </div>
+
+          <SealPanel
+            key={assessment.seal?.hash ?? 'open'}
+            seal={assessment.seal}
+            status={sealStatus}
+            history={assessment.sealHistory}
+            defaultName={assessment.client.advisorName}
+            onSeal={onSeal}
+            onReopen={onReopen}
+          />
 
           {(audit.recommendations.length > 0 || audit.knockOuts.length > 0) && (
             <Card title="Kockázatcsökkentő javaslatok" subtitle="Prioritási sorrendben – a leggyengébb kritériummal kezdve" icon={ListChecks}>

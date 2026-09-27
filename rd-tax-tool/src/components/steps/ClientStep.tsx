@@ -1,5 +1,5 @@
 import { Building2, Landmark } from 'lucide-react';
-import { INDUSTRY_LABELS } from '../../domain/constants';
+import { COMPANY_SIZE_OPTIONS, INDUSTRY_LABELS } from '../../domain/constants';
 import { isValidTaxNumber } from '../../domain/format';
 import type { ClientProfile } from '../../domain/types';
 import { Card } from '../ui/Card';
@@ -94,14 +94,15 @@ export function ClientStep({ client, onChange }: ClientStepProps) {
           />
           <div className="sm:col-span-2">
             <Segmented
-              label="Létszám-kategória"
+              label="Vállalkozási méret (Kkv tv., kapcsolt vállalkozásokkal együtt)"
               value={client.companySize}
               onChange={(companySize) => onChange({ companySize })}
-              options={[
-                { value: 'SME', label: 'Kkv', description: 'Mikro-, kis- vagy középvállalkozás – nem innovációsjárulék-köteles' },
-                { value: 'LIABLE', label: 'Innovációs járulék-köteles', description: 'Nem kkv – 0,3% innovációs járulék fizetésére kötelezett' },
-              ]}
+              options={COMPANY_SIZE_OPTIONS}
             />
+            <p className="mt-2 text-xs text-slate-500">
+              A besorolás csoportszinten, a partner- és kapcsolt vállalkozások adataival együtt értendő. Innovációs járulékot a
+              közép- és nagyvállalatok fizetnek (Inno. tv. 17. §).
+            </p>
           </div>
         </div>
       </Card>

@@ -4,13 +4,14 @@
  *   points_i  = weight_i × rating_i / 4
  *   base      = Σ points_i
  *   score     = clamp(base − Σ red-flag penalties, 0, 100)
+ *               (general flags + the flags of the client's industry)
  *   knock-out = any criterion rated 0, or a critical red flag
  *               → score capped at KNOCKOUT_CAP (RED band)
  *
  *   GREEN ≥ 80 · YELLOW 50–79 · RED < 50
  */
-import { FRASCATI_CRITERIA, KNOCKOUT_CAP, RED_FLAGS, RISK_THRESHOLDS } from './constants';
-import type { AuditAnswers, AuditResult, CriterionScore, RiskLevel } from './types';
+import { FRASCATI_CRITERIA, KNOCKOUT_CAP, redFlagsFor, RISK_THRESHOLDS } from './constants';
+import type { AuditAnswers, AuditResult, CriterionScore, Industry, RiskLevel } from './types';
 
 const MAX_RATING = 4;
 
@@ -20,7 +21,7 @@ export function riskLevelForScore(score: number): RiskLevel {
   return 'RED';
 }
 
-export function scoreAudit(answers: AuditAnswers): AuditResult {
+export function scoreAudit(answers: AuditAnswers, industry: Industry): AuditResult {
   const criterionScores: CriterionScore[] = FRASCATI_CRITERIA.map((criterion) => {
     const rating = answers.ratings[criterion.id];
     return {
@@ -33,7 +34,8 @@ export function scoreAudit(answers: AuditAnswers): AuditResult {
 
   const baseScore = criterionScores.reduce((sum, c) => sum + c.points, 0);
 
-  const raisedFlags = RED_FLAGS.filter((flag) => answers.redFlags[flag.id]);
+  // Flags ticked under another industry are ignored if the industry changes.
+  const raisedFlags = redFlagsFor(industry).filter((flag) => answers.redFlags[flag.id]);
   const penalty = raisedFlags.reduce((sum, flag) => sum + flag.penalty, 0);
 
   let score = Math.max(0, Math.min(100, baseScore - penalty));

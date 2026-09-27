@@ -3,21 +3,24 @@
  * print-only container, so "Nyomtatás / PDF" always prints exactly this view.
  */
 import type { ActionStep } from '../../domain/actionPlan';
-import { FRASCATI_CRITERIA, INDUSTRY_LABELS, RISK_LABELS } from '../../domain/constants';
+import { COMPANY_SIZE_LABELS, FRASCATI_CRITERIA, INDUSTRY_LABELS, RISK_LABELS } from '../../domain/constants';
 import { formatHuf, formatPercent } from '../../domain/format';
 import type { Assessment, AuditResult, SavingsResult } from '../../domain/types';
 import { RiskGauge } from '../charts/RiskGauge';
 import { savingsRows } from '../charts/SavingsBreakdown';
+import type { SealStatus } from '../../state/useAssessment';
 import { ActionPlan } from './ActionPlan';
+import { ReportSealLine } from './SealPanel';
 
 interface ExecutiveReportProps {
   assessment: Assessment;
   savings: SavingsResult;
   audit: AuditResult;
   actionPlan: ActionStep[];
+  sealStatus: SealStatus;
 }
 
-export function ExecutiveReport({ assessment, savings, audit, actionPlan }: ExecutiveReportProps) {
+export function ExecutiveReport({ assessment, savings, audit, actionPlan, sealStatus }: ExecutiveReportProps) {
   const { client, params } = assessment;
   const today = new Date().toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric' });
   const years = params.selfRevisionYears;
@@ -46,7 +49,7 @@ export function ExecutiveReport({ assessment, savings, audit, actionPlan }: Exec
           <ReportMeta label="Projekt" value={client.projectName || '—'} />
           <ReportMeta label="Iparág" value={INDUSTRY_LABELS[client.industry]} />
           <ReportMeta label="Vizsgált adóév" value={String(client.taxYear)} />
-          <ReportMeta label="Kategória" value={client.companySize === 'SME' ? 'Kkv' : 'Innovációs járulék-köteles'} />
+          <ReportMeta label="Kategória" value={COMPANY_SIZE_LABELS[client.companySize]} />
         </dl>
       </section>
 
@@ -158,6 +161,9 @@ export function ExecutiveReport({ assessment, savings, audit, actionPlan }: Exec
           </div>
         </div>
       </footer>
+      <div className="avoid-break mt-4">
+        <ReportSealLine seal={assessment.seal} status={sealStatus} />
+      </div>
     </article>
   );
 }

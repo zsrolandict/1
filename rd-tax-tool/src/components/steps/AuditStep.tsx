@@ -1,17 +1,28 @@
 import { CircleX, ClipboardCheck, ShieldAlert } from 'lucide-react';
-import { FRASCATI_CRITERIA, RED_FLAGS } from '../../domain/constants';
-import type { AuditAnswers, AuditResult, CriterionRating } from '../../domain/types';
+import {
+  FRASCATI_CRITERIA,
+  INDUSTRY_LABELS,
+  INDUSTRY_RED_FLAGS,
+  RED_FLAGS,
+  type RedFlagDefinition,
+} from '../../domain/constants';
+import type { AuditAnswers, AuditResult, CriterionRating, Industry } from '../../domain/types';
 import { Card } from '../ui/Card';
 
 interface AuditStepProps {
   answers: AuditAnswers;
+  industry: Industry;
   result: AuditResult;
   onChange: (patch: Partial<AuditAnswers>) => void;
 }
 
 const RATINGS: CriterionRating[] = [0, 1, 2, 3, 4];
 
-export function AuditStep({ answers, result, onChange }: AuditStepProps) {
+export function AuditStep({ answers, industry, result, onChange }: AuditStepProps) {
+  const industryFlags = INDUSTRY_RED_FLAGS[industry];
+  const toggleFlag = (id: RedFlagDefinition['id'], checked: boolean) =>
+    onChange({ redFlags: { ...answers.redFlags, [id]: checked } });
+
   return (
     <div className="flex flex-col gap-6">
       <Card
@@ -73,37 +84,22 @@ export function AuditStep({ answers, result, onChange }: AuditStepProps) {
         icon={ShieldAlert}
       >
         <div className="flex flex-col gap-2">
-          {RED_FLAGS.map((flag) => {
-            const checked = answers.redFlags[flag.id];
-            return (
-              <label
-                key={flag.id}
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 transition-colors ${
-                  checked ? 'border-risk-red/40 bg-risk-red-soft' : 'border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  className="mt-0.5 size-4 accent-[var(--color-risk-red)]"
-                  checked={checked}
-                  onChange={(e) => onChange({ redFlags: { ...answers.redFlags, [flag.id]: e.target.checked } })}
-                />
-                <span className="flex-1">
-                  <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-800">
-                    {flag.label}
-                    {flag.critical && (
-                      <span className="rounded bg-risk-red px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
-                        Kizáró
-                      </span>
-                    )}
-                  </span>
-                  <span className="block text-xs text-slate-500">{flag.description}</span>
-                </span>
-                <span className="tabular shrink-0 text-xs font-medium text-slate-500">−{flag.penalty} pont</span>
-              </label>
-            );
-          })}
+          {RED_FLAGS.map((flag) => (
+            <FlagRow key={flag.id} flag={flag} checked={Boolean(answers.redFlags[flag.id])} onToggle={toggleFlag} />
+          ))}
         </div>
+        {industryFlags.length > 0 && (
+          <div className="mt-5">
+            <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+              Iparági kockázatok – {INDUSTRY_LABELS[industry]}
+            </p>
+            <div className="flex flex-col gap-2">
+              {industryFlags.map((flag) => (
+                <FlagRow key={flag.id} flag={flag} checked={Boolean(answers.redFlags[flag.id])} onToggle={toggleFlag} />
+              ))}
+            </div>
+          </div>
+        )}
       </Card>
 
       {result.knockOuts.length > 0 && (
@@ -128,5 +124,40 @@ export function AuditStep({ answers, result, onChange }: AuditStepProps) {
         />
       </Card>
     </div>
+  );
+}
+
+interface FlagRowProps {
+  flag: RedFlagDefinition;
+  checked: boolean;
+  onToggle: (id: RedFlagDefinition['id'], checked: boolean) => void;
+}
+
+function FlagRow({ flag, checked, onToggle }: FlagRowProps) {
+  return (
+    <label
+      className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 transition-colors ${
+        checked ? 'border-risk-red/40 bg-risk-red-soft' : 'border-slate-200 hover:bg-slate-50'
+      }`}
+    >
+      <input
+        type="checkbox"
+        className="mt-0.5 size-4 accent-[var(--color-risk-red)]"
+        checked={checked}
+        onChange={(e) => onToggle(flag.id, e.target.checked)}
+      />
+      <span className="flex-1">
+        <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-800">
+          {flag.label}
+          {flag.critical && (
+            <span className="rounded bg-risk-red px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
+              Kizáró
+            </span>
+          )}
+        </span>
+        <span className="block text-xs text-slate-500">{flag.description}</span>
+      </span>
+      <span className="tabular shrink-0 text-xs font-medium text-slate-500">−{flag.penalty} pont</span>
+    </label>
   );
 }

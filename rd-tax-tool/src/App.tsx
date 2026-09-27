@@ -4,7 +4,7 @@
  * Flow: Ügyféladatok → Költség/Bér kalkulátor → SZTNH audit → Eredménytábla.
  * All figures are derived in `useAssessment` from the pure domain engine.
  */
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Lock, ShieldX } from 'lucide-react';
 import { useState } from 'react';
 import { AppHeader } from './components/layout/AppHeader';
 import { LiveSummary } from './components/layout/LiveSummary';
@@ -15,7 +15,7 @@ import { ClientStep, clientErrors } from './components/steps/ClientStep';
 import { CostStep } from './components/steps/CostStep';
 import { ResultsStep } from './components/steps/ResultsStep';
 import { Button } from './components/ui/Button';
-import { useAssessment } from './state/useAssessment';
+import { useAssessment, type SealStatus } from './state/useAssessment';
 
 export default function App() {
   const {
@@ -23,6 +23,9 @@ export default function App() {
     savings,
     audit,
     actionPlan,
+    sealStatus,
+    seal,
+    reopen,
     exportJson,
     updateClient,
     updateCosts,
@@ -61,6 +64,7 @@ export default function App() {
           onDemo={loadDemo}
         />
         <Stepper current={step} onSelect={goTo} incomplete={{ client: missingClientData }} />
+        {assessment.seal && <SealBanner status={sealStatus} onOpen={() => goTo('results')} />}
 
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
           {step === 'results' ? (
@@ -70,11 +74,15 @@ export default function App() {
               audit={audit}
               actionPlan={actionPlan}
               missingClientData={missingClientData}
+              sealStatus={sealStatus}
               onParamsChange={updateParams}
+              onSeal={seal}
+              onReopen={reopen}
             />
           ) : (
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-              <div className="min-w-0">
+              {/* A disabled fieldset makes every control read-only while the case is sealed. */}
+              <fieldset disabled={Boolean(assessment.seal)} className="m-0 min-w-0 border-0 p-0">
                 {step === 'client' && <ClientStep client={assessment.client} onChange={updateClient} />}
                 {step === 'costs' && (
                   <CostStep
@@ -85,8 +93,15 @@ export default function App() {
                     onParamsChange={updateParams}
                   />
                 )}
-                {step === 'audit' && <AuditStep answers={assessment.audit} result={audit} onChange={updateAudit} />}
-              </div>
+                {step === 'audit' && (
+                  <AuditStep
+                    answers={assessment.audit}
+                    industry={assessment.client.industry}
+                    result={audit}
+                    onChange={updateAudit}
+                  />
+                )}
+              </fieldset>
               <LiveSummary savings={savings} audit={audit} />
             </div>
           )}
@@ -114,8 +129,29 @@ export default function App() {
 
       {/* Print target: only this is visible when printing, from any step. */}
       <div className="print-only">
-        <ExecutiveReport assessment={assessment} savings={savings} audit={audit} actionPlan={actionPlan} />
+        <ExecutiveReport assessment={assessment} savings={savings} audit={audit} actionPlan={actionPlan} sealStatus={sealStatus} />
       </div>
     </>
+  );
+}
+
+/** Read-only notice shown on every step while the case is sealed. */
+function SealBanner({ status, onOpen }: { status: SealStatus; onOpen: () => void }) {
+  const invalid = status === 'invalid';
+  const Icon = invalid ? ShieldX : Lock;
+  return (
+    <div className={`no-print border-b ${invalid ? 'border-risk-red/30 bg-risk-red-soft' : 'border-navy-100 bg-navy-50'}`}>
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm sm:px-6">
+        <span className={`flex items-center gap-2 font-medium ${invalid ? 'text-risk-red' : 'text-navy-800'}`}>
+          <Icon className="size-4" aria-hidden />
+          {invalid
+            ? 'A lezárt ügy pecsétje érvénytelen: az adatok a lezárás után módosultak.'
+            : 'Lezárt ügy – az adatok csak olvashatók.'}
+        </span>
+        <button type="button" onClick={onOpen} className="text-sm font-medium text-navy-700 underline-offset-2 hover:underline">
+          Pecsét részletei
+        </button>
+      </div>
+    </div>
   );
 }

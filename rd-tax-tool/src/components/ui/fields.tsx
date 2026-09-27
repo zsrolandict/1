@@ -30,7 +30,7 @@ export function Field({ label, hint, error, htmlFor, children }: FieldProps) {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-navy-600 focus:ring-2 focus:ring-navy-100 focus:outline-none';
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-navy-600 focus:ring-2 focus:ring-navy-100 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-600';
 
 interface TextInputProps {
   label: string;
@@ -163,7 +163,7 @@ export function Segmented<T extends string>({ label, value, options, onChange }:
   return (
     <div className="flex flex-col gap-1.5" role="radiogroup" aria-label={label}>
       <span className="text-[13px] font-medium text-slate-700">{label}</span>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 sm:auto-cols-fr sm:grid-flow-col">
         {options.map((opt) => {
           const active = opt.value === value;
           return (
@@ -221,5 +221,45 @@ export function Toggle({ label, description, checked, onChange }: ToggleProps) {
         {description && <span className="block text-xs text-slate-500">{description}</span>}
       </span>
     </label>
+  );
+}
+
+interface NumberInputProps {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  suffix?: string;
+  hint?: ReactNode;
+}
+
+/** Small integer input (headcount, months). */
+export function NumberInput({ label, value, onChange, min = 0, max, suffix, hint }: NumberInputProps) {
+  const id = useId();
+  return (
+    <Field label={label} hint={hint} htmlFor={id}>
+      <div className="relative">
+        <input
+          id={id}
+          type="number"
+          inputMode="numeric"
+          min={min}
+          max={max}
+          step={1}
+          className={`${inputClass} tabular pr-12 text-right`}
+          value={Number.isFinite(value) ? value : 0}
+          onChange={(e) => {
+            const n = Math.floor(Number(e.target.value) || 0);
+            onChange(Math.max(min, max !== undefined ? Math.min(max, n) : n));
+          }}
+        />
+        {suffix && (
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-slate-400">
+            {suffix}
+          </span>
+        )}
+      </div>
+    </Field>
   );
 }

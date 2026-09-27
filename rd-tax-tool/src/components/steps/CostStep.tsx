@@ -1,9 +1,9 @@
-import { GraduationCap, Package, Scale, TriangleAlert } from 'lucide-react';
+import { GraduationCap, Package, Scale, TriangleAlert, Wrench } from 'lucide-react';
 import { LEGAL_REFERENCES, TAX_RATES } from '../../domain/constants';
 import { formatHuf, formatPercent } from '../../domain/format';
 import type { RdCostInputs, SavingsResult, TaxParameters } from '../../domain/types';
 import { Card, LegalBadge } from '../ui/Card';
-import { CurrencyInput, Toggle } from '../ui/fields';
+import { CurrencyInput, NumberInput, Segmented, Toggle } from '../ui/fields';
 
 interface CostStepProps {
   costs: RdCostInputs;
@@ -23,36 +23,97 @@ function SavingNote({ label, value }: { label: string; value: number }) {
 }
 
 export function CostStep({ costs, params, savings, onCostsChange, onParamsChange }: CostStepProps) {
-  const standardRate = TAX_RATES.SZOCHO * TAX_RATES.SZOCHO_RELIEF_STANDARD;
-  const phdRate = TAX_RATES.SZOCHO * TAX_RATES.SZOCHO_RELIEF_PHD;
+  const routes = savings.engineerRoutes;
+  const huf0 = (n: number) => formatHuf(n);
 
   return (
     <div className="flex flex-col gap-6">
       <Card
-        title="Kutatói / mérnöki bérköltség"
-        subtitle="K+F munkakörben foglalkoztatottak éves bruttó bére"
+        title="Tudományos fokozatú kutatók"
+        subtitle="Szocho-kedvezmény havi bérplafonnal, fejenként"
         icon={GraduationCap}
-        aside={<LegalBadge>{LEGAL_REFERENCES.SZOCHO}</LegalBadge>}
+        aside={<LegalBadge>{LEGAL_REFERENCES.SZOCHO_15}</LegalBadge>}
       >
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid gap-6">
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <CurrencyInput
+              label="PhD / tudományos fokozatú kutatók éves bruttó bére"
+              value={costs.phdGrossWages}
+              onChange={(phdGrossWages) => onCostsChange({ phdGrossWages })}
+              sliderMax={150_000_000}
+              sliderStep={1_000_000}
+              hint={`100% mentesség (${formatPercent(TAX_RATES.SZOCHO, 0)}), legfeljebb havi ${huf0(TAX_RATES.SZOCHO_PHD_MONTHLY_CAP)} bér után fejenként`}
+              annotation={<SavingNote label="Szocho-megtakarítás" value={savings.szocho.phdSaving} />}
+            />
+            <NumberInput label="Létszám" value={costs.phdHeadcount} onChange={(phdHeadcount) => onCostsChange({ phdHeadcount })} suffix="fő" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <CurrencyInput
+              label="Doktoranduszok / doktorjelöltek éves bruttó bére"
+              value={costs.doctoralGrossWages}
+              onChange={(doctoralGrossWages) => onCostsChange({ doctoralGrossWages })}
+              sliderMax={50_000_000}
+              sliderStep={200_000}
+              hint={`50% mentesség (${formatPercent(TAX_RATES.SZOCHO * TAX_RATES.SZOCHO_RELIEF_DOCTORAL)}), legfeljebb havi ${huf0(TAX_RATES.SZOCHO_DOCTORAL_MONTHLY_CAP)} bér után fejenként`}
+              annotation={<SavingNote label="Szocho-megtakarítás" value={savings.szocho.doctoralSaving} />}
+            />
+            <NumberInput
+              label="Létszám"
+              value={costs.doctoralHeadcount}
+              onChange={(doctoralHeadcount) => onCostsChange({ doctoralHeadcount })}
+              suffix="fő"
+            />
+          </div>
+          <div className="max-w-xs">
+            <NumberInput
+              label="Foglalkoztatási hónapok a tárgyévben"
+              value={costs.researcherMonths}
+              onChange={(researcherMonths) => onCostsChange({ researcherMonths })}
+              min={1}
+              max={12}
+              suffix="hó"
+              hint="A havi plafon ennyi hónapra számolódik"
+            />
+          </div>
+        </div>
+      </Card>
+
+      <Card
+        title="Fokozat nélküli K+F mérnökök, fejlesztők"
+        subtitle="A bér vagy a Tao-levonásba, vagy a 16. § szerinti szocho-kedvezménybe kerül – a kettő együtt nem"
+        icon={Wrench}
+        aside={<LegalBadge>{LEGAL_REFERENCES.SZOCHO_16}</LegalBadge>}
+      >
+        <div className="grid gap-6">
           <CurrencyInput
-            label="Fejlesztő mérnökök (fokozat nélkül)"
+            label="Fejlesztő mérnökök éves bruttó bére"
             value={costs.engineerGrossWages}
             onChange={(engineerGrossWages) => onCostsChange({ engineerGrossWages })}
             sliderMax={300_000_000}
             sliderStep={1_000_000}
-            hint={`Szocho-mentesség: 50% → ${formatPercent(standardRate)} a bruttó bérre`}
-            annotation={<SavingNote label="Szocho-megtakarítás" value={savings.szocho.engineerSaving} />}
+            hint="A HIPA- és innovációsjárulék-alapot mindkét esetben csökkenti"
           />
-          <CurrencyInput
-            label="PhD / tudományos fokozatú kutatók"
-            value={costs.phdGrossWages}
-            onChange={(phdGrossWages) => onCostsChange({ phdGrossWages })}
-            sliderMax={150_000_000}
-            sliderStep={1_000_000}
-            hint={`Szocho-mentesség: 100% → ${formatPercent(phdRate, 0)} a bruttó bérre`}
-            annotation={<SavingNote label="Szocho-megtakarítás" value={savings.szocho.phdSaving} />}
+          <Segmented
+            label="Kedvezmény útja"
+            value={params.engineerRelief}
+            onChange={(engineerRelief) => onParamsChange({ engineerRelief })}
+            options={[
+              {
+                value: 'CIT',
+                label: `Tao-levonás (9%)${routes.recommended === 'CIT' ? ' · javasolt' : ''}`,
+                description: `${huf0(routes.citNominal)} névleges, ebből tárgyévben ${huf0(routes.citImmediate)} realizálható`,
+              },
+              {
+                value: 'SZOCHO_16',
+                label: `Szocho 16. § (6,5%)${routes.recommended === 'SZOCHO_16' ? ' · javasolt' : ''}`,
+                description: `${huf0(routes.szocho16)} havonta, a bérszámfejtésben – ekkor ez a bér nem vonható le a Tao-ban`,
+              },
+            ]}
           />
+          <p className="text-xs text-slate-500">
+            Nyereséges cégnél a Tao-út ér többet; veszteséges évben a szocho-kedvezmény azonnal pénzt hoz, míg a Tao-hatás
+            csak elhatárolt veszteség lesz. A javaslat a tárgyévben realizálható összeget hasonlítja össze.
+          </p>
         </div>
       </Card>
 
@@ -141,13 +202,23 @@ export function DerivationTable({ savings, hipaRate }: { savings: SavingsResult;
   const base = formatHuf(savings.directRdCost);
   const rows = [
     {
-      label: 'Szocho-kedvezmény',
-      formula: 'mérnöki bér × 6,5% + PhD bér × 13%',
-      value: savings.szocho.totalSaving,
+      label: 'Szocho – PhD (15. §)',
+      formula: 'min(bér; fő × hó × 500 000) × 13%',
+      value: savings.szocho.phdSaving,
+    },
+    {
+      label: 'Szocho – doktorandusz (15. §)',
+      formula: 'min(bér; fő × hó × 200 000) × 6,5%',
+      value: savings.szocho.doctoralSaving,
+    },
+    {
+      label: 'Szocho – mérnökök (16. §)',
+      formula: savings.szocho.engineerSaving > 0 ? 'mérnöki bér × 6,5%' : 'nem választott – a bér a Tao-alapban',
+      value: savings.szocho.engineerSaving,
     },
     {
       label: 'Tao – kétszeres levonás',
-      formula: `${base} × ${formatPercent(TAX_RATES.CIT, 0)}`,
+      formula: `${formatHuf(savings.citDeductibleBase)} × ${formatPercent(TAX_RATES.CIT, 0)}`,
       value: savings.corporateTax.nominalSaving,
     },
     {
@@ -160,7 +231,7 @@ export function DerivationTable({ savings, hipaRate }: { savings: SavingsResult;
       formula:
         savings.innovationContributionSaving > 0
           ? `${base} × ${formatPercent(TAX_RATES.INNOVATION_CONTRIBUTION)}`
-          : 'kkv – nem kötelezett',
+          : 'mikro- / kisvállalkozás – mentes',
       value: savings.innovationContributionSaving,
     },
   ];

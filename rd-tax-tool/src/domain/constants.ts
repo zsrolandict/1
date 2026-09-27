@@ -5,19 +5,31 @@
  * a one-line edit reviewed by the tax team, not a hunt through UI code.
  */
 import type {
+  CompanySize,
   CriterionRating,
   FrascatiCriterionId,
+  GeneralRedFlagId,
   Industry,
+  IndustryRedFlagId,
   RedFlagId,
 } from './types';
+
+/** Bump when a rule changes; stored in every seal. */
+export const ENGINE_VERSION = '2026.2';
 
 export const TAX_RATES = {
   /** Szociális hozzájárulási adó – Szocho tv. */
   SZOCHO: 0.13,
-  /** Szocho tv. 15. §: share of szocho waived for R&D staff without a doctorate. */
-  SZOCHO_RELIEF_STANDARD: 0.5,
-  /** Szocho tv. 15. §: share waived for staff holding a PhD / scientific degree. */
+  /** Szocho tv. 15. §: PhD / scientific degree – full relief… */
   SZOCHO_RELIEF_PHD: 1.0,
+  /** …on at most this much gross monthly wage per person. */
+  SZOCHO_PHD_MONTHLY_CAP: 500_000,
+  /** Szocho tv. 15. §: doctoral students / candidates – 50% relief… */
+  SZOCHO_RELIEF_DOCTORAL: 0.5,
+  /** …on at most this much gross monthly wage per person. */
+  SZOCHO_DOCTORAL_MONTHLY_CAP: 200_000,
+  /** Szocho tv. 16. §: R&D staff without a doctorate – 50% relief, excludes the Tao deduction of the same wages. */
+  SZOCHO_RELIEF_16: 0.5,
   /** Társasági adó – Tao. tv. 19. § */
   CIT: 0.09,
   /** Default local business tax rate (statutory maximum) – Htv. 40. § */
@@ -28,11 +40,40 @@ export const TAX_RATES = {
 } as const;
 
 export const LEGAL_REFERENCES = {
-  SZOCHO: 'Szocho tv. 15. §',
+  SZOCHO: 'Szocho tv. 15–16. §',
+  SZOCHO_15: 'Szocho tv. 15. §',
+  SZOCHO_16: 'Szocho tv. 16. §',
   CIT: 'Tao. tv. 7. § (1) t)',
   HIPA: 'Htv. 39. §',
-  INNOVATION: 'Inno. tv. (járulékalap = HIPA-alap)',
+  INNOVATION: 'Inno. tv. 17. §',
 } as const;
+
+export const COMPANY_SIZE_OPTIONS: { value: CompanySize; label: string; description: string }[] = [
+  {
+    value: 'MICRO_SMALL',
+    label: 'Mikro- / kisvállalkozás',
+    description: '< 50 fő és ≤ 10 M EUR árbevétel vagy mérlegfőösszeg – innovációs járulék alól mentes',
+  },
+  {
+    value: 'MEDIUM',
+    label: 'Középvállalkozás',
+    description: '< 250 fő és ≤ 50 M EUR árbevétel vagy ≤ 43 M EUR mérlegfőösszeg – járulékköteles',
+  },
+  {
+    value: 'LARGE',
+    label: 'Nagyvállalat',
+    description: 'A kkv-határok felett – járulékköteles',
+  },
+];
+
+export const COMPANY_SIZE_LABELS: Record<CompanySize, string> = {
+  MICRO_SMALL: 'Mikro- / kisvállalkozás',
+  MEDIUM: 'Középvállalkozás',
+  LARGE: 'Nagyvállalat',
+};
+
+/** Innovation contribution liability (Inno. tv. 17. §). */
+export const isInnovationContributionLiable = (size: CompanySize): boolean => size !== 'MICRO_SMALL';
 
 export const INDUSTRY_LABELS: Record<Industry, string> = {
   MACHINERY_AUTOMATION: 'Gépipar / Automatizálás',
@@ -149,8 +190,8 @@ export const FRASCATI_CRITERIA: readonly CriterionDefinition[] = [
   },
 ] as const;
 
-export interface RedFlagDefinition {
-  id: RedFlagId;
+export interface RedFlagDefinition<Id extends RedFlagId = RedFlagId> {
+  id: Id;
   label: string;
   description: string;
   /** Points deducted from the weighted score. */
@@ -164,7 +205,7 @@ export interface RedFlagDefinition {
  * Typical NAV challenge patterns: activities the tax authority tends to
  * reclassify as production preparation or routine work (Frascati exclusions).
  */
-export const RED_FLAGS: readonly RedFlagDefinition[] = [
+export const RED_FLAGS: readonly RedFlagDefinition<GeneralRedFlagId>[] = [
   {
     id: 'PRODUCTION_PREP',
     label: 'Gyártás-előkészítés / sorozatgyártásra átállás',
@@ -212,6 +253,120 @@ export const RED_FLAGS: readonly RedFlagDefinition[] = [
       'Projektkódos munkaidő-nyilvántartás bevezetése; a múltbeli évekre becslési módszertan dokumentálása.',
   },
 ] as const;
+
+/**
+ * Industry-specific patterns the tax authority typically reclassifies as
+ * routine work or production preparation (Frascati exclusions).
+ */
+export const INDUSTRY_RED_FLAGS: Record<Industry, readonly RedFlagDefinition<IndustryRedFlagId>[]> = {
+  MACHINERY_AUTOMATION: [
+    {
+      id: 'TOOLING_CERTIFICATION',
+      label: 'Szerszámgyártás, készülékezés, CE-megfelelőség',
+      description: 'Sorozatgyártási szerszámok, készülékek tervezése, gép-megfelelőségi tanúsítás.',
+      penalty: 15,
+      critical: false,
+      remediation:
+        'A szerszámozási és tanúsítási költségeket külön kell választani; csak az új műszaki megoldás kísérleti fázisa K+F.',
+    },
+    {
+      id: 'MACHINE_RECONFIGURATION',
+      label: 'Meglévő gép ügyfél-specifikus átkonfigurálása',
+      description: 'Ismert géptípus paraméterezése, méretezése egy megrendelő igényei szerint.',
+      penalty: 10,
+      critical: false,
+      remediation:
+        'Igazolni kell, hogy az átalakítás új, előre nem ismert műszaki probléma megoldását igényelte.',
+    },
+  ],
+  CHEMICALS_MATERIALS: [
+    {
+      id: 'SCALE_UP',
+      label: 'Ismert receptúra méretnövelése (scale-up)',
+      description: 'Laboratóriumban már működő eljárás üzemi méretre vitele technológiai kérdés nélkül.',
+      penalty: 15,
+      critical: false,
+      remediation:
+        'Csak az a scale-up K+F, ahol a méretnövelés új, dokumentált technológiai bizonytalanságot old fel.',
+    },
+    {
+      id: 'STANDARD_MATERIAL_TESTING',
+      label: 'Szabványos anyagvizsgálat, akkreditált mérés',
+      description: 'Ismert módszertanú bevizsgálás, minőségtanúsítás, rutinanalitika.',
+      penalty: 10,
+      critical: false,
+      remediation:
+        'A szabványos bevizsgálásokat ki kell venni a költségalapból; csak a kísérleti hipotézist tesztelő mérések maradhatnak.',
+    },
+  ],
+  FOOD: [
+    {
+      id: 'RECIPE_VARIANT',
+      label: 'Meglévő recept íz-, kiszerelés- vagy csomagolásváltozata',
+      description: 'Termékcsalád bővítése ismert technológiával.',
+      penalty: 15,
+      critical: false,
+      remediation:
+        'Ki kell mutatni az új technológiai kérdést (pl. új tartósítási eljárás, összetevő-kölcsönhatás); a puszta ízvariáns nem K+F.',
+    },
+    {
+      id: 'ROUTINE_SHELF_LIFE',
+      label: 'Rutinszerű eltarthatósági, érzékszervi vizsgálat',
+      description: 'Előírt, ismert módszerű termékvizsgálatok.',
+      penalty: 10,
+      critical: false,
+      remediation:
+        'Csak az új eljárás hatását vizsgáló, kísérleti tervvel végzett tesztek számolhatók el.',
+    },
+  ],
+  ELECTRONICS_IOT: [
+    {
+      id: 'EMC_CERTIFICATION',
+      label: 'EMC / CE-tanúsítás, szabványos megfelelőségi mérés',
+      description: 'Termék forgalomba hozatalához szükséges bevizsgálás.',
+      penalty: 10,
+      critical: false,
+      remediation:
+        'A tanúsítási költségeket el kell különíteni; csak a fejlesztés közbeni kísérleti mérések számolhatók el.',
+    },
+    {
+      id: 'COMPONENT_REPLACEMENT',
+      label: 'Alkatrész-kiváltás funkcióváltozás nélkül',
+      description: 'Megszűnő (end-of-life) alkatrész cseréje egyenértékűre.',
+      penalty: 15,
+      critical: false,
+      remediation:
+        'Igazolni kell, hogy a kiváltás új tervezési problémát vetett fel (pl. teljesítmény, hőkezelés); ellenkező esetben rutinmunka.',
+    },
+  ],
+  SOFTWARE_DIGITAL: [
+    {
+      id: 'SOFTWARE_MAINTENANCE',
+      label: 'Rutinszerű hibajavítás, karbantartás, verziófrissítés',
+      description: 'Meglévő rendszer üzemeltetése, hibák javítása, függőségek frissítése.',
+      penalty: 15,
+      critical: false,
+      remediation:
+        'A karbantartási feladatokat feladatszinten el kell különíteni; csak a technológiai bizonytalanságot feloldó fejlesztés K+F.',
+    },
+    {
+      id: 'DATA_MIGRATION_REPORTING',
+      label: 'Adatmigráció, riportkészítés, felületi átalakítás',
+      description: 'Ismert eszközökkel végzett integráció, riport- vagy UI-munka.',
+      penalty: 10,
+      critical: false,
+      remediation:
+        'Ezek a feladatok a Frascati szerint jellemzően nem K+F; a projektből ki kell venni vagy a K+F-tartalmat dokumentálni kell.',
+    },
+  ],
+  OTHER: [],
+};
+
+/** All red flags that are scored for a given industry. */
+export const redFlagsFor = (industry: Industry): readonly RedFlagDefinition[] => [
+  ...RED_FLAGS,
+  ...INDUSTRY_RED_FLAGS[industry],
+];
 
 /** Score bands (inclusive lower bounds). */
 export const RISK_THRESHOLDS = {
