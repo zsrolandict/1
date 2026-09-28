@@ -184,6 +184,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
         ...body,
         analyzedAt: new Date().toISOString(),
         isSample: false,
+        kind: ws.kind,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'A dokumentum elemzése nem sikerült.');
@@ -292,6 +293,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
           {tab === 'documents' && (
             <DocumentsTab
               documents={intake.documents}
+              kind={ws.kind}
               aiReady={aiReady}
               busy={busy}
               samples={SAMPLE_DOCUMENTS[ws.scenarioId] ?? []}
@@ -577,6 +579,7 @@ function TablesTab({
 
 function DocumentsTab({
   documents,
+  kind,
   aiReady,
   busy,
   samples,
@@ -585,6 +588,7 @@ function DocumentsTab({
   onRemove,
 }: {
   documents: DocumentRecord[];
+  kind: EngagementKind;
   aiReady: boolean | null;
   busy: boolean;
   samples: (typeof SAMPLE_DOCUMENTS)[string];
@@ -641,13 +645,13 @@ function DocumentsTab({
       </div>
 
       {documents.map((d) => (
-        <DocumentCard key={d.id} d={d} sample={d.isSample ? samples.find((s) => s.fileName === d.fileName) : undefined} onRemove={() => onRemove(d.id)} />
+        <DocumentCard key={d.id} d={d} kind={kind} sample={d.isSample ? samples.find((s) => s.fileName === d.fileName) : undefined} onRemove={() => onRemove(d.id)} />
       ))}
     </section>
   );
 }
 
-function DocumentCard({ d, sample, onRemove }: { d: DocumentRecord; sample?: (typeof SAMPLE_DOCUMENTS)[string][number]; onRemove: () => void }) {
+function DocumentCard({ d, kind, sample, onRemove }: { d: DocumentRecord; kind: EngagementKind; sample?: (typeof SAMPLE_DOCUMENTS)[string][number]; onRemove: () => void }) {
   const [showText, setShowText] = useState(false);
   const a = d.analysis;
   const redacted = Object.entries(d.redactions);
@@ -665,6 +669,15 @@ function DocumentCard({ d, sample, onRemove }: { d: DocumentRecord; sample?: (ty
         </div>
         <button onClick={onRemove} aria-label="Dokumentum eltávolítása" className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
       </div>
+      {d.kind && d.kind !== kind && (
+        <p className="mt-2 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            <b>Más célra készült:</b> {ENGAGEMENT_KINDS[d.kind].label} (most: {ENGAGEMENT_KINDS[kind].label}). A súlyosságot az AI a célhoz
+            méri; az új célhoz töltsd fel újra a dokumentumot (a fájlt nem tároljuk, ezért újra kell választani).
+          </span>
+        </p>
+      )}
       <p className="mt-2 text-sm leading-relaxed text-slate-700">{a.summary}</p>
 
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">

@@ -24,7 +24,7 @@ import { buildInterviewGuide, estimateMinutes } from '@/lib/interview/guide';
 import { ROLE_LABEL } from '@/lib/interview/questionBank';
 import { getScenario, SCENARIOS } from '@/lib/scenarios';
 import { buildInterviewPlan } from '@/lib/interview/plan';
-import { emptyRecord, loadRecords, saveRecords, type InterviewRecord, type InterviewRecords } from '@/lib/interview/records';
+import { emptyRecord, isAnalysisStale, loadRecords, saveRecords, type InterviewRecord, type InterviewRecords } from '@/lib/interview/records';
 import InterviewPlanPanel from './InterviewPlanPanel';
 import { formatMs, notesToTranscript, verifyAnalysis } from '@/lib/interview/transcript';
 import type {
@@ -124,6 +124,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
     [ws.kind, ws.items, scenario, facts],
   );
   const planItem = plan.find((p) => p.role === role);
+  const staleRoles = ROLES.filter((r) => isAnalysisStale(records[r], ws.kind));
   const roleLabel = planItem?.label ?? ROLE_LABEL[role];
 
   const openFromPlan = (r: IntervieweeRole, target: Tab) => {
@@ -196,13 +197,13 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
     run('analyze', async () => {
       if (!namedTranscript) return;
       const analysis = await backend.analyzeInterview({ transcript: namedTranscript, role, kind: ws.kind, facts });
-      updateRec({ analysis, analysisIsSample: false, accepted: [] });
+      updateRec({ analysis, analysisIsSample: false, analysisKind: ws.kind, accepted: [] });
       setTab('analysis');
     });
 
   const showSampleAnalysis = () => {
     if (!namedTranscript) return;
-    updateRec({ analysis: verifyAnalysis(scenario.interview.analysis, namedTranscript, facts), analysisIsSample: true, accepted: [] });
+    updateRec({ analysis: verifyAnalysis(scenario.interview.analysis, namedTranscript, facts), analysisIsSample: true, analysisKind: null, accepted: [] });
     setTab('analysis');
   };
 
@@ -292,6 +293,28 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
       {error && (
         <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
+        </div>
+      )}
+
+      {staleRoles.length > 0 && (
+        <div role="status" className="flex flex-wrap items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 print:hidden">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <b>A cél megváltozott ({ENGAGEMENT_KINDS[ws.kind].label}).</b> {staleRoles.length} interjú elemzése más célra készült, ezért
+            a javaslatai és a súlyosság-becslései a régi célhoz igazodnak: {staleRoles.map((r) => `${plan.find((p) => p.role === r)?.label ?? ROLE_LABEL[r]} (${ENGAGEMENT_KINDS[records[r]!.analysisKind!].label})`).join(', ')}.
+            A Red Flag mátrixba már átvett tételek pontszáma a típusfüggő korrekcióval automatikusan az új célhoz igazodik; az interjú-elemzést futtasd újra.
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {staleRoles.map((r) => (
+              <button
+                key={r}
+                onClick={() => openFromPlan(r, 'analysis')}
+                className="rounded-md border border-amber-300 bg-white px-2.5 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+              >
+                {plan.find((p) => p.role === r)?.label ?? ROLE_LABEL[r]} →
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -475,6 +498,11 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
         <AnalysisTab
           analysis={analysis}
           isSample={analysisIsSample}
+          staleFrom={isAnalysisStale(rec, ws.kind) ? ENGAGEMENT_KINDS[rec.analysisKind!].label : null}
+          currentKind={ENGAGEMENT_KINDS[ws.kind].label}
+          canReanalyze={Boolean(status?.ai) && Boolean(namedTranscript) && busy === null}
+          reanalyzing={busy === 'analyze'}
+          onReanalyze={analyze}
           accepted={accepted}
           onAccept={acceptFlag}
           facts={facts}
@@ -621,12 +649,22 @@ function FactsEditor({ facts, onChange }: { facts: KnownFact[]; onChange: (f: Kn
 function AnalysisTab({
   analysis,
   isSample,
+  staleFrom,
+  currentKind,
+  canReanalyze,
+  reanalyzing,
+  onReanalyze,
   accepted,
   onAccept,
   facts,
 }: {
   analysis: InterviewAnalysis;
   isSample: boolean;
+  staleFrom: string | null;
+  currentKind: string;
+  canReanalyze: boolean;
+  reanalyzing: boolean;
+  onReanalyze: () => void;
   accepted: Set<string>;
   onAccept: (f: SuggestedRedFlag, key: string) => void;
   facts: KnownFact[];
@@ -634,6 +672,22 @@ function AnalysisTab({
   const factById = new Map(facts.map((f) => [f.id, f]));
   return (
     <section className="space-y-4">
+      {staleFrom && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <p className="min-w-0 flex-1">
+            <b>Ez az elemzés más célra készült:</b> {staleFrom}. A mostani cél: {currentKind}. Az AI a súlyosságot és a kiemeléseket a
+            célhoz méri, ezért az új célhoz futtasd újra.
+          </p>
+          <button
+            onClick={onReanalyze}
+            disabled={!canReanalyze}
+            className="inline-flex items-center gap-1.5 rounded-md bg-amber-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {reanalyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Újraelemzés az új célra
+          </button>
+        </div>
+      )}
       {isSample && (
         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           <b>Minta-elemzés:</b> előre elkészített eredmény a kitalált mintainterjúhoz, nem élő AI-hívás. Így néz ki a kimenet, ha

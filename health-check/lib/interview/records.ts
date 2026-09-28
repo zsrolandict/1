@@ -1,3 +1,4 @@
+import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { InterviewAnalysis, IntervieweeRole, Transcript } from './types';
 
 /**
@@ -15,6 +16,8 @@ export interface InterviewRecord {
   speakerNames: Record<string, string>;
   analysis: InterviewAnalysis | null;
   analysisIsSample: boolean;
+  /** Melyik átvilágítás-típusra (célra) készült az elemzés. Hiányzik: régi mentés, nem ismert. */
+  analysisKind?: EngagementKind | null;
   /** Elfogadott javaslatok kulcsai (a mátrixba átvéve). */
   accepted: string[];
   /** Elhangzott kérdések azonosítói. */
@@ -69,4 +72,13 @@ export function clearRecords(scenarioId: string): void {
   } catch {
     /* ignore */
   }
+}
+
+/**
+ * Az elemzés más célra (átvilágítás-típusra) készült, mint a mostani:
+ * az AI a súlyosságot a célhoz mérte, ezért újra kell futtatni.
+ * A minta-elemzés előre elkészített, típusfüggetlen – azt nem jelöljük.
+ */
+export function isAnalysisStale(r: InterviewRecord | undefined, kind: EngagementKind): boolean {
+  return Boolean(r?.analysis && !r.analysisIsSample && r.analysisKind && r.analysisKind !== kind);
 }

@@ -6,7 +6,7 @@ import { assess } from '@/lib/risk/engine';
 import { buildInterviewGuide } from './guide';
 import { buildInterviewPlan, planMinutes } from './plan';
 import { KIND_QUESTIONS } from './questionBank';
-import { recordStatus, emptyRecord } from './records';
+import { recordStatus, emptyRecord, isAnalysisStale } from './records';
 import { notesToTranscript } from './transcript';
 
 const none = DEFAULT_CATALOG.map((r) => ({ ...r, identified: false }));
@@ -116,5 +116,20 @@ describe('interjú-rekord állapota', () => {
     expect(
       recordStatus({ ...r, transcript: t, analysis: { summary: '', statements: [], suggestedRedFlags: [], contradictions: [], followUpQuestions: [], discardedUnverified: 0 } }),
     ).toBe('ANALYZED');
+  });
+});
+
+
+describe('elemzés céltól függő érvényessége', () => {
+  const analysis = { summary: '', statements: [], suggestedRedFlags: [], contradictions: [], followUpQuestions: [], discardedUnverified: 0 };
+  it('más célra készült élő elemzés: újra kell futtatni', () => {
+    const r = { ...emptyRecord('OWNER_CEO'), analysis, analysisKind: 'VENDOR_DD' as const };
+    expect(isAnalysisStale(r, 'VENDOR_DD')).toBe(false);
+    expect(isAnalysisStale(r, 'POST_MERGER')).toBe(true);
+  });
+  it('minta-elemzést és ismeretlen célú régi mentést nem jelöl', () => {
+    expect(isAnalysisStale({ ...emptyRecord('CFO'), analysis, analysisIsSample: true, analysisKind: null }, 'POST_MERGER')).toBe(false);
+    expect(isAnalysisStale({ ...emptyRecord('CFO'), analysis }, 'POST_MERGER')).toBe(false);
+    expect(isAnalysisStale(undefined, 'POST_MERGER')).toBe(false);
   });
 });

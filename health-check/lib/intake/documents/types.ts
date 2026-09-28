@@ -1,3 +1,4 @@
+import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { Pillar, Scale5 } from '@/lib/risk/types';
 
 /**
@@ -65,4 +66,6 @@ export interface DocumentRecord {
   analysis: DocumentAnalysis;
   /** Előre elkészített minta-elemzés, nem élő AI-hívás. */
   isSample: boolean;
+  /** Melyik átvilágítás-típusra (célra) készült az élő elemzés. */
+  kind?: EngagementKind;
 }

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { CheckCircle2, CircleDot, Clock, FileAudio, Lightbulb, ListChecks, Sparkles, Users } from 'lucide-react';
 import { ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 import { CLOSING_TIP, planMinutes, type PlannedInterview } from '@/lib/interview/plan';
-import { recordStatus, STATUS_LABEL, type InterviewRecords, type InterviewStatus } from '@/lib/interview/records';
+import { isAnalysisStale, recordStatus, STATUS_LABEL, type InterviewRecords, type InterviewStatus } from '@/lib/interview/records';
 import type { IntervieweeRole } from '@/lib/interview/types';
 import { PILLAR_LABEL } from '@/lib/risk/catalog';
 
@@ -79,6 +79,14 @@ export default function InterviewPlanPanel({
                       {status === 'ANALYZED' ? <CheckCircle2 className="mr-0.5 inline h-3 w-3" /> : <CircleDot className="mr-0.5 inline h-3 w-3" />}
                       {STATUS_LABEL[status]}
                     </span>
+                    {isAnalysisStale(rec, kind) && (
+                      <span
+                        className="rounded bg-amber-100 px-1.5 text-[11px] font-medium text-amber-800"
+                        title={`Az elemzés más célra készült (${ENGAGEMENT_KINDS[rec!.analysisKind!].label}); futtasd újra.`}
+                      >
+                        Újraelemzés kell
+                      </span>
+                    )}
                     <span className="ml-auto inline-flex items-center gap-1 text-xs text-slate-500">
                       <Clock className="h-3.5 w-3.5" /> ~{p.minutes} perc
                     </span>
