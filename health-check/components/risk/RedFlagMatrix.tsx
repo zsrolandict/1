@@ -30,6 +30,9 @@ import { catalogDefault, DEFAULT_CATALOG, DIVISION_LABEL, PILLAR_LABEL, RAG_LABE
 import type { Division, Pillar, Rag, RiskItem, RiskSource, Scale5, ScoredRisk } from '@/lib/risk/types';
 import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario } from '@/lib/risk/store';
 import { getScenario, SCENARIOS } from '@/lib/scenarios';
+import { loadIntake } from '@/lib/intake/state';
+import { SECTOR_LABEL } from '@/lib/intake/requests';
+import { missingSectorRisks } from '@/lib/risk/sectorRisks';
 import { EXPERT_PARAMETERS } from '@/lib/risk/parameters';
 import { computeFormula, resolveExposure, type CompanyProfile, type Formula } from '@/lib/risk/valuation';
 import ExportPdfButton, { browserDownload, slug, type SaveFile } from '@/components/report/ExportPdfButton';
@@ -145,6 +148,12 @@ export default function RedFlagMatrix({
   const effById = useMemo(() => new Map(items.map((r) => [r.id, scoreRisk(r, engineOpts)])), [items, engineOpts]);
   const adjustedCount = items.filter((r) => r.identified && effById.get(r.id)?.adjustment).length;
   const kindExtras = KIND_RISKS[kind].filter((k) => !items.some((r) => r.code === k.code));
+  // Ágazat: a tényállásban választott ágazat(ok) + a mintacég ágazata.
+  const sectors = useMemo(
+    () => (hydrated ? [...new Set([...loadIntake(scenarioId).profile.sectors, ...(getScenario(scenarioId).sectors ?? [])])] : []),
+    [hydrated, scenarioId],
+  );
+  const sectorExtras = missingSectorRisks(sectors, items);
   const addKindRisk = (code: string) => {
     const item = KIND_RISKS[kind].find((k) => k.code === code);
     if (item) setItems((xs) => [{ ...item, source: 'MANUAL' }, ...xs]);
@@ -355,6 +364,27 @@ export default function RedFlagMatrix({
               <button
                 key={k.code}
                 onClick={() => addKindRisk(k.code)}
+                title={k.description}
+                className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-indigo-800 hover:bg-indigo-100"
+              >
+                <Plus className="h-3 w-3" /> {k.code} {k.title}
+              </button>
+            ))}
+          </div>
+        )}
+        {sectorExtras.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 text-xs">
+            <span className="text-slate-500">Ágazati tételek ({sectors.map((x) => SECTOR_LABEL[x]).join(', ')}):</span>
+            <button
+              onClick={() => setItems((xs) => [...xs, ...sectorExtras])}
+              className="rounded-full bg-indigo-700 px-2.5 py-0.5 font-medium text-white hover:bg-indigo-800"
+            >
+              Mind a {sectorExtras.length} felvétele
+            </button>
+            {sectorExtras.map((k) => (
+              <button
+                key={k.code}
+                onClick={() => setItems((xs) => [...xs, k])}
                 title={k.description}
                 className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-indigo-800 hover:bg-indigo-100"
               >

@@ -3,7 +3,7 @@ import type { KnownFact } from '@/lib/interview/types';
 import { evaluateChecklist, type ChecklistAnswers } from './checklist';
 import { documentToIntake } from './documents/toIntake';
 import type { DocumentRecord } from './documents/types';
-import { buildRequestList, EMPTY_PROFILE, type CaseProfile, type DocRequest, type RequestStatus } from './requests';
+import { buildRequestList, EMPTY_PROFILE, normalizeProfile, type CaseProfile, type DocRequest, type RequestStatus } from './requests';
 import type { TableAnalysis } from './tables/metrics';
 import type { TableKind } from './tables/spec';
 import type { IntakeResult } from './types';
@@ -37,7 +37,9 @@ const key = (scenarioId: string) => `ict-hc:intake:v1:${scenarioId}`;
 export function loadIntake(scenarioId: string): IntakeState {
   try {
     const raw = localStorage.getItem(key(scenarioId));
-    return raw ? { ...EMPTY_INTAKE, ...(JSON.parse(raw) as Partial<IntakeState>) } : EMPTY_INTAKE;
+    if (!raw) return EMPTY_INTAKE;
+    const saved = JSON.parse(raw) as Partial<IntakeState>;
+    return { ...EMPTY_INTAKE, ...saved, profile: normalizeProfile(saved.profile ?? {}) };
   } catch {
     return EMPTY_INTAKE;
   }
@@ -72,7 +74,7 @@ export function intakeResults(state: IntakeState, kind: EngagementKind): IntakeR
     facts: rs.flatMap((r) => r.facts),
   });
   return {
-    checklist: evaluateChecklist(state.answers, kind),
+    checklist: evaluateChecklist(state.answers, kind, state.profile.sectors),
     tables: merge(Object.values(state.tables).map((t) => t!.result)),
     documents: merge(state.documents.map(documentToIntake)),
   };

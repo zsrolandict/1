@@ -19,6 +19,7 @@ export const IT_FEJLESZTO: Scenario = {
   sector: 'Egyedi szoftverfejlesztés, pénzügyi szektor',
   situation: 'A tulajdonosok 18 hónapon belül befektetőt vonnának be; eladói átvilágítással készülnek.',
   companyName: 'Példa Szoftverház Kft.',
+  sectors: ['IT'],
   kind: 'VENDOR_DD',
   company: { revenueHuf: 2_100_000_000, grossMarginPct: 0.3, actualDsoDays: 75, industryDsoDays: 50 },
   materialityHuf: 40_000_000,

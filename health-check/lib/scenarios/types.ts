@@ -1,4 +1,5 @@
 import type { EngagementKind } from '@/lib/engagement/kinds';
+import type { Sector } from '@/lib/intake/requests';
 import type { InterviewAnalysis, IntervieweeRole, KnownFact } from '@/lib/interview/types';
 import { DEFAULT_CATALOG } from '@/lib/risk/catalog';
 import type { Pillar, RiskItem } from '@/lib/risk/types';
@@ -16,6 +17,8 @@ export interface Scenario {
   /** Egy mondat: mi a helyzet és miért kérték az átvilágítást. */
   situation: string;
   companyName: string;
+  /** A mintacég ágazata(i) – az ágazati kockázati katalógushoz. */
+  sectors?: Sector[];
   kind: EngagementKind;
   company: CompanyProfile;
   materialityHuf: number;

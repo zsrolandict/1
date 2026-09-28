@@ -19,6 +19,7 @@ export const EPITOIPAR: Scenario = {
   sector: 'Építőipar – magas- és mélyépítés',
   situation: 'Bankgarancia-keret bővítése előtt a tulajdonos látni akarja, mit fog kérdezni a bank.',
   companyName: 'Példa Építőipari Kft.',
+  sectors: ['CONSTRUCTION'],
   kind: 'FINANCING_READINESS',
   company: { revenueHuf: 3_800_000_000, grossMarginPct: 0.14, actualDsoDays: 94, industryDsoDays: 60 },
   materialityHuf: 80_000_000,

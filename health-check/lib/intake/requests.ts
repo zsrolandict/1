@@ -57,14 +57,21 @@ export const FLAG_LABEL: Record<CaseFlag, string> = {
 };
 
 export interface CaseProfile {
-  sector: Sector | null;
+  /** Egy cégnek több ágazata is lehet (pl. gyártás és kereskedelem). */
+  sectors: Sector[];
   headcount: number | null;
   flags: CaseFlag[];
   /** Szabad szöveges tényállás: mi a helyzet, miért kérték az átvilágítást. */
   narrative: string;
 }
 
-export const EMPTY_PROFILE: CaseProfile = { sector: null, headcount: null, flags: [], narrative: '' };
+export const EMPTY_PROFILE: CaseProfile = { sectors: [], headcount: null, flags: [], narrative: '' };
+
+/** Régi mentés (egyetlen `sector` mező) átalakítása. */
+export function normalizeProfile(p: Partial<CaseProfile> & { sector?: Sector | null }): CaseProfile {
+  const sectors = Array.isArray(p.sectors) ? p.sectors : p.sector ? [p.sector] : [];
+  return { sectors, headcount: p.headcount ?? null, flags: Array.isArray(p.flags) ? p.flags : [], narrative: p.narrative ?? '' };
+}
 
 export type RequestSource = 'BASE' | 'KIND' | 'SECTOR' | 'SIZE' | 'FLAG' | 'AI' | 'MANUAL';
 
@@ -318,7 +325,7 @@ export function buildRequestList(profile: CaseProfile, kind: EngagementKind): Do
   for (const d of BASE) add(d, 'BASE', 'minden átvilágításnál bekérjük', true);
   const kindLabel = ENGAGEMENT_KINDS[kind].label;
   for (const r of BY_KIND[kind]) add(r.doc, 'KIND', `${kindLabel}: ${r.why}`, Boolean(r.required));
-  if (profile.sector) for (const r of BY_SECTOR[profile.sector]) add(r.doc, 'SECTOR', `${SECTOR_LABEL[profile.sector]}: ${r.why}`, Boolean(r.required));
+  for (const s of profile.sectors) for (const r of BY_SECTOR[s]) add(r.doc, 'SECTOR', `${SECTOR_LABEL[s]}: ${r.why}`, Boolean(r.required));
   for (const r of sizeRules(profile.headcount)) add(r.doc, 'SIZE', r.why, Boolean(r.required));
   for (const f of profile.flags) for (const r of BY_FLAG[f]) add(r.doc, 'FLAG', r.why, Boolean(r.required));
   return [...out.values()];

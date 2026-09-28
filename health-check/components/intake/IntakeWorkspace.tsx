@@ -30,6 +30,8 @@ import { SAMPLE_DOCUMENTS, sampleDocumentRecord, samplePagesRedacted } from '@/l
 import { hasSampleTables, SAMPLE_REF_DATE, sampleTableCsv } from '@/lib/intake/samples/tables';
 import { EMPTY_INTAKE, intakeResults, loadIntake, requestList, saveIntake, type IntakeState } from '@/lib/intake/state';
 import CaseTab from './CaseTab';
+import { SECTOR_LABEL, type Sector } from '@/lib/intake/requests';
+import { missingSectorRisks } from '@/lib/risk/sectorRisks';
 import { analyzeTable, type TableAnalysis } from '@/lib/intake/tables/metrics';
 import { dayToIso, isoToDay, parseCsv, parseTableFile, type Grid } from '@/lib/intake/tables/parse';
 import { detectColumns, missingColumns, TABLE_KINDS, TABLE_SPECS, type ColumnKey, type ColumnMapping, type TableKind } from '@/lib/intake/tables/spec';
@@ -198,7 +200,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
 
   if (!hydrated) return null;
 
-  const progress = checklistProgress(intake.answers);
+  const progress = checklistProgress(intake.answers, intake.profile.sectors);
   const tableCount = Object.keys(intake.tables).length;
 
   return (
@@ -277,6 +279,11 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
           companyName={ws.companyName}
           scenarioId={ws.scenarioId}
           aiReady={aiReady}
+          onSectorsChange={(sectors) => {
+            const add = missingSectorRisks(sectors, ws.items);
+            if (add.length) updateWs({ ...ws, items: [...ws.items, ...add] });
+            return add.length;
+          }}
         />
       )}
 
@@ -286,6 +293,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
           {tab === 'checklist' && (
             <ChecklistTab
               answers={intake.answers}
+              sectors={intake.profile.sectors}
               onAnswer={(id, a) => {
                 const answers = { ...intake.answers };
                 if (a === undefined) delete answers[id];
@@ -353,12 +361,14 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
 
 function ChecklistTab({
   answers,
+  sectors,
   onAnswer,
   onSample,
   onClear,
   flagged,
 }: {
   answers: Record<string, Answer>;
+  sectors: Sector[];
   onAnswer: (id: string, a: Answer | undefined) => void;
   onSample?: () => void;
   onClear: () => void;
@@ -386,12 +396,17 @@ function ChecklistTab({
         <div key={p} className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <h2 className="border-b border-slate-100 px-4 py-2 text-sm font-semibold text-slate-900">{PILLAR_LABEL[p]}</h2>
           <ol className="divide-y divide-slate-100">
-            {CHECKLIST.filter((q) => q.pillar === p && isVisible(q, answers)).map((q) => (
+            {CHECKLIST.filter((q) => q.pillar === p && isVisible(q, answers, sectors)).map((q) => (
               <li key={q.id} className={`px-4 py-3 ${q.showIf ? 'bg-slate-50/60 pl-8' : ''}`}>
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0 flex-1 basis-72">
                     <p className="text-sm text-slate-900">
                       <span className="mr-1.5 font-mono text-[11px] text-slate-400">{q.id}</span>
+                      {q.sectors && (
+                        <span className="mr-1.5 rounded bg-indigo-50 px-1.5 text-[10px] font-medium text-indigo-700">
+                          {q.sectors.filter((x) => sectors.includes(x)).map((x) => SECTOR_LABEL[x]).join(', ')}
+                        </span>
+                      )}
                       {q.text}
                     </p>
                     {q.help && <p className="mt-0.5 text-xs text-slate-500">{q.help}</p>}

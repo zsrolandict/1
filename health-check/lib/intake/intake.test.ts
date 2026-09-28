@@ -12,9 +12,9 @@ import { decodeText, isoToDay, parseCsv, parseDay, parseNumber, parseXlsx } from
 import { detectColumns, missingColumns, TABLE_KINDS, type TableKind } from './tables/spec';
 
 describe('kérdőív', () => {
-  it('30 kérdés, egyedi azonosítók, minden szabály létező tételre mutat', () => {
-    expect(CHECKLIST).toHaveLength(30);
-    expect(new Set(CHECKLIST.map((q) => q.id)).size).toBe(30);
+  it('30 alapkérdés + ágazati kérdések, egyedi azonosítók, minden szabály létező tételre mutat', () => {
+    expect(CHECKLIST.filter((q) => !q.sectors)).toHaveLength(30);
+    expect(new Set(CHECKLIST.map((q) => q.id)).size).toBe(CHECKLIST.length);
     for (const q of CHECKLIST) {
       for (const r of q.rules) {
         if (r.code) expect(templateFor(r.code), `${q.id} ${r.code}`).toBeDefined();
@@ -274,5 +274,54 @@ describe('dokumentumok', () => {
     const intake = documentToIntake(keret);
     expect(intake.suggestions[0].evidence).toContain('2. oldal');
     expect(intake.facts.every((f) => f.askInInterview !== false)).toBe(true);
+  });
+});
+
+import { SECTOR_QUESTIONS } from './checklist';
+import { missingSectorRisks, SECTOR_RISKS } from '@/lib/risk/sectorRisks';
+import { buildRequestList } from './requests';
+
+describe('ágazati katalógus', () => {
+  it('minden ágazati kérdés szabálya létező tételre mutat, és kódja egyedi', () => {
+    const codes = new Set(Object.values(SECTOR_RISKS).flat().map((r) => r.code));
+    expect(codes.size).toBe(Object.values(SECTOR_RISKS).flat().length);
+    for (const q of SECTOR_QUESTIONS) {
+      expect(q.sectors?.length, q.id).toBeGreaterThan(0);
+      for (const r of q.rules) expect(templateFor(r.code!), `${q.id} ${r.code}`).toBeDefined();
+    }
+  });
+
+  it('ágazati kérdés csak a kiválasztott ágazatnál látszik és számít', () => {
+    const qk1 = SECTOR_QUESTIONS.find((q) => q.id === 'QK1')!;
+    expect(isVisible(qk1, {}, [])).toBe(false);
+    expect(isVisible(qk1, {}, ['ACCOUNTING'])).toBe(true);
+    expect(evaluateChecklist({ QK1: 10 }, 'SUCCESSION').suggestions).toHaveLength(0);
+    const s = evaluateChecklist({ QK1: 10 }, 'SUCCESSION', ['ACCOUNTING']).suggestions;
+    expect(s.map((x) => x.code)).toEqual(['KON-01']); // 50 M Ft alatti limit
+  });
+
+  it('több ágazat egyszerre: mindkettő kérdései és tételei', () => {
+    const sectors = ['MANUFACTURING', 'TRADE'] as const;
+    const visible = SECTOR_QUESTIONS.filter((q) => isVisible(q, {}, [...sectors])).map((q) => q.id);
+    expect(visible.some((id) => id.startsWith('QG'))).toBe(true);
+    expect(visible.some((id) => id.startsWith('QR'))).toBe(true);
+    const add = missingSectorRisks([...sectors], DEFAULT_CATALOG);
+    expect(add.map((r) => r.code)).toEqual(expect.arrayContaining(['GYA-01', 'KER-01']));
+    expect(add.every((r) => !r.identified)).toBe(true);
+    // ágazati iratok is mindkettőből
+    const titles = buildRequestList({ sectors: [...sectors], headcount: null, flags: [], narrative: '' }, 'HEALTH_CHECK').map((d) => d.id);
+    expect(titles).toEqual(expect.arrayContaining(['S12', 'S16']));
+  });
+
+  it('a már listában lévő ágazati tételt nem veszi fel újra', () => {
+    const sc = getScenario('epitoipar');
+    expect(missingSectorRisks(['CONSTRUCTION'], sc.items)).toHaveLength(0);
+  });
+
+  it('a mintacégek ágazati kérdései is ki vannak töltve', () => {
+    for (const sc of SCENARIOS) {
+      const p = checklistProgress(SAMPLE_ANSWERS[sc.id], sc.sectors ?? []);
+      expect(p.answered, sc.id).toBe(p.total);
+    }
   });
 });

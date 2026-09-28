@@ -1,6 +1,7 @@
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { KnownFact } from '@/lib/interview/types';
 import type { Pillar, Scale5 } from '@/lib/risk/types';
+import type { Sector } from './requests';
 import { templateFor } from './apply';
 import type { IntakeResult, IntakeSuggestion, ValuationPatch } from './types';
 
@@ -16,7 +17,7 @@ import type { IntakeResult, IntakeSuggestion, ValuationPatch } from './types';
 export type Answer = boolean | number | string;
 export type ChecklistAnswers = Record<string, Answer>;
 
-export type Condition = { equals: boolean | string } | { gte: number } | { in: string[] };
+export type Condition = { equals: boolean | string } | { gte: number } | { lt: number } | { in: string[] };
 
 export interface FlagRule {
   when: Condition;
@@ -48,6 +49,8 @@ export interface ChecklistQuestion {
   rules: FlagRule[];
   /** Az ügyféltől ehhez kért dokumentum. */
   document?: string;
+  /** Ágazati kérdés: csak a megadott ágazat(ok) kiválasztásakor jelenik meg. */
+  sectors?: Sector[];
 }
 
 const IGEN_RESZBEN_NEM = [
@@ -298,19 +301,115 @@ export const CHECKLIST: ChecklistQuestion[] = [
   },
 ];
 
+const NIGEN = [{ value: 'IGEN', label: 'Igen' }, { value: 'RESZBEN', label: 'Részben' }, { value: 'NEM', label: 'Nem' }];
+
+/** Ágazati kérdések: csak a kiválasztott ágazatnál jelennek meg. */
+export const SECTOR_QUESTIONS: ChecklistQuestion[] = [
+  // Építőipar
+  { id: 'QE1', pillar: 'LEGAL', sectors: ['CONSTRUCTION'], type: 'YES_NO', short: 'Kötbérplafon minden futó kivitelezési szerződésben',
+    text: 'Van felső korlát a késedelmi kötbérre minden futó kivitelezési szerződésben?',
+    rules: [{ when: { equals: false }, code: 'EPI-01', likelihood: 4, impact: 4, note: 'Plafon nélküli kötbér futó projektben.' }], document: 'Futó kivitelezési szerződések' },
+  { id: 'QE2', pillar: 'FINANCE', sectors: ['CONSTRUCTION'], type: 'YES_NO', short: 'Készültségi fok szerinti bevétel-elszámolás',
+    text: 'A futó projektek bevételét készültségi fok szerint számolják el?',
+    rules: [{ when: { equals: false }, code: 'EPI-03', likelihood: 3, impact: 3, note: 'Számlázás szerinti bevétel: torzuló eredmény.' }] },
+  { id: 'QE3', pillar: 'HR', sectors: ['CONSTRUCTION'], type: 'YES_NO', short: 'Naprakész munkavédelmi kockázatértékelés, alvállalkozói oktatás',
+    text: 'Van naprakész munkavédelmi kockázatértékelés, és dokumentált az alvállalkozók oktatása?',
+    rules: [{ when: { equals: false }, code: 'EPI-04', likelihood: 3, impact: 4, note: 'Munkabaleset esetén súlyos felelősség.' }] },
+  // Informatika
+  { id: 'QI1', pillar: 'LEGAL', sectors: ['IT'], type: 'CHOICE', short: 'Nyílt forráskódú licencszkennelés az értékesített termékre',
+    text: 'Készült nyílt forráskódú licencszkennelés az ügyfeleknek átadott szoftverre?',
+    choices: [{ value: 'IGEN', label: 'Igen, nincs copyleft' }, { value: 'TALALT', label: 'Igen, talált copyleftet' }, { value: 'NEM', label: 'Nem készült' }],
+    rules: [
+      { when: { equals: 'TALALT' }, code: 'ITF-01', likelihood: 4, impact: 4, note: 'Copyleft komponens a terjesztett termékben.' },
+      { when: { equals: 'NEM' }, code: 'ITF-01', likelihood: 3, impact: 4, note: 'Ismeretlen licenckitettség.' },
+    ] },
+  { id: 'QI2', pillar: 'LEGAL', sectors: ['IT'], type: 'CHOICE', short: 'Felelősségkorlátozás és kötbérplafon az ügyfélszerződésekben',
+    text: 'Van felelősségkorlátozás és SLA-kötbérplafon az ügyfélszerződésekben?', choices: NIGEN,
+    rules: [
+      { when: { equals: 'RESZBEN' }, code: 'ITF-02', likelihood: 3, impact: 4, note: 'Egyes szerződésekben korlátlan felelősség.' },
+      { when: { equals: 'NEM' }, code: 'ITF-02', likelihood: 4, impact: 4, note: 'Korlátlan felelősség az ügyfelek felé.' },
+    ] },
+  { id: 'QI3', pillar: 'OPERATIONS', sectors: ['IT'], type: 'YES_NO', short: 'Információbiztonsági szabályzat és éves sérülékenységvizsgálat',
+    text: 'Van információbiztonsági szabályzat és évente sérülékenységvizsgálat?',
+    rules: [{ when: { equals: false }, code: 'ITF-03', likelihood: 3, impact: 3, note: 'Információbiztonsági megfelelés hiánya.' }] },
+  { id: 'QI4', pillar: 'OPERATIONS', sectors: ['IT'], type: 'YES_NO', short: 'Naprakész rendszerdokumentáció vagy forráskód-letét',
+    text: 'Van naprakész architektúra-dokumentáció vagy forráskód-letét?',
+    rules: [{ when: { equals: false }, code: 'ITF-04', likelihood: 3, impact: 3, note: 'A tudás néhány fejlesztőnél van.' }] },
+  // Könyvelés
+  { id: 'QK1', pillar: 'LEGAL', sectors: ['ACCOUNTING'], type: 'NUMBER', unit: 'M Ft', short: 'Szakmai felelősségbiztosítás éves limitje',
+    text: 'Mekkora a szakmai felelősségbiztosítás éves limitje?',
+    rules: [{ when: { lt: 50 }, code: 'KON-01', likelihood: 3, impact: 4, note: '50 M Ft alatti limit az ügyfélkörhöz képest alacsony lehet.' }] },
+  { id: 'QK2', pillar: 'LEGAL', sectors: ['ACCOUNTING'], type: 'YES_NO', short: 'Naprakész pénzmosás elleni szabályzat, teljes ügyfél-átvilágítás',
+    text: 'Van naprakész pénzmosás elleni szabályzat, és minden ügyfél átvilágítása megtörtént?',
+    rules: [{ when: { equals: false }, code: 'KON-02', likelihood: 3, impact: 3, note: 'Felügyeleti bírság kockázata.' }] },
+  { id: 'QK3', pillar: 'FINANCE', sectors: ['ACCOUNTING'], type: 'CHOICE', short: 'Díjemelési (indexálási) záradék az ügyfélszerződésekben',
+    text: 'Tartalmaznak az ügyfélszerződések évenkénti díjemelési záradékot?', choices: NIGEN,
+    rules: [
+      { when: { equals: 'RESZBEN' }, code: 'KON-03', likelihood: 3, impact: 3, note: 'A szerződések egy része indexálás nélküli.' },
+      { when: { equals: 'NEM' }, code: 'KON-03', likelihood: 4, impact: 3, note: 'Indexálás nélkül a bérnövekedés a fedezetet viszi.' },
+    ] },
+  // Gyártás
+  { id: 'QG1', pillar: 'OPERATIONS', sectors: ['MANUFACTURING'], type: 'NUMBER', unit: 'év', short: 'A fő gépek átlagos kora',
+    text: 'Hány év a fő termelőgépek átlagos kora?',
+    rules: [{ when: { gte: 10 }, code: 'GYA-02', likelihood: 3, impact: 3, note: '10 évnél idősebb gépállomány: halasztott beruházás.' },
+            { when: { gte: 15 }, code: 'GYA-02', likelihood: 4, impact: 3, note: '15 évnél idősebb gépállomány.' }] },
+  { id: 'QG2', pillar: 'FINANCE', sectors: ['MANUFACTURING'], type: 'YES_NO', short: 'Árkorrekciós záradék a fix áras vevői szerződésekben',
+    text: 'Van alapanyag- vagy energiaár-korrekciós záradék a fix áras vevői szerződésekben?',
+    rules: [{ when: { equals: false }, code: 'GYA-04', likelihood: 3, impact: 4, note: 'Az árkockázat nem hárítható tovább.' }] },
+  { id: 'QG3', pillar: 'OPERATIONS', sectors: ['MANUFACTURING'], type: 'YES_NO', short: 'Érvényes minőségügyi tanúsítvány, lezárt vevői audit-eltérések',
+    text: 'Érvényes a minőségügyi tanúsítvány, és minden vevői audit-eltérés lezárt?',
+    rules: [{ when: { equals: false }, code: 'GYA-03', likelihood: 3, impact: 4, note: 'Beszállítói státusz veszélyben.' }] },
+  { id: 'QG4', pillar: 'OPERATIONS', sectors: ['MANUFACTURING'], type: 'YES_NO', short: 'Minden telephelyi és környezetvédelmi engedély érvényes',
+    text: 'Minden telephelyi és környezetvédelmi engedély érvényes, és fedezi a tényleges kapacitást?',
+    rules: [{ when: { equals: false }, code: 'GYA-01', likelihood: 3, impact: 4, note: 'Engedélyhiány: korlátozás, bírság.' }] },
+  // Tanácsadás
+  { id: 'QT1', pillar: 'HR', sectors: ['CONSULTING'], type: 'YES_NO', short: 'Ügyfélcsábítási és versenytilalmi kikötés a partnereknél',
+    text: 'Tartalmaz ügyfélcsábítási és versenytilalmi kikötést a partnerek és senior munkatársak szerződése?',
+    rules: [{ when: { equals: false }, code: 'TAN-02', likelihood: 3, impact: 5, note: 'Távozáskor az ügyfelek elvihetők.' }] },
+  { id: 'QT2', pillar: 'OPERATIONS', sectors: ['CONSULTING'], type: 'PERCENT', unit: '%', short: 'Díjazható kihasználtság a szakmai munkatársaknál',
+    text: 'Mekkora a szakmai munkatársak átlagos díjazható kihasználtsága?',
+    rules: [{ when: { lt: 60 }, code: 'TAN-03', likelihood: 3, impact: 3, note: '60% alatti kihasználtság.' }] },
+  { id: 'QT3', pillar: 'LEGAL', sectors: ['CONSULTING'], type: 'CHOICE', short: 'Felelősségkorlátozás és elegendő felelősségbiztosítás',
+    text: 'Van felelősségkorlátozás az ügyfélszerződésekben és elegendő szakmai felelősségbiztosítás?', choices: NIGEN,
+    rules: [
+      { when: { equals: 'RESZBEN' }, code: 'TAN-01', likelihood: 3, impact: 4, note: 'Részleges védelem.' },
+      { when: { equals: 'NEM' }, code: 'TAN-01', likelihood: 4, impact: 4, note: 'Sem korlátozás, sem megfelelő fedezet.' },
+    ] },
+  { id: 'QT4', pillar: 'LEGAL', sectors: ['CONSULTING'], type: 'YES_NO', short: 'Módszertanok, sablonok vagyoni jogai a cégnél',
+    text: 'A módszertanok, sablonok és szellemi termékek vagyoni jogai a cégnél vannak?',
+    rules: [{ when: { equals: false }, code: 'TAN-04', likelihood: 3, impact: 3, note: 'A szellemi termékek a munkatársaknál maradtak.' }] },
+  // Kereskedelem
+  { id: 'QR1', pillar: 'FINANCE', sectors: ['TRADE'], type: 'PERCENT', unit: '%', short: '180 napnál régebbi készlet aránya',
+    text: 'A készlet hány százaléka 180 napnál régebbi?',
+    rules: [{ when: { gte: 15 }, code: 'KER-01', likelihood: 3, impact: 3, note: 'Elfekvő készlet.' }] },
+  { id: 'QR2', pillar: 'FINANCE', sectors: ['TRADE'], type: 'YES_NO', short: 'Vevői hitelbiztosítás vagy hitelkeret-szabályzat',
+    text: 'Van vevői hitelbiztosítás vagy írásos hitelkeret-szabályzat?',
+    rules: [{ when: { equals: false }, code: 'KER-03', likelihood: 3, impact: 3, note: 'Fedezetlen vevői hitelkockázat.' }] },
+  { id: 'QR3', pillar: 'FINANCE', sectors: ['TRADE'], type: 'PERCENT', unit: '%', short: 'Devizás importbeszerzés aránya',
+    text: 'A beszerzés hány százaléka devizában történik?',
+    rules: [{ when: { gte: 30 }, code: 'KER-04', likelihood: 3, impact: 3, note: 'Jelentős devizakitettség.' }] },
+  { id: 'QR4', pillar: 'LEGAL', sectors: ['TRADE'], type: 'YES_NO', short: 'Fő forgalmazói szerződés 12 hónapon belül felmondható',
+    text: 'A fő forgalmazói szerződés 12 hónapon belül (rövid felmondással) megszüntethető?',
+    rules: [{ when: { equals: true }, code: 'KER-02', likelihood: 3, impact: 5, note: 'A forgalmazási jog bizonytalan.' }] },
+];
+
+CHECKLIST.push(...SECTOR_QUESTIONS);
+
 const BY_ID = new Map(CHECKLIST.map((q) => [q.id, q]));
 
 function matches(c: Condition, a: Answer | undefined): boolean {
   if (a === undefined || a === '') return false;
   if ('equals' in c) return a === c.equals;
   if ('gte' in c) return typeof a === 'number' && a >= c.gte;
+  if ('lt' in c) return typeof a === 'number' && a < c.lt;
   return typeof a === 'string' && c.in.includes(a);
 }
 
-export function isVisible(q: ChecklistQuestion, answers: ChecklistAnswers): boolean {
+export function isVisible(q: ChecklistQuestion, answers: ChecklistAnswers, sectors: Sector[] = []): boolean {
+  if (q.sectors && !q.sectors.some((s) => sectors.includes(s))) return false;
   if (!q.showIf) return true;
   const parent = BY_ID.get(q.showIf.question);
-  return Boolean(parent && isVisible(parent, answers) && matches(q.showIf.when, answers[q.showIf.question]));
+  return Boolean(parent && isVisible(parent, answers, sectors) && matches(q.showIf.when, answers[q.showIf.question]));
 }
 
 export function formatAnswer(q: ChecklistQuestion, a: Answer | undefined): string {
@@ -320,8 +419,8 @@ export function formatAnswer(q: ChecklistQuestion, a: Answer | undefined): strin
   return q.choices?.find((c) => c.value === a)?.label ?? a;
 }
 
-export function checklistProgress(answers: ChecklistAnswers): { answered: number; total: number } {
-  const visible = CHECKLIST.filter((q) => isVisible(q, answers));
+export function checklistProgress(answers: ChecklistAnswers, sectors: Sector[] = []): { answered: number; total: number } {
+  const visible = CHECKLIST.filter((q) => isVisible(q, answers, sectors));
   return { answered: visible.filter((q) => answers[q.id] !== undefined && answers[q.id] !== '').length, total: visible.length };
 }
 
@@ -331,11 +430,11 @@ interface Hit { q: ChecklistQuestion; rule: FlagRule; code: string | null }
  * Válaszok → javaslatok. Egy tételre több szabály is illeszkedhet:
  * a legsúlyosabb valószínűség és hatás érvényes, a bizonyíték összeadódik.
  */
-export function evaluateChecklist(answers: ChecklistAnswers, kind: EngagementKind): IntakeResult {
+export function evaluateChecklist(answers: ChecklistAnswers, kind: EngagementKind, sectors: Sector[] = []): IntakeResult {
   const hits: Hit[] = [];
   const facts: KnownFact[] = [];
   for (const q of CHECKLIST) {
-    if (!isVisible(q, answers)) continue;
+    if (!isVisible(q, answers, sectors)) continue;
     const a = answers[q.id];
     if (a === undefined || a === '') continue;
     facts.push({

@@ -5,7 +5,7 @@ import { SAMPLE_PROFILES } from './samples/profiles';
 import { EMPTY_INTAKE, missingRequests, requestList } from './state';
 
 const tanacsado: CaseProfile = {
-  sector: 'CONSULTING',
+  sectors: ['CONSULTING'],
   headcount: 30,
   flags: ['FAMILY'],
   narrative: 'Tanácsadó cég 30 munkavállalóval, generációváltás előtt. Az alapító két éven belül átadná a vezetést a fiának.',
@@ -75,7 +75,7 @@ describe('AI-javaslat a tényállásból', () => {
   it('csak a tényállásban szó szerint alátámasztott javaslat marad; meglévő irat nem ismétlődik', async () => {
     const current = buildRequestList(tanacsado, 'SUCCESSION');
     const call = (async () => ({
-      sector: 'CONSULTING',
+      sectors: ['CONSULTING'],
       headcount: 30,
       flags: [
         { flag: 'MULTIPLE_OWNERS', quote: 'átadná a vezetést a fiának' },

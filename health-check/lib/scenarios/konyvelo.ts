@@ -19,6 +19,7 @@ export const KONYVELO: Scenario = {
   sector: 'Könyvelés, bérszámfejtés, adótanácsadás',
   situation: 'Az alapító 3 éven belül visszavonulna; a család és a helyettes közötti átadást kell előkészíteni.',
   companyName: 'Példa Könyvelő Iroda Kft.',
+  sectors: ['ACCOUNTING'],
   kind: 'SUCCESSION',
   company: { revenueHuf: 1_200_000_000, grossMarginPct: 0.32, actualDsoDays: 48, industryDsoDays: 30 },
   materialityHuf: 25_000_000,

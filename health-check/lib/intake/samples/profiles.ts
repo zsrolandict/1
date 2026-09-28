@@ -3,7 +3,7 @@ import type { CaseProfile } from '../requests';
 /** KITALÁLT előzetes tényállások a mintaesetekhez (valós céget nem ábrázolnak). */
 export const SAMPLE_PROFILES: Record<string, CaseProfile> = {
   gyarto: {
-    sector: 'MANUFACTURING',
+    sectors: ['MANUFACTURING'],
     headcount: 140,
     flags: ['RELATED_PARTIES', 'KEY_CLIENTS', 'OWN_IP', 'BANK_FINANCING'],
     narrative:
@@ -13,7 +13,7 @@ export const SAMPLE_PROFILES: Record<string, CaseProfile> = {
       'Beruházási hitelük van egy kereskedelmi banknál.',
   },
   epitoipar: {
-    sector: 'CONSTRUCTION',
+    sectors: ['CONSTRUCTION'],
     headcount: 85,
     flags: ['PUBLIC_PROCUREMENT', 'CONTRACTORS', 'BANK_FINANCING', 'LITIGATION'],
     narrative:
@@ -22,7 +22,7 @@ export const SAMPLE_PROFILES: Record<string, CaseProfile> = {
       'sportcsarnok-projekt miatt a megrendelő kötbért helyezett kilátásba.',
   },
   konyvelo: {
-    sector: 'ACCOUNTING',
+    sectors: ['ACCOUNTING'],
     headcount: 30,
     flags: ['FAMILY', 'MULTIPLE_OWNERS', 'KEY_CLIENTS', 'PERSONAL_DATA'],
     narrative:
@@ -31,7 +31,7 @@ export const SAMPLE_PROFILES: Record<string, CaseProfile> = {
       'az alapítóhoz kötődnek. Több száz ügyfél bér- és személyes adatát kezelik. Az iroda egy családi tulajdonú ingatlanban működik.',
   },
   'it-fejleszto': {
-    sector: 'IT',
+    sectors: ['IT'],
     headcount: 45,
     flags: ['OWN_IP', 'CONTRACTORS', 'KEY_CLIENTS', 'MULTIPLE_OWNERS'],
     narrative:

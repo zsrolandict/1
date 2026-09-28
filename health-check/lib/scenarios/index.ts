@@ -15,6 +15,7 @@ export const GYARTO: Scenario = {
   sector: 'Fémfeldolgozás, gépgyártás',
   situation: 'A tulajdonos eladásra készül; eladói átvilágítás a vevői kérdések előtt.',
   companyName: 'Minta Gyártó Kft.',
+  sectors: ['MANUFACTURING'],
   kind: 'VENDOR_DD',
   company: DEFAULT_COMPANY,
   materialityHuf: 50_000_000,

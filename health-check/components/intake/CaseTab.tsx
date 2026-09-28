@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ClipboardCopy, Loader2, Plus, Sparkles, Trash2 } from 'lucide-react';
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { CaseSuggestion } from '@/lib/intake/casePrompts';
@@ -41,6 +41,7 @@ export default function CaseTab({
   companyName,
   scenarioId,
   aiReady,
+  onSectorsChange,
 }: {
   intake: IntakeState;
   update: (patch: Partial<IntakeState>) => void;
@@ -48,9 +49,13 @@ export default function CaseTab({
   companyName: string;
   scenarioId: string;
   aiReady: boolean | null;
+  /** Visszaadja, hány ágazati tétel került a mátrixba. */
+  onSectorsChange: (sectors: Sector[]) => number;
 }) {
   const backend = useAiBackend();
   const profile = intake.profile;
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
   const list = useMemo(() => requestList(intake, kind), [intake, kind]);
   const [suggestion, setSuggestion] = useState<CaseSuggestion | null>(null);
   const [busy, setBusy] = useState(false);
@@ -60,7 +65,14 @@ export default function CaseTab({
   const [newTitle, setNewTitle] = useState('');
   const [newPillar, setNewPillar] = useState<Pillar>('LEGAL');
 
-  const setProfile = (patch: Partial<CaseProfile>) => update({ profile: { ...profile, ...patch } });
+  const setProfile = (patch: Partial<CaseProfile>) => update({ profile: { ...profileRef.current, ...patch } });
+  const [sectorNote, setSectorNote] = useState<string | null>(null);
+  /** Ágazatváltáskor az ágazati kockázatok pipálható sorként a mátrixba kerülnek. */
+  const setSectors = (sectors: Sector[]) => {
+    setProfile({ sectors });
+    const added = onSectorsChange(sectors);
+    setSectorNote(added > 0 ? `${added} ágazati kockázati tétel került a Red Flag mátrixba (pipálatlanul).` : null);
+  };
   const toggleFlag = (f: CaseFlag) =>
     setProfile({ flags: profile.flags.includes(f) ? profile.flags.filter((x) => x !== f) : [...profile.flags, f] });
   const setStatus = (id: string, s: RequestStatus) => update({ requestStatus: { ...intake.requestStatus, [id]: s } });
@@ -100,7 +112,10 @@ export default function CaseTab({
             <h2 className="text-sm font-semibold text-slate-900">Előzetes tényállás</h2>
             {SAMPLE_PROFILES[scenarioId] && (
               <button
-                onClick={() => update({ profile: SAMPLE_PROFILES[scenarioId] })}
+                onClick={() => {
+                  update({ profile: SAMPLE_PROFILES[scenarioId] });
+                  onSectorsChange(SAMPLE_PROFILES[scenarioId].sectors);
+                }}
                 className="rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
               >
                 Minta tényállás
@@ -111,29 +126,35 @@ export default function CaseTab({
             Az első egyeztetés után rögzítsd. Ebből áll össze az iratlista: az alap iratkör mindig benne van, a többit a cél, az ágazat, a
             létszám és a jellemzők adják.
           </p>
-          <div className="mt-3 grid grid-cols-[1fr_110px] gap-2">
-            <label className="text-xs text-slate-600">
-              Ágazat
-              <select
-                value={profile.sector ?? ''}
-                onChange={(e) => setProfile({ sector: (e.target.value || null) as Sector | null })}
-                className="mt-0.5 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
-              >
-                <option value="">— válassz —</option>
-                {SECTORS.map((s) => <option key={s} value={s}>{SECTOR_LABEL[s]}</option>)}
-              </select>
-            </label>
-            <label className="text-xs text-slate-600">
-              Létszám (fő)
-              <input
-                type="number"
-                min={0}
-                value={profile.headcount ?? ''}
-                onChange={(e) => setProfile({ headcount: e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))) })}
-                className="mt-0.5 w-full rounded-md border border-slate-200 px-2 py-1.5 text-right text-sm"
-              />
-            </label>
+          <p className="mt-3 text-xs font-medium text-slate-600">Ágazat (több is lehet)</p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {SECTORS.map((sec) => {
+              const on = profile.sectors.includes(sec);
+              return (
+                <button
+                  key={sec}
+                  onClick={() => setSectors(on ? profile.sectors.filter((x) => x !== sec) : [...profile.sectors, sec])}
+                  aria-pressed={on}
+                  className={`rounded-full px-2.5 py-1 text-xs ring-1 ring-inset ${
+                    on ? 'bg-indigo-700 text-white ring-indigo-700' : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  {SECTOR_LABEL[sec]}
+                </button>
+              );
+            })}
           </div>
+          {sectorNote && <p className="mt-1 text-xs text-indigo-800">{sectorNote}</p>}
+          <label className="mt-3 flex items-center justify-between gap-2 text-xs text-slate-600">
+            Létszám (fő)
+            <input
+              type="number"
+              min={0}
+              value={profile.headcount ?? ''}
+              onChange={(e) => setProfile({ headcount: e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))) })}
+              className="w-28 rounded-md border border-slate-200 px-2 py-1.5 text-right text-sm"
+            />
+          </label>
           <p className="mt-3 text-xs font-medium text-slate-600">Jellemzők</p>
           <div className="mt-1 flex flex-wrap gap-1.5">
             {FLAGS.map((f) => {
@@ -181,12 +202,15 @@ export default function CaseTab({
               Csak a tényállásból szó szerint alátámasztott javaslatok maradtak meg
               {suggestion.discardedUnverified ? ` (${suggestion.discardedUnverified} nem igazolhatót kiszűrt)` : ''}. Te döntöd el, mit veszel fel.
             </p>
-            {(suggestion.sector && suggestion.sector !== profile.sector) || (suggestion.headcount && suggestion.headcount !== profile.headcount) ? (
+            {suggestion.sectors.some((x) => !profile.sectors.includes(x)) || (suggestion.headcount && suggestion.headcount !== profile.headcount) ? (
               <button
-                onClick={() => setProfile({ sector: suggestion.sector ?? profile.sector, headcount: suggestion.headcount ?? profile.headcount })}
+                onClick={() => {
+                  setSectors([...new Set([...profile.sectors, ...suggestion.sectors])]);
+                  if (suggestion.headcount) setProfile({ headcount: suggestion.headcount });
+                }}
                 className="mt-2 rounded-md bg-white px-2.5 py-1 text-xs text-indigo-800 ring-1 ring-indigo-200 hover:bg-indigo-100"
               >
-                Átvesz: {suggestion.sector ? SECTOR_LABEL[suggestion.sector] : ''}
+                Átvesz: {suggestion.sectors.map((x) => SECTOR_LABEL[x]).join(', ')}
                 {suggestion.headcount ? ` · ${suggestion.headcount} fő` : ''}
               </button>
             ) : null}

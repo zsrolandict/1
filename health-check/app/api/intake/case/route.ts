@@ -14,7 +14,7 @@ const RequestSchema = z.object({
   kind: Kind,
   companyName: z.string().max(200),
   profile: z.object({
-    sector: z.enum(Object.keys(SECTOR_LABEL) as [Sector, ...Sector[]]).nullable(),
+    sectors: z.array(z.enum(Object.keys(SECTOR_LABEL) as [Sector, ...Sector[]])).max(7),
     headcount: z.number().int().nonnegative().nullable(),
     flags: z.array(z.enum(Object.keys(FLAG_LABEL) as [CaseFlag, ...CaseFlag[]])).max(20),
     narrative: z.string().min(20).max(20_000),

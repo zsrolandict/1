@@ -15,7 +15,7 @@ const FLAGS = Object.keys(FLAG_LABEL) as [CaseFlag, ...CaseFlag[]];
 const SECTORS = Object.keys(SECTOR_LABEL) as [Sector, ...Sector[]];
 
 export const CaseSuggestionSchema = z.object({
-  sector: z.enum(SECTORS).nullable().describe('Az ágazat, ha a szövegből egyértelmű; különben null.'),
+  sectors: z.array(z.enum(SECTORS)).describe('Az ágazat(ok), ha a szövegből egyértelmű(ek); különben üres lista.'),
   headcount: z.number().int().nullable().describe('Létszám, ha a szövegben szerepel; különben null.'),
   flags: z.array(
     z.object({
@@ -34,7 +34,7 @@ export const CaseSuggestionSchema = z.object({
 });
 
 export interface CaseSuggestion {
-  sector: Sector | null;
+  sectors: Sector[];
   headcount: number | null;
   flags: { flag: CaseFlag; quote: string }[];
   documents: { title: string; pillar: Pillar; why: string; quote: string }[];
@@ -74,7 +74,7 @@ ${input.profile.narrative}
 Már a listában lévő iratok:
 ${input.current.map((d) => `- ${d.title}`).join('\n')}
 
-Feladat: állapítsd meg a tényállásból az ágazatot, a létszámot és a jellemzőket, és javasolj legfeljebb 8 extra iratot.`;
+Feladat: állapítsd meg a tényállásból az ágazato(ka)t, a létszámot és a jellemzőket, és javasolj legfeljebb 8 extra iratot.`;
   const raw = await call(CaseSuggestionSchema, SYSTEM, user, 6000);
   let discarded = 0;
   const flags = raw.flags.filter((f) => {
@@ -89,7 +89,7 @@ Feladat: állapítsd meg a tényállásból az ágazatot, a létszámot és a je
     return ok;
   });
   return {
-    sector: raw.sector,
+    sectors: raw.sectors.filter((s) => !input.profile.sectors.includes(s)),
     headcount: raw.headcount != null && raw.headcount > 0 ? raw.headcount : null,
     flags: [...new Map(flags.map((f) => [f.flag, f])).values()],
     documents,

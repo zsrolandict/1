@@ -1,5 +1,6 @@
 import { KIND_RISKS } from '@/lib/engagement/kindRisks';
 import { catalogDefault, PILLAR_LABEL } from '@/lib/risk/catalog';
+import { sectorRiskTemplate } from '@/lib/risk/sectorRisks';
 import type { RiskItem, RiskSource, Scale5 } from '@/lib/risk/types';
 import { DEFAULT_COMPANY, resolveExposure, type CompanyProfile, type Valuation } from '@/lib/risk/valuation';
 import { SCENARIOS } from '@/lib/scenarios';
@@ -18,9 +19,9 @@ const KIND_ITEMS = new Map(
   Object.values(KIND_RISKS).flat().map((r) => [r.code, r] as const),
 );
 
-/** Tétel-sablon kód alapján: alapkatalógus › típus-tétel › szektortétel. */
+/** Tétel-sablon kód alapján: alapkatalógus › típus-tétel › ágazati katalógus › mintacég tétele. */
 export function templateFor(code: string): RiskItem | undefined {
-  return catalogDefault(code) ?? KIND_ITEMS.get(code) ?? SECTOR_ITEMS.get(code);
+  return catalogDefault(code) ?? KIND_ITEMS.get(code) ?? sectorRiskTemplate(code) ?? SECTOR_ITEMS.get(code);
 }
 
 const clamp5 = (n: number): Scale5 => Math.min(5, Math.max(1, Math.round(n))) as Scale5;
