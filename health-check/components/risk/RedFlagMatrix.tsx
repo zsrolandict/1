@@ -11,6 +11,8 @@ import {
   Pencil,
   Calculator,
   Download,
+  FileSpreadsheet,
+  MoreHorizontal,
   Filter,
   Gauge,
   Plus,
@@ -30,7 +32,7 @@ import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario 
 import { getScenario, SCENARIOS } from '@/lib/scenarios';
 import { EXPERT_PARAMETERS } from '@/lib/risk/parameters';
 import { computeFormula, resolveExposure, type CompanyProfile, type Formula } from '@/lib/risk/valuation';
-import ExportPdfButton, { type SaveFile } from '@/components/report/ExportPdfButton';
+import ExportPdfButton, { browserDownload, slug, type SaveFile } from '@/components/report/ExportPdfButton';
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, hourSplit, PM_HOURS, type EngagementKind } from '@/lib/engagement/kinds';
 import { KIND_RISKS } from '@/lib/engagement/kindRisks';
 import { adjustmentsFor, formatAdjustment, KIND_ADJUSTMENTS_STATUS, type KindAdjustment } from '@/lib/engagement/adjustments';
@@ -186,17 +188,36 @@ export default function RedFlagMatrix({
   /** A kiválasztott mintaeset kiinduló állapota. */
   const reset = () => applyWorkspace(scenarioId);
 
-  const exportJson = () => {
-    const blob = new Blob([JSON.stringify({ companyName, kind, company, generatedAt: new Date().toISOString(), materialityHuf, ...result }, null, 2)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `red-flag-${companyName.replace(/\W+/g, '-').toLowerCase()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const saveFile = savePdf ?? browserDownload;
+  const fileBase = `${slug(companyName)}-${new Date().toISOString().slice(0, 10)}`;
+  const [fileNote, setFileNote] = useState<string | null>(null);
+  const save = async (make: () => Promise<Blob>, name: string) => {
+    setFileNote(null);
+    try {
+      await saveFile(await make(), name);
+    } catch (e) {
+      setFileNote(e instanceof Error ? e.message : 'A mentés nem sikerült.');
+    }
   };
+
+  /** Olvasható Excel a tanácsadóknak. A modul csak kattintáskor töltődik be. */
+  const exportExcel = () =>
+    save(async () => {
+      const { exportExcel: build } = await import('@/lib/report/excelExport');
+      const { XLSX_MIME } = await import('@/lib/report/xlsx');
+      const bytes = build({ companyName, kind, company, materialityHuf, assessment: result });
+      return new Blob([bytes.slice().buffer], { type: XLSX_MIME });
+    }, `red-flag-${fileBase}.xlsx`);
+
+  /** Gépi adatmentés (JSON) – fejlesztőknek, archiváláshoz; embernek az Excel vagy a PDF való. */
+  const exportJson = () =>
+    save(
+      async () =>
+        new Blob([JSON.stringify({ companyName, kind, company, generatedAt: new Date().toISOString(), materialityHuf, ...result }, null, 2)], {
+          type: 'application/json',
+        }),
+      `red-flag-adatmentes-${fileBase}.json`,
+    );
 
   const { totals, pillars, actionPlan, pipeline } = result;
 
@@ -240,7 +261,7 @@ export default function RedFlagMatrix({
             {ENGAGEMENT_KIND_LIST.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
           </select>
           <ToolbarButton onClick={reset} icon={<RotateCcw className="h-4 w-4" />}>Alaphelyzet</ToolbarButton>
-          <ToolbarButton onClick={exportJson} icon={<Download className="h-4 w-4" />}>JSON</ToolbarButton>
+          <ToolbarButton onClick={exportExcel} icon={<FileSpreadsheet className="h-4 w-4" />}>Excel</ToolbarButton>
           {showPrint && (
             <ToolbarButton onClick={() => window.print()} icon={<Printer className="h-4 w-4" />}>
               Nyomtatás
@@ -251,6 +272,30 @@ export default function RedFlagMatrix({
             saveFile={savePdf}
             fontBase={fontBase}
           />
+          <details className="relative">
+            <summary
+              aria-label="További műveletek"
+              className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 [&::-webkit-details-marker]:hidden"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </summary>
+            <div className="absolute right-0 z-20 mt-1 w-64 rounded-md border border-slate-200 bg-white p-1 text-sm shadow-lg">
+              <button
+                onClick={(e) => {
+                  (e.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open');
+                  exportJson();
+                }}
+                className="flex w-full items-start gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-50"
+              >
+                <Download className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                <span>
+                  <span className="block text-slate-800">Adatmentés (fejlesztőknek)</span>
+                  <span className="block text-xs text-slate-500">Gépi formátum (JSON) archiváláshoz, más rendszerbe töltéshez. Olvasásra az Excel vagy a PDF való.</span>
+                </span>
+              </button>
+            </div>
+          </details>
+          {fileNote && <p className="w-full text-right text-xs text-red-700">{fileNote}</p>}
         </div>
       </header>
 

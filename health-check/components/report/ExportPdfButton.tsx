@@ -7,7 +7,7 @@ import type { ReportInput } from '@/lib/report/model';
 /** Fájl átadása a felhasználónak. Alapból böngészős letöltés; az előnézet mást adhat. */
 export type SaveFile = (blob: Blob, filename: string) => Promise<void>;
 
-const browserDownload: SaveFile = async (blob, filename) => {
+export const browserDownload: SaveFile = async (blob, filename) => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -78,7 +78,7 @@ export default function ExportPdfButton({
   );
 }
 
-function slug(s: string): string {
+export function slug(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')

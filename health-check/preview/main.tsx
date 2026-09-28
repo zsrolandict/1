@@ -28,7 +28,7 @@ const savePdf: SaveFile = async (blob, filename) => {
   } catch (e) {
     const code = (e as { code?: string })?.code;
     if (code === 'declined') return; // a néző meggondolta magát
-    throw new Error(code === 'rate_limited' ? 'Egy mentési kérdés már nyitva van.' : 'A PDF mentése nem sikerült.');
+    throw new Error(code === 'rate_limited' ? 'Egy mentési kérdés már nyitva van.' : 'A fájl mentése nem sikerült.');
   }
 };
 
