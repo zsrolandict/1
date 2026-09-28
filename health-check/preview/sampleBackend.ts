@@ -7,6 +7,7 @@ import { analyzeExtracted } from '@/lib/intake/documents/pipeline';
 import { buildInterviewGuide } from '@/lib/interview/guide';
 import { runInterviewAnalysis, runQuestionSuggestions } from '@/lib/interview/prompts';
 import { runCaseSuggestion } from '@/lib/intake/casePrompts';
+import { runSynthesis } from '@/lib/intake/synthesis';
 
 /**
  * Böngészős előnézet: az AI a claude.ai beépített képessége (`sample`),
@@ -96,5 +97,8 @@ export const sampleBackend: AiBackend = {
   },
   async suggestCase(req) {
     return runCaseSuggestion(sampleCall, req);
+  },
+  async synthesize(req) {
+    return runSynthesis(sampleCall, req);
   },
 };

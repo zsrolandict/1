@@ -4,6 +4,7 @@ import { evaluateChecklist, type ChecklistAnswers } from './checklist';
 import { documentToIntake } from './documents/toIntake';
 import type { DocumentRecord } from './documents/types';
 import { buildRequestList, EMPTY_PROFILE, normalizeProfile, type CaseProfile, type DocRequest, type RequestStatus } from './requests';
+import type { SynthesisResult } from './synthesis';
 import type { TableAnalysis } from './tables/metrics';
 import type { TableKind } from './tables/spec';
 import type { IntakeResult } from './types';
@@ -21,6 +22,8 @@ export interface IntakeState {
   requestStatus: Record<string, RequestStatus>;
   /** AI-javaslatból vagy kézzel felvett extra iratok. */
   extraRequests: DocRequest[];
+  /** Az utolsó AI-szintézis eredménye. */
+  synthesis?: SynthesisResult | null;
   answers: ChecklistAnswers;
   tables: Partial<Record<TableKind, TableAnalysis>>;
   documents: DocumentRecord[];

@@ -1,6 +1,8 @@
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { DocumentAnalysis, DocumentFormat } from '@/lib/intake/documents/types';
 import type { CaseSuggestion } from '@/lib/intake/casePrompts';
+import type { SynthesisResult, SynthesisSource } from '@/lib/intake/synthesis';
+import type { RiskItem } from '@/lib/risk/types';
 import type { CaseProfile, DocRequest } from '@/lib/intake/requests';
 import type { GuideContext, InterviewAnalysis, InterviewQuestion, IntervieweeRole, KnownFact, Transcript } from '@/lib/interview/types';
 
@@ -34,6 +36,15 @@ export interface AiBackend {
   analyzeInterview(req: { transcript: Transcript; role: IntervieweeRole; kind: EngagementKind; facts: KnownFact[] }): Promise<InterviewAnalysis>;
   analyzeDocument(file: File, kind: EngagementKind): Promise<DocumentResult>;
   suggestCase(req: CaseRequest): Promise<CaseSuggestion>;
+  synthesize(req: SynthesisRequest): Promise<SynthesisResult>;
+}
+
+export interface SynthesisRequest {
+  kind: EngagementKind;
+  companyName: string;
+  sources: SynthesisSource[];
+  existing: RiskItem[];
+  pending: string[];
 }
 
 export interface CaseRequest {
@@ -86,5 +97,8 @@ export const serverBackend: AiBackend = {
   },
   async suggestCase(req) {
     return (await callApi<{ suggestion: CaseSuggestion }>('/api/intake/case', json(req))).suggestion;
+  },
+  async synthesize(req) {
+    return (await callApi<{ result: SynthesisResult }>('/api/intake/synthesis', json(req))).result;
   },
 };

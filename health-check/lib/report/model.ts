@@ -57,7 +57,7 @@ export function buildReportModel(input: ReportInput): ReportModel {
     greenCount: assessment.risks.length - nonGreen.length,
     unapprovedParameterRisks: unapproved,
     adjustedRisks: assessment.risks.filter((r) => r.adjustment),
-    aiSourcedCount: assessment.risks.filter((r) => r.source === 'AI_INTERVIEW' || r.source === 'AI_DOCUMENT').length,
+    aiSourcedCount: assessment.risks.filter((r) => r.source === 'AI_INTERVIEW' || r.source === 'AI_DOCUMENT' || r.source === 'AI_SYNTHESIS').length,
   };
 }
 

@@ -46,8 +46,14 @@ export interface TableAnalysis {
   metrics: Metric[];
   /** Legnagyobb partnerek (a felületre; a riportba nem kerül név). */
   topPartners: { name: string; amountHuf: number; share: number }[];
+  /** Partnerenkénti összeg (legfeljebb 200) – a táblák közötti keresztellenőrzéshez. */
+  partners: { name: string; amountHuf: number }[];
+  /** Gépi mutatók a keresztellenőrzéshez (arányok 0–1). */
+  values: Record<string, number>;
   warnings: string[];
   result: IntakeResult;
+  /** Vevői korosítás: a legnagyobb 180 napon túli tartozó. */
+  over180Top?: { name: string; amountHuf: number } | null;
 }
 
 const TOTAL_ROW = /^(osszesen|mindosszesen|total|sum|osszeg)\b/i;
@@ -119,7 +125,7 @@ export function analyzeTable(input: TableInput, ctx: TableContext): TableAnalysi
   const partners = byPartner(rows);
   const topPartners = partners.slice(0, 5).map((p) => ({ ...p, share: total > 0 ? p.amountHuf / total : 0 }));
   const source = `${spec.label} (${input.fileName})`;
-  const base = { kind: input.kind, fileName: input.fileName, rows: rows.length, skipped, totalHuf: total, topPartners };
+  const base = { kind: input.kind, fileName: input.fileName, rows: rows.length, skipped, totalHuf: total, topPartners, partners: partners.slice(0, 200), values: {} as Record<string, number> };
   const warnings: string[] = [];
   if (!rows.length) {
     return { ...base, metrics: [], warnings: ['Egyetlen feldolgozható sor sincs. Ellenőrizze az oszlopokat.'], result: { suggestions: [], companySuggestions: [], facts: [] } };
@@ -144,6 +150,9 @@ export function analyzeTable(input: TableInput, ctx: TableContext): TableAnalysi
       });
       if (unknownDays) warnings.push(`${unknownDays} sornál nem állapítható meg a késés.`);
       const over90 = over90Rows.reduce((s, r) => s + r.amount, 0);
+      const over180Rows = rows.filter((_, i) => (overdue[i] ?? 0) > 180);
+      const over180 = over180Rows.reduce((s, r) => s + r.amount, 0);
+      const topOver180 = byPartner(over180Rows)[0];
       const share90 = total > 0 ? over90 / total : 0;
       const topOver90 = byPartner(over90Rows)[0];
       const topOver90Share = topOver90 && over90 > 0 ? topOver90.amountHuf / over90 : 0;
@@ -177,11 +186,14 @@ export function analyzeTable(input: TableInput, ctx: TableContext): TableAnalysi
       }
       return {
         ...base,
+        values: { share90, over90, over180, dso, topOver90Share },
+        over180Top: topOver180 ?? null,
         warnings,
         metrics: [
           { label: 'Nyitott vevőállomány', value: formatHufShort(total) },
           { label: '90 napon túl lejárt', value: `${formatHufShort(over90)} (${pct(share90)})`, alert: share90 >= 0.15 },
           { label: 'Legnagyobb késedelmes vevő aránya', value: over90 > 0 ? pct(topOver90Share) : '—', alert: topOver90Share >= 0.5 },
+          { label: '180 napon túl lejárt', value: formatHufShort(over180), alert: over180 > 0 },
           { label: 'DSO (vevőállomány / árbevétel × 365)', value: `${dso} nap`, alert: gap >= 15 },
           { label: 'Iparági DSO', value: `${ctx.company.industryDsoDays} nap` },
         ],
@@ -221,6 +233,7 @@ export function analyzeTable(input: TableInput, ctx: TableContext): TableAnalysi
       }
       return {
         ...base,
+        values: { top1, top5, hhi },
         warnings,
         metrics: [
           { label: 'Árbevétel összesen', value: formatHufShort(total) },
@@ -250,6 +263,7 @@ export function analyzeTable(input: TableInput, ctx: TableContext): TableAnalysi
       }
       return {
         ...base,
+        values: { top1, top3 },
         warnings,
         metrics: [
           { label: 'Beszerzés összesen', value: formatHufShort(total) },
@@ -285,6 +299,7 @@ export function analyzeTable(input: TableInput, ctx: TableContext): TableAnalysi
       }
       return {
         ...base,
+        values: { above, missing: missing.length, missingSum },
         warnings,
         metrics: [
           { label: 'Kapcsolt ügyletek', value: `${rows.length} db, ${formatHufShort(total)}` },

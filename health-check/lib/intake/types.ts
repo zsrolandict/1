@@ -7,12 +7,14 @@ import type { CompanyProfile } from '@/lib/risk/valuation';
  * ugyanilyen javaslatokat adnak; a mátrixba csak a szakértő elfogadása után
  * kerülnek (lásd apply.ts).
  */
-export type IntakeOrigin = 'CHECKLIST' | 'DATA_TABLE' | 'AI_DOCUMENT';
+export type IntakeOrigin = 'CHECKLIST' | 'DATA_TABLE' | 'AI_DOCUMENT' | 'CROSS_CHECK' | 'AI_SYNTHESIS';
 
 export const ORIGIN_LABEL: Record<IntakeOrigin, string> = {
   CHECKLIST: 'Kérdőív',
   DATA_TABLE: 'Adattábla',
   AI_DOCUMENT: 'AI · dokumentum',
+  CROSS_CHECK: 'Keresztellenőrzés',
+  AI_SYNTHESIS: 'AI · összkép',
 };
 
 /** Tényadatból pontosított képlet-paraméter. */

@@ -17,6 +17,8 @@ const SOURCE: Record<RiskSource, string> = {
   DATA_TABLE: 'Adattábla',
   AI_DOCUMENT: 'AI · dokumentum',
   AI_INTERVIEW: 'AI · interjú',
+  CROSS_CHECK: 'Keresztellenőrzés',
+  AI_SYNTHESIS: 'AI · összkép',
 };
 
 const huf = (n: number) => `${Math.round(n).toLocaleString('hu-HU')} Ft`;

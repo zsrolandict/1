@@ -10,6 +10,8 @@ const SOURCE: Record<IntakeOrigin, RiskSource> = {
   CHECKLIST: 'CHECKLIST',
   DATA_TABLE: 'DATA_TABLE',
   AI_DOCUMENT: 'AI_DOCUMENT',
+  CROSS_CHECK: 'CROSS_CHECK',
+  AI_SYNTHESIS: 'AI_SYNTHESIS',
 };
 
 const SECTOR_ITEMS = new Map(

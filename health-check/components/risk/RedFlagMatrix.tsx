@@ -43,6 +43,8 @@ import { adjustmentsFor, formatAdjustment, KIND_ADJUSTMENTS_STATUS, type KindAdj
 const SOURCE_LABEL: Partial<Record<RiskSource, string>> = {
   CHECKLIST: 'Kérdőív',
   DATA_TABLE: 'Adattábla',
+  CROSS_CHECK: 'Keresztellenőrzés',
+  AI_SYNTHESIS: 'AI · összkép',
   AI_DOCUMENT: 'AI · dokumentum',
   AI_INTERVIEW: 'AI · interjú',
 };

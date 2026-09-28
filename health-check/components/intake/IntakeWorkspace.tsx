@@ -14,6 +14,7 @@ import {
   Loader2,
   RotateCcw,
   ShieldCheck,
+  Sparkles,
   Table2,
   Trash2,
   Undo2,
@@ -30,6 +31,10 @@ import { SAMPLE_DOCUMENTS, sampleDocumentRecord, samplePagesRedacted } from '@/l
 import { hasSampleTables, SAMPLE_REF_DATE, sampleTableCsv } from '@/lib/intake/samples/tables';
 import { EMPTY_INTAKE, intakeResults, loadIntake, requestList, saveIntake, type IntakeState } from '@/lib/intake/state';
 import CaseTab from './CaseTab';
+import OverviewTab from './OverviewTab';
+import { crossChecks } from '@/lib/intake/crossChecks';
+import { buildSources } from '@/lib/intake/synthesis';
+import { loadRecords } from '@/lib/interview/records';
 import { SECTOR_LABEL, type Sector } from '@/lib/intake/requests';
 import { missingSectorRisks } from '@/lib/risk/sectorRisks';
 import { analyzeTable, type TableAnalysis } from '@/lib/intake/tables/metrics';
@@ -43,7 +48,7 @@ import type { Rag } from '@/lib/risk/types';
 import { getScenario, SCENARIOS } from '@/lib/scenarios';
 import { useAiBackend } from '@/components/AiBackendContext';
 
-type Tab = 'case' | 'checklist' | 'tables' | 'documents';
+type Tab = 'case' | 'checklist' | 'tables' | 'documents' | 'overview';
 type SourceTab = Exclude<Tab, 'case'>;
 
 /** A feltöltött tábla nyers rácsa csak memóriában él (oszlop-javításhoz, újraszámoláshoz). */
@@ -92,11 +97,32 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
       return next;
     });
 
-  const results = useMemo(() => intakeResults(intake, ws.kind), [intake, ws.kind]);
+  const baseResults = useMemo(() => intakeResults(intake, ws.kind), [intake, ws.kind]);
+  // Összkép: keresztellenőrzés + AI-szintézis (az interjúk is forrásai)
+  const records = useMemo(() => (hydrated ? loadRecords(ws.scenarioId) : {}), [hydrated, ws.scenarioId, tab]);
+  const allFacts = useMemo(
+    () => [...scenario.facts, ...baseResults.documents.facts, ...baseResults.tables.facts, ...baseResults.checklist.facts],
+    [scenario, baseResults],
+  );
+  const cross = useMemo(() => crossChecks(intake, ws.kind, records, allFacts), [intake, ws.kind, records, allFacts]);
+  const sources = useMemo(() => buildSources(intake, records, allFacts), [intake, records, allFacts]);
+  const results = {
+    ...baseResults,
+    overview: {
+      suggestions: [...cross.suggestions, ...(intake.synthesis?.suggestions ?? [])],
+      companySuggestions: [],
+      facts: [],
+    },
+  };
+  const synthesize = async () => {
+    const pending = [baseResults.checklist, baseResults.tables, baseResults.documents].flatMap((r) => r.suggestions.filter((x) => !accepted.has(x.key)).map((x) => x.title));
+    const synthesis = await backend.synthesize({ kind: ws.kind, companyName: ws.companyName, sources, existing: ws.items, pending });
+    updateIntake({ synthesis });
+  };
   const accepted = useMemo(() => new Set(intake.accepted), [intake.accepted]);
   const dismissed = useMemo(() => new Set(intake.dismissed), [intake.dismissed]);
 
-  const allSuggestions = [...results.checklist.suggestions, ...results.tables.suggestions, ...results.documents.suggestions];
+  const allSuggestions = [...results.checklist.suggestions, ...results.tables.suggestions, ...results.documents.suggestions, ...results.overview.suggestions];
   const pendingCount = allSuggestions.filter((s) => !accepted.has(s.key) && !dismissed.has(s.key)).length;
 
   const accept = (s: IntakeSuggestion) => {
@@ -262,6 +288,9 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
         <TabButton active={tab === 'documents'} onClick={() => setTab('documents')} icon={<FileText className="h-4 w-4" />}>
           3. Dokumentumok <Count>{intake.documents.length}</Count>
         </TabButton>
+        <TabButton active={tab === 'overview'} onClick={() => setTab('overview')} icon={<Sparkles className="h-4 w-4" />}>
+          4. Összkép <Count>{cross.conflicts.length} ellentmondás</Count>
+        </TabButton>
       </nav>
 
       {error && (
@@ -316,6 +345,16 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
               onChangeRaw={setTable}
             />
           )}
+          {tab === 'overview' && (
+            <OverviewTab
+              conflicts={cross.conflicts}
+              crossCount={cross.suggestions.length}
+              synthesis={intake.synthesis}
+              sourceCount={sources.length}
+              aiReady={aiReady}
+              onSynthesize={synthesize}
+            />
+          )}
           {tab === 'documents' && (
             <DocumentsTab
               documents={intake.documents}
@@ -346,7 +385,9 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
                 ? 'Válaszoljon a kérdésekre – a jelző válaszokból itt jelennek meg a javaslatok.'
                 : tab === 'tables'
                   ? 'Töltsön be egy táblát – a küszöb feletti mutatókból itt lesznek javaslatok.'
-                  : 'Elemezzen egy dokumentumot – az ellenőrzött idézetű találatok itt jelennek meg.'
+                  : tab === 'overview'
+                    ? 'Készítsen összképet, vagy töltsön be több táblát – a források összevetéséből itt lesznek javaslatok.'
+                    : 'Elemezzen egy dokumentumot – az ellenőrzött idézetű találatok itt jelennek meg.'
             }
           />
           <FactsNote result={results[tab as SourceTab]} />

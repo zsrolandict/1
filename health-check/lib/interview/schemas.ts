@@ -15,7 +15,7 @@ export const KnownFactSchema = z.object({
   askInInterview: z.boolean().optional(),
 });
 
-const RiskItemSchema = z.object({
+export const RiskItemSchema = z.object({
   id: z.string().max(100),
   code: z.string().max(40),
   pillar: Pillar,
@@ -29,7 +29,7 @@ const RiskItemSchema = z.object({
   remediation: z.string().max(2000),
   division: z.enum(['LEGAL', 'TAX', 'ACCOUNTING', 'HR', 'ADVISORY']),
   serviceFeeHuf: z.number().nonnegative(),
-  source: z.enum(['MANUAL', 'CHECKLIST', 'DATA_TABLE', 'AI_DOCUMENT', 'AI_INTERVIEW']).optional(),
+  source: z.enum(['MANUAL', 'CHECKLIST', 'DATA_TABLE', 'CROSS_CHECK', 'AI_DOCUMENT', 'AI_INTERVIEW', 'AI_SYNTHESIS']).optional(),
   evidence: z.string().max(2000).optional(),
 });
 
