@@ -1,0 +1,77 @@
+import type { EngagementKind } from '@/lib/engagement/kinds';
+import type { DocumentAnalysis, DocumentFormat } from '@/lib/intake/documents/types';
+import type { GuideContext, InterviewAnalysis, InterviewQuestion, IntervieweeRole, KnownFact, Transcript } from '@/lib/interview/types';
+
+/**
+ * Honnan jön az AI a felületen. Az alkalmazásban a saját szerver API-ja
+ * (kulcs a szerveren); a böngészős előnézetben a claude.ai beépített AI-ja.
+ * A komponensek csak ezen a felületen át hívnak AI-t.
+ */
+export interface AiStatus {
+  ai: boolean;
+  documents: boolean;
+  transcription: boolean;
+  transcriptionAccept?: string;
+  transcriptionProvider?: string | null;
+  aiProvider?: string | null;
+  /** Magyarázat, ha a leirat nem elérhető (a felület ezt írja ki). */
+  transcriptionNote?: string;
+}
+
+export interface DocumentResult {
+  analysis: DocumentAnalysis;
+  format: DocumentFormat;
+  pageLabels: string[];
+  redactions: Record<string, number>;
+}
+
+export interface AiBackend {
+  status(): Promise<AiStatus>;
+  suggestQuestions(context: GuideContext): Promise<InterviewQuestion[]>;
+  transcribe(file: File, opts: { consent: boolean; speakers: number }): Promise<Transcript>;
+  analyzeInterview(req: { transcript: Transcript; role: IntervieweeRole; kind: EngagementKind; facts: KnownFact[] }): Promise<InterviewAnalysis>;
+  analyzeDocument(file: File, kind: EngagementKind): Promise<DocumentResult>;
+}
+
+async function callApi<T>(url: string, init: RequestInit): Promise<T> {
+  const res = await fetch(url, init);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error ?? `Hiba (${res.status})`);
+  return body as T;
+}
+
+const json = (body: unknown): RequestInit => ({
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+});
+
+/** Alapértelmezés: a Next.js alkalmazás saját API-végpontjai. */
+export const serverBackend: AiBackend = {
+  async status() {
+    try {
+      return await callApi<AiStatus>('/api/interviews/status', { method: 'GET' });
+    } catch {
+      return { ai: false, documents: false, transcription: false };
+    }
+  },
+  async suggestQuestions(context) {
+    return (await callApi<{ aiQuestions: InterviewQuestion[] }>('/api/interviews/guide', json({ context, withAi: true }))).aiQuestions;
+  },
+  async transcribe(file, { consent, speakers }) {
+    const form = new FormData();
+    form.append('audio', file);
+    form.append('consent', String(consent));
+    form.append('speakers', String(speakers));
+    return (await callApi<{ transcript: Transcript }>('/api/interviews/transcribe', { method: 'POST', body: form })).transcript;
+  },
+  async analyzeInterview(req) {
+    return (await callApi<{ analysis: InterviewAnalysis }>('/api/interviews/analyze', json(req))).analysis;
+  },
+  async analyzeDocument(file, kind) {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('kind', kind);
+    return callApi<DocumentResult>('/api/documents/analyze', { method: 'POST', body: form });
+  },
+};

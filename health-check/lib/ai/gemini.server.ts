@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import type { z } from 'zod';
+import { toJsonSchema } from './schema';
 
 // Google Gemini (Generative Language API) – közvetlen REST-hívás, SDK nélkül.
 // Csak szerveroldalon importálható: az API-kulcs nem kerülhet a kliensre.
@@ -57,20 +58,7 @@ async function call<T>(path: string, init: RequestInit): Promise<T> {
 }
 
 /** Zod → a Gemini által elfogadott JSON-séma (a felesleges meta-mezők nélkül). */
-export function toGeminiSchema(schema: z.ZodType): unknown {
-  const strip = (node: unknown): unknown => {
-    if (Array.isArray(node)) return node.map(strip);
-    if (!node || typeof node !== 'object') return node;
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(node)) {
-      if (k === '$schema') continue;
-      if ((k === 'minimum' || k === 'maximum') && Math.abs(v as number) >= Number.MAX_SAFE_INTEGER) continue;
-      out[k] = strip(v);
-    }
-    return out;
-  };
-  return strip(z.toJSONSchema(schema));
-}
+export const toGeminiSchema = toJsonSchema;
 
 /**
  * Strukturált (JSON) válasz kérése. Elutasítás / tiltás esetén

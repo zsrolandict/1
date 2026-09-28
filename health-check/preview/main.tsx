@@ -4,12 +4,14 @@ import RedFlagMatrix from '@/components/risk/RedFlagMatrix';
 import InterviewWorkspace from '@/components/interview/InterviewWorkspace';
 import IntakeWorkspace from '@/components/intake/IntakeWorkspace';
 import type { SaveFile } from '@/components/report/ExportPdfButton';
+import { AiBackendProvider } from '@/components/AiBackendContext';
+import { sampleBackend } from './sampleBackend';
 import './styles.css';
 
 /**
  * Kattintható előnézet (claude.ai Artifact): a Next.js alkalmazás kliens-
- * komponensei szerver nélkül. Az AI-végpontok itt nem érhetők el; a PDF-et
- * a nézőnek a `downloads` képesség adja át.
+ * komponensei szerver nélkül. Az AI a claude.ai beépített képessége (`sample`,
+ * a néző fiókján); a PDF-et a nézőnek a `downloads` képesség adja át.
  */
 
 type Tab = 'matrix' | 'adatok' | 'interjuk';
@@ -17,14 +19,9 @@ type Tab = 'matrix' | 'adatok' | 'interjuk';
 interface DownloadsNs {
   save(req: { filename: string; data: Blob }): Promise<{ status: string }>;
 }
-declare global {
-  interface Window {
-    claude?: { use(name: 'downloads'): Promise<DownloadsNs | null> };
-  }
-}
 
 const savePdf: SaveFile = async (blob, filename) => {
-  const downloads = (await window.claude?.use('downloads')) ?? null;
+  const downloads = ((await window.claude?.use('downloads')) as DownloadsNs | null | undefined) ?? null;
   if (!downloads) throw new Error('A mentés ebben a nézetben nem érhető el.');
   try {
     await downloads.save({ filename, data: blob });
@@ -62,8 +59,9 @@ function App() {
   return (
     <>
       <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs text-amber-900">
-        <b>Prototípus, kitalált mintaadatokkal.</b> Az AI-elemzés és a hangfeldolgozás itt ki van kapcsolva; a kérdőív, a táblák
-        (saját CSV/XLSX is), valamint a minta-dokumentumok és a minta-interjú kipróbálhatók. A módosítások csak ebben a böngészőben maradnak meg.
+        <b>Prototípus, csak kitalált tesztanyaggal.</b> Az AI-elemzés élő (interjú-jegyzet, saját Word/PDF/szöveg dokumentum): a claude.ai
+        AI-ja fut a te fiókodon, első használatkor engedélyt kér. Hangfájl itt nem dolgozható fel, azt a saját gépes változat tudja.
+        A módosítások csak ebben a böngészőben maradnak meg.
       </div>
       <nav className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-6 px-4 sm:px-6 lg:px-8">
@@ -99,6 +97,8 @@ function App() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <AiBackendProvider value={sampleBackend}>
+      <App />
+    </AiBackendProvider>
   </StrictMode>,
 );

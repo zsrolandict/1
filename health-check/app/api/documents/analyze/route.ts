@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { isAiConfigured } from '@/lib/ai/client.server';
+import { isAiConfigured, parseStructured } from '@/lib/ai/client.server';
 import { requireStaff } from '@/lib/auth/guard.server';
-import { analyzeDocument } from '@/lib/intake/documents/ai.server';
-import { documentChars } from '@/lib/intake/documents/extract';
 import { extractDocument } from '@/lib/intake/documents/extract.server';
-import { redactPages } from '@/lib/intake/documents/redact';
+import { analyzeExtracted } from '@/lib/intake/documents/pipeline';
 import { errorResponse } from '../../_errors';
 
 export const maxDuration = 300;
@@ -36,17 +34,9 @@ export async function POST(req: Request) {
   }
   try {
     const extracted = await extractDocument(file.name, new Uint8Array(await file.arrayBuffer()));
-    if (extracted.pages.length > MAX_PAGES || documentChars(extracted.pages) > MAX_DOCUMENT_CHARS) {
-      return NextResponse.json({ error: 'A dokumentum túl hosszú egy elemzéshez. Töltse fel részenként.' }, { status: 413 });
-    }
-    const { pages, counts } = redactPages(extracted.pages);
-    const analysis = await analyzeDocument({ fileName: file.name, pages, kind: kind.data });
-    return NextResponse.json({
-      analysis,
-      format: extracted.format,
-      pageLabels: pages.map((p) => p.label),
-      redactions: counts,
-    });
+    return NextResponse.json(
+      await analyzeExtracted(parseStructured, extracted, kind.data, { maxChars: MAX_DOCUMENT_CHARS, maxPages: MAX_PAGES }),
+    );
   } catch (err) {
     return errorResponse(err);
   }

@@ -37,6 +37,8 @@ import type {
   Transcript,
 } from '@/lib/interview/types';
 import { PILLAR_LABEL } from '@/lib/risk/catalog';
+import type { AiStatus } from '@/lib/ai/backend';
+import { useAiBackend } from '@/components/AiBackendContext';
 import { PILLARS } from '@/lib/risk/engine';
 import { applySuggestion, DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario, type Workspace } from '@/lib/risk/store';
 import type { Pillar } from '@/lib/risk/types';
@@ -72,7 +74,8 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   const [hydrated, setHydrated] = useState(false);
   const [role, setRole] = useState<IntervieweeRole>('OWNER_CEO');
   const [tab, setTab] = useState<Tab>('plan');
-  const [status, setStatus] = useState<{ ai: boolean; transcription: boolean; transcriptionAccept?: string; transcriptionProvider?: string | null } | null>(null);
+  const [status, setStatus] = useState<AiStatus | null>(null);
+  const backend = useAiBackend();
 
   const [facts, setFacts] = useState<KnownFact[]>(getScenario(DEFAULT_WORKSPACE.scenarioId).facts);
   const scenario = getScenario(ws.scenarioId);
@@ -103,10 +106,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
     setFacts(factsFor(loaded.scenarioId, loaded.kind));
     setRecords(loadRecords(loaded.scenarioId));
     setHydrated(true);
-    fetch('/api/interviews/status')
-      .then((r) => r.json())
-      .then(setStatus)
-      .catch(() => setStatus({ ai: false, transcription: false }));
+    backend.status().then(setStatus);
   }, []);
 
   const updateWs = (next: Workspace) => {
@@ -143,13 +143,6 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
     [transcript, speakerNames],
   );
 
-  async function callApi<T>(url: string, init: RequestInit): Promise<T> {
-    const res = await fetch(url, init);
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body.error ?? `Hiba (${res.status})`);
-    return body as T;
-  }
-
   const run = async (kind: typeof busy, fn: () => Promise<void>) => {
     setBusy(kind);
     setError(null);
@@ -164,22 +157,13 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
 
   const extendWithAi = () =>
     run('ai-questions', async () => {
-      const body = await callApi<{ aiQuestions: InterviewQuestion[] }>('/api/interviews/guide', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context, withAi: true }),
-      });
-      setAiQuestions(body.aiQuestions);
+      setAiQuestions(await backend.suggestQuestions(context));
     });
 
   const transcribe = (file: File) =>
     run('transcribe', async () => {
-      const form = new FormData();
-      form.append('audio', file);
-      form.append('consent', String(consent));
-      form.append('speakers', String(speakers));
-      const body = await callApi<{ transcript: Transcript }>('/api/interviews/transcribe', { method: 'POST', body: form });
-      updateRec({ transcript: body.transcript, speakerNames: {}, analysis: null, heldAt: rec.heldAt ?? today() });
+      const t = await backend.transcribe(file, { consent, speakers });
+      updateRec({ transcript: t, speakerNames: {}, analysis: null, heldAt: rec.heldAt ?? today() });
     });
 
   const useNotes = () => {
@@ -211,12 +195,8 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   const analyze = () =>
     run('analyze', async () => {
       if (!namedTranscript) return;
-      const body = await callApi<{ analysis: InterviewAnalysis }>('/api/interviews/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: namedTranscript, role, kind: ws.kind, facts }),
-      });
-      updateRec({ analysis: body.analysis, analysisIsSample: false, accepted: [] });
+      const analysis = await backend.analyzeInterview({ transcript: namedTranscript, role, kind: ws.kind, facts });
+      updateRec({ analysis, analysisIsSample: false, accepted: [] });
       setTab('analysis');
     });
 
@@ -412,7 +392,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
               <p className="mt-2 text-xs text-slate-500">
                 {status?.transcription
                   ? `A felvételt nem tároljuk: a leirat elkészülte után csak a szöveg marad meg.${status.transcriptionProvider === 'gemini' ? ' Leirat: Google Gemini.' : ''}`
-                  : 'A leiratkészítő szolgáltatás nincs beállítva a szerveren (GEMINI_API_KEY vagy Azure Speech kulcs a .env.local fájlban). Addig használja a jegyzet-beillesztést.'}
+                  : (status?.transcriptionNote ?? 'A leiratkészítő szolgáltatás nincs beállítva a szerveren (GEMINI_API_KEY vagy Azure Speech kulcs a .env.local fájlban). Addig használja a jegyzet-beillesztést.')}
               </p>
             </Card>
 

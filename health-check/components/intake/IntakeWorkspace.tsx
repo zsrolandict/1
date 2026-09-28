@@ -37,6 +37,7 @@ import { formatHufShort, PILLARS, ragFromScore } from '@/lib/risk/engine';
 import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario, type Workspace } from '@/lib/risk/store';
 import type { Rag } from '@/lib/risk/types';
 import { getScenario, SCENARIOS } from '@/lib/scenarios';
+import { useAiBackend } from '@/components/AiBackendContext';
 
 type Tab = 'checklist' | 'tables' | 'documents';
 
@@ -62,6 +63,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
   const [tab, setTab] = useState<Tab>('checklist');
   const [raw, setRaw] = useState<Partial<Record<TableKind, RawTable>>>({});
   const [aiReady, setAiReady] = useState<boolean | null>(null);
+  const backend = useAiBackend();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,10 +72,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
     setWs(loaded);
     setIntake(loadIntake(loaded.scenarioId));
     setHydrated(true);
-    fetch('/api/interviews/status')
-      .then((r) => r.json())
-      .then((s: { documents?: boolean }) => setAiReady(Boolean(s.documents)))
-      .catch(() => setAiReady(false));
+    backend.status().then((s) => setAiReady(s.documents));
   }, []);
 
   const scenario = getScenario(ws.scenarioId);
@@ -178,20 +177,12 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
         const pre = extractPlain(file.name, new Uint8Array(await file.arrayBuffer()));
         if (documentChars(pre.pages) < 20) throw new Error('A dokumentumban nincs feldolgozható szöveg.');
       }
-      const form = new FormData();
-      form.append('file', file);
-      form.append('kind', ws.kind);
-      const res = await fetch('/api/documents/analyze', { method: 'POST', body: form });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? `Hiba (${res.status})`);
+      const body = await backend.analyzeDocument(file, ws.kind);
       addDocument({
         id: `D${Date.now().toString(36)}`,
         fileName: file.name,
-        format: body.format as DocumentFormat,
-        pageLabels: body.pageLabels as string[],
-        redactions: body.redactions as Record<string, number>,
+        ...body,
         analyzedAt: new Date().toISOString(),
-        analysis: body.analysis as DocumentAnalysis,
         isSample: false,
       });
     } catch (e) {
