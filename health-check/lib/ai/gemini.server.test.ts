@@ -65,7 +65,7 @@ describe('interjúelemzés Geminivel', () => {
       contradictions: SAMPLE_ANALYSIS_RAW.contradictions.map(({ startMs, conflictingSource, ...c }) => c),
     });
     const res = await analyzeInterview({ transcript: notesToTranscript(SAMPLE_NOTES), role: 'OWNER_CEO', kind: 'VENDOR_DD', facts: SAMPLE_FACTS });
-    expect(last!.url).toBe('/v1beta/models/gemini-2.5-flash:generateContent');
+    expect(last!.url).toBe('/v1beta/models/gemini-flash-latest:generateContent');
     expect(last!.headers['x-goog-api-key']).toBe('g-test');
     expect(last!.body.generationConfig.responseMimeType).toBe('application/json');
     expect(last!.body.generationConfig.responseJsonSchema.$schema).toBeUndefined();

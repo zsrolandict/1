@@ -5,7 +5,7 @@ import { z } from 'zod';
 //
 // Környezeti változók:
 //   GEMINI_API_KEY (vagy GOOGLE_API_KEY)  – kötelező
-//   GEMINI_MODEL                          – alapértelmezés: gemini-2.5-flash
+//   GEMINI_MODEL                          – alapértelmezés: gemini-flash-latest (a legújabb Flash)
 //   GEMINI_BASE_URL                       – tesztekhez / proxyhoz
 
 export function geminiKey(): string | undefined {
@@ -13,7 +13,7 @@ export function geminiKey(): string | undefined {
 }
 
 export function geminiModel(): string {
-  return process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  return process.env.GEMINI_MODEL || 'gemini-flash-latest';
 }
 
 function base(): string {
