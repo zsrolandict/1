@@ -72,7 +72,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   const [hydrated, setHydrated] = useState(false);
   const [role, setRole] = useState<IntervieweeRole>('OWNER_CEO');
   const [tab, setTab] = useState<Tab>('plan');
-  const [status, setStatus] = useState<{ ai: boolean; transcription: boolean } | null>(null);
+  const [status, setStatus] = useState<{ ai: boolean; transcription: boolean; transcriptionAccept?: string; transcriptionProvider?: string | null } | null>(null);
 
   const [facts, setFacts] = useState<KnownFact[]>(getScenario(DEFAULT_WORKSPACE.scenarioId).facts);
   const scenario = getScenario(ws.scenarioId);
@@ -396,10 +396,14 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
                 }`}
               >
                 {busy === 'transcribe' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
-                {busy === 'transcribe' ? 'Leirat készül…' : 'Hangfájl kiválasztása (mp3, m4a, wav)'}
+                {busy === 'transcribe'
+                  ? 'Leirat készül… (néhány perc is lehet)'
+                  : status?.transcriptionAccept?.includes('video')
+                    ? 'Hang- vagy videófájl kiválasztása (wav, mp3, m4a, mp4)'
+                    : 'Hangfájl kiválasztása (mp3, m4a, wav)'}
                 <input
                   type="file"
-                  accept="audio/*"
+                  accept={status?.transcriptionAccept ?? 'audio/*'}
                   className="hidden"
                   disabled={!consent || !status?.transcription || busy !== null}
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) transcribe(f); e.target.value = ''; }}
@@ -407,8 +411,8 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
               </label>
               <p className="mt-2 text-xs text-slate-500">
                 {status?.transcription
-                  ? 'A hangot nem tároljuk: a leirat elkészülte után csak a szöveg marad meg.'
-                  : 'A leiratkészítő szolgáltatás nincs beállítva a szerveren. Addig használja a jegyzet-beillesztést.'}
+                  ? `A felvételt nem tároljuk: a leirat elkészülte után csak a szöveg marad meg.${status.transcriptionProvider === 'gemini' ? ' Leirat: Google Gemini.' : ''}`
+                  : 'A leiratkészítő szolgáltatás nincs beállítva a szerveren (GEMINI_API_KEY vagy Azure Speech kulcs a .env.local fájlban). Addig használja a jegyzet-beillesztést.'}
               </p>
             </Card>
 

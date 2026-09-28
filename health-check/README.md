@@ -24,7 +24,7 @@ Belső eszköz az ICT Európa átvilágítási szolgáltatásaihoz. Nem csak ven
 ```bash
 cd health-check
 npm install
-cp .env.example .env.local   # opcionális: ANTHROPIC_API_KEY, AZURE_SPEECH_* – nélkülük demó módban fut
+cp .env.example .env.local   # opcionális: GEMINI_API_KEY vagy ANTHROPIC_API_KEY (+ AZURE_SPEECH_*) – nélkülük demó módban fut
 npm run dev        # http://localhost:3000  (Red Flag mátrix) · /adatok (adatgyűjtés) · /interjuk (interjúk)
 npm test           # motor + interjúmodul tesztjei (vitest; az AI-hívást helyi mock szerver ellenőrzi)
 npm run typecheck

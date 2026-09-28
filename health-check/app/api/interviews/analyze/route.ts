@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   const access = await requireStaff();
   if (!access.ok) return access.response;
   if (!isAiConfigured()) {
-    return NextResponse.json({ error: 'Az AI nincs beállítva (ANTHROPIC_API_KEY).' }, { status: 503 });
+    return NextResponse.json({ error: 'Az AI nincs beállítva (ANTHROPIC_API_KEY vagy GEMINI_API_KEY).' }, { status: 503 });
   }
   const parsed = AnalyzeRequestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'Hibás kérés.' }, { status: 400 });

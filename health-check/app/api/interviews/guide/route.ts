@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const questions = buildInterviewGuide(context);
   if (!withAi) return NextResponse.json({ questions, aiQuestions: [] });
   if (!isAiConfigured()) {
-    return NextResponse.json({ error: 'Az AI nincs beállítva (ANTHROPIC_API_KEY).' }, { status: 503 });
+    return NextResponse.json({ error: 'Az AI nincs beállítva (ANTHROPIC_API_KEY vagy GEMINI_API_KEY).' }, { status: 503 });
   }
   try {
     const aiQuestions = await suggestExtraQuestions(context, questions);

@@ -204,9 +204,9 @@ A prototípusban négy mintaeset választható („Minta:” menü a mátrix és
 
 - **Alkalmazás:** Next.js (React), Tailwind; magyar felület, mobilon is használható.
 - **Adatbázis és bejelentkezés:** Supabase (PostgreSQL, EU régió), sorszintű jogosultságkezelés, audit napló; belépés céges Microsoft-fiókkal vagy meghívásos e-mail linkkel.
-- **AI:** Claude API (interjú- és dokumentumelemzés, kérdésjavaslat), Azure AI Speech (magyar leirat); mindkettő csak a szerveren, bejelentkezés után érhető el.
+- **AI (szolgáltató-független):** Claude API vagy Google Gemini az interjú- és dokumentumelemzéshez; Azure AI Speech vagy Gemini a leirathoz (Gemini videót is fogad). A választás egy beállítás (`AI_PROVIDER`, `TRANSCRIBE_PROVIDER`); az idézet-ellenőrzés és a szabályok szolgáltatótól függetlenek. Mind csak a szerveren, bejelentkezés után érhető el.
 - **Riport:** böngészőben generált PDF (react-pdf, Inter betűkészlet).
-- **Tesztek:** 114 automatikus teszt (számítás, kérdőív-szabályok, táblabeolvasás, maszkolás, idézet-ellenőrzés, PDF-generálás, jogosultság, mintaesetek) és adatbázis-tesztek.
+- **Tesztek:** 122 automatikus teszt (számítás, kérdőív-szabályok, táblabeolvasás, maszkolás, idézet-ellenőrzés, PDF-generálás, jogosultság, mintaesetek) és adatbázis-tesztek.
 
 ---
 
