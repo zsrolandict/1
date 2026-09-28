@@ -6,6 +6,7 @@ import { extractDocument } from '@/lib/intake/documents/extract.server';
 import { analyzeExtracted } from '@/lib/intake/documents/pipeline';
 import { buildInterviewGuide } from '@/lib/interview/guide';
 import { runInterviewAnalysis, runQuestionSuggestions } from '@/lib/interview/prompts';
+import { runCaseSuggestion } from '@/lib/intake/casePrompts';
 
 /**
  * Böngészős előnézet: az AI a claude.ai beépített képessége (`sample`),
@@ -92,5 +93,8 @@ export const sampleBackend: AiBackend = {
     const doc = await extractDocument(file.name, new Uint8Array(await file.arrayBuffer()));
     // A claude.ai bemeneti korlátja miatt itt kb. 40 ezer karakter fér egy elemzésbe.
     return analyzeExtracted(sampleCall, doc, kind, { maxChars: 40_000, maxPages: 60 });
+  },
+  async suggestCase(req) {
+    return runCaseSuggestion(sampleCall, req);
   },
 };

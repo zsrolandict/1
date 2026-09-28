@@ -42,11 +42,19 @@ import { useAiBackend } from '@/components/AiBackendContext';
 import { PILLARS } from '@/lib/risk/engine';
 import { applySuggestion, DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario, type Workspace } from '@/lib/risk/store';
 import type { Pillar } from '@/lib/risk/types';
-import { intakeFacts, loadIntake } from '@/lib/intake/state';
+import { intakeFacts, loadIntake, missingRequests } from '@/lib/intake/state';
 
 /** A mintaeset tényei + az adatgyűjtésből (kérdőív, táblák, dokumentumok) jövő tények. */
 function factsFor(scenarioId: string, kind: EngagementKind): KnownFact[] {
   return [...getScenario(scenarioId).facts, ...intakeFacts(loadIntake(scenarioId), kind)];
+}
+
+/** Hiányzó iratok: a mintaeset listája + az Adatgyűjtésben „Hiányzik”-ra állítottak. */
+function missingFor(scenarioId: string, kind: EngagementKind): { title: string; pillar: Pillar }[] {
+  const seen = new Set<string>();
+  return [...getScenario(scenarioId).missingDocuments, ...missingRequests(loadIntake(scenarioId), kind)].filter((d) =>
+    seen.has(d.title) ? false : (seen.add(d.title), true),
+  );
 }
 
 type Tab = 'plan' | 'guide' | 'process' | 'analysis';
@@ -79,6 +87,10 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
 
   const [facts, setFacts] = useState<KnownFact[]>(getScenario(DEFAULT_WORKSPACE.scenarioId).facts);
   const scenario = getScenario(ws.scenarioId);
+  const missingDocuments = useMemo(
+    () => (hydrated ? missingFor(ws.scenarioId, ws.kind) : scenario.missingDocuments),
+    [hydrated, ws.scenarioId, ws.kind, scenario],
+  );
   const [aiQuestions, setAiQuestions] = useState<InterviewQuestion[]>([]);
   const [consent, setConsent] = useState(false);
   const [speakers, setSpeakers] = useState(2);
@@ -115,13 +127,13 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   };
 
   const context = useMemo(
-    () => ({ kind: ws.kind, role, risks: ws.items, missingDocuments: scenario.missingDocuments, facts }),
-    [ws.kind, ws.items, role, facts, scenario],
+    () => ({ kind: ws.kind, role, risks: ws.items, missingDocuments, facts }),
+    [ws.kind, ws.items, role, facts, missingDocuments],
   );
   const questions = useMemo(() => [...buildInterviewGuide(context), ...aiQuestions], [context, aiQuestions]);
   const plan = useMemo(
-    () => buildInterviewPlan({ kind: ws.kind, risks: ws.items, missingDocuments: scenario.missingDocuments, facts }),
-    [ws.kind, ws.items, scenario, facts],
+    () => buildInterviewPlan({ kind: ws.kind, risks: ws.items, missingDocuments, facts }),
+    [ws.kind, ws.items, missingDocuments, facts],
   );
   const planItem = plan.find((p) => p.role === role);
   const staleRoles = ROLES.filter((r) => isAnalysisStale(records[r], ws.kind));
@@ -367,7 +379,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
           asked={asked}
           onToggle={(id) => updateRec({ asked: rec.asked.includes(id) ? rec.asked.filter((x) => x !== id) : [...rec.asked, id] })}
           facts={facts}
-          missingCount={scenario.missingDocuments.length}
+          missingCount={missingDocuments.length}
           onFactsChange={setFacts}
           aiAvailable={Boolean(status?.ai)}
           aiBusy={busy === 'ai-questions'}

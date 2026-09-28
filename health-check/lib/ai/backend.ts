@@ -1,5 +1,7 @@
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { DocumentAnalysis, DocumentFormat } from '@/lib/intake/documents/types';
+import type { CaseSuggestion } from '@/lib/intake/casePrompts';
+import type { CaseProfile, DocRequest } from '@/lib/intake/requests';
 import type { GuideContext, InterviewAnalysis, InterviewQuestion, IntervieweeRole, KnownFact, Transcript } from '@/lib/interview/types';
 
 /**
@@ -31,6 +33,14 @@ export interface AiBackend {
   transcribe(file: File, opts: { consent: boolean; speakers: number }): Promise<Transcript>;
   analyzeInterview(req: { transcript: Transcript; role: IntervieweeRole; kind: EngagementKind; facts: KnownFact[] }): Promise<InterviewAnalysis>;
   analyzeDocument(file: File, kind: EngagementKind): Promise<DocumentResult>;
+  suggestCase(req: CaseRequest): Promise<CaseSuggestion>;
+}
+
+export interface CaseRequest {
+  profile: CaseProfile;
+  kind: EngagementKind;
+  companyName: string;
+  current: DocRequest[];
 }
 
 async function callApi<T>(url: string, init: RequestInit): Promise<T> {
@@ -73,5 +83,8 @@ export const serverBackend: AiBackend = {
     form.append('file', file);
     form.append('kind', kind);
     return callApi<DocumentResult>('/api/documents/analyze', { method: 'POST', body: form });
+  },
+  async suggestCase(req) {
+    return (await callApi<{ suggestion: CaseSuggestion }>('/api/intake/case', json(req))).suggestion;
   },
 };

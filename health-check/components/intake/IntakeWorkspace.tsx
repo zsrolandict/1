@@ -7,6 +7,7 @@ import {
   Building2,
   Check,
   ClipboardList,
+  FolderInput,
   EyeOff,
   FileSearch,
   FileText,
@@ -27,7 +28,8 @@ import type { DocumentAnalysis, DocumentFormat, DocumentRecord } from '@/lib/int
 import { SAMPLE_ANSWERS } from '@/lib/intake/samples/checklist';
 import { SAMPLE_DOCUMENTS, sampleDocumentRecord, samplePagesRedacted } from '@/lib/intake/samples/documents';
 import { hasSampleTables, SAMPLE_REF_DATE, sampleTableCsv } from '@/lib/intake/samples/tables';
-import { EMPTY_INTAKE, intakeResults, loadIntake, saveIntake, type IntakeState } from '@/lib/intake/state';
+import { EMPTY_INTAKE, intakeResults, loadIntake, requestList, saveIntake, type IntakeState } from '@/lib/intake/state';
+import CaseTab from './CaseTab';
 import { analyzeTable, type TableAnalysis } from '@/lib/intake/tables/metrics';
 import { dayToIso, isoToDay, parseCsv, parseTableFile, type Grid } from '@/lib/intake/tables/parse';
 import { detectColumns, missingColumns, TABLE_KINDS, TABLE_SPECS, type ColumnKey, type ColumnMapping, type TableKind } from '@/lib/intake/tables/spec';
@@ -39,7 +41,8 @@ import type { Rag } from '@/lib/risk/types';
 import { getScenario, SCENARIOS } from '@/lib/scenarios';
 import { useAiBackend } from '@/components/AiBackendContext';
 
-type Tab = 'checklist' | 'tables' | 'documents';
+type Tab = 'case' | 'checklist' | 'tables' | 'documents';
+type SourceTab = Exclude<Tab, 'case'>;
 
 /** A feltöltött tábla nyers rácsa csak memóriában él (oszlop-javításhoz, újraszámoláshoz). */
 interface RawTable {
@@ -60,7 +63,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
   const [ws, setWs] = useState<Workspace>(DEFAULT_WORKSPACE);
   const [intake, setIntake] = useState<IntakeState>(EMPTY_INTAKE);
   const [hydrated, setHydrated] = useState(false);
-  const [tab, setTab] = useState<Tab>('checklist');
+  const [tab, setTab] = useState<Tab>('case');
   const [raw, setRaw] = useState<Partial<Record<TableKind, RawTable>>>({});
   const [aiReady, setAiReady] = useState<boolean | null>(null);
   const backend = useAiBackend();
@@ -245,6 +248,9 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
       </div>
 
       <nav className="flex gap-1 overflow-x-auto border-b border-slate-200">
+        <TabButton active={tab === 'case'} onClick={() => setTab('case')} icon={<FolderInput className="h-4 w-4" />}>
+          0. Tényállás, iratbekérés <Count>{requestList(intake, ws.kind).length}</Count>
+        </TabButton>
         <TabButton active={tab === 'checklist'} onClick={() => setTab('checklist')} icon={<ClipboardList className="h-4 w-4" />}>
           1. Kérdőív <Count>{progress.answered}/{progress.total}</Count>
         </TabButton>
@@ -263,6 +269,18 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
         </div>
       )}
 
+      {tab === 'case' && (
+        <CaseTab
+          intake={intake}
+          update={updateIntake}
+          kind={ws.kind}
+          companyName={ws.companyName}
+          scenarioId={ws.scenarioId}
+          aiReady={aiReady}
+        />
+      )}
+
+      {tab !== 'case' && (
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
         <div className="min-w-0">
           {tab === 'checklist' && (
@@ -306,12 +324,12 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
 
         <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
           <SuggestionPanel
-            result={results[tab]}
+            result={results[tab as SourceTab]}
             ws={ws}
             accepted={accepted}
             dismissed={dismissed}
             onAccept={accept}
-            onAcceptAll={() => acceptMany(results[tab].suggestions)}
+            onAcceptAll={() => acceptMany(results[tab as SourceTab].suggestions)}
             onDismiss={dismiss}
             onUndismiss={undismiss}
             onAcceptCompany={acceptCompany}
@@ -323,9 +341,10 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
                   : 'Elemezzen egy dokumentumot – az ellenőrzött idézetű találatok itt jelennek meg.'
             }
           />
-          <FactsNote result={results[tab]} />
+          <FactsNote result={results[tab as SourceTab]} />
         </aside>
       </div>
+      )}
     </div>
   );
 }
