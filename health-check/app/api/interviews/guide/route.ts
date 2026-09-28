@@ -3,7 +3,7 @@ import { isAiConfigured, suggestExtraQuestions } from '@/lib/interview/ai.server
 import { buildInterviewGuide } from '@/lib/interview/guide';
 import { GuideRequestSchema } from '@/lib/interview/schemas';
 import { requireStaff } from '@/lib/auth/guard.server';
-import { errorResponse } from '../_errors';
+import { errorResponse } from '../../_errors';
 
 /**
  * Interjúvezérfonal: a szabályalapú kérdéslista mindig elkészül,

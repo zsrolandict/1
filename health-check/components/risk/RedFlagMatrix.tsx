@@ -36,7 +36,8 @@ import { KIND_RISKS } from '@/lib/engagement/kindRisks';
 import { adjustmentsFor, formatAdjustment, KIND_ADJUSTMENTS_STATUS, type KindAdjustment } from '@/lib/engagement/adjustments';
 
 const SOURCE_LABEL: Partial<Record<RiskSource, string>> = {
-  CHECKLIST: 'Csekklista',
+  CHECKLIST: 'Kérdőív',
+  DATA_TABLE: 'Adattábla',
   AI_DOCUMENT: 'AI · dokumentum',
   AI_INTERVIEW: 'AI · interjú',
 };

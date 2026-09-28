@@ -40,6 +40,12 @@ import { PILLAR_LABEL } from '@/lib/risk/catalog';
 import { PILLARS } from '@/lib/risk/engine';
 import { applySuggestion, DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario, type Workspace } from '@/lib/risk/store';
 import type { Pillar } from '@/lib/risk/types';
+import { intakeFacts, loadIntake } from '@/lib/intake/state';
+
+/** A mintaeset tényei + az adatgyűjtésből (kérdőív, táblák, dokumentumok) jövő tények. */
+function factsFor(scenarioId: string, kind: EngagementKind): KnownFact[] {
+  return [...getScenario(scenarioId).facts, ...intakeFacts(loadIntake(scenarioId), kind)];
+}
 
 type Tab = 'plan' | 'guide' | 'process' | 'analysis';
 const ROLES = Object.keys(ROLE_LABEL) as IntervieweeRole[];
@@ -94,7 +100,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   useEffect(() => {
     const loaded = loadWorkspace();
     setWs(loaded);
-    setFacts(getScenario(loaded.scenarioId).facts);
+    setFacts(factsFor(loaded.scenarioId, loaded.kind));
     setRecords(loadRecords(loaded.scenarioId));
     setHydrated(true);
     fetch('/api/interviews/status')
@@ -232,7 +238,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   const switchScenario = (id: string) => {
     const sc = getScenario(id);
     updateWs(workspaceFromScenario(sc));
-    setFacts(sc.facts);
+    setFacts(factsFor(sc.id, sc.kind));
     setAiQuestions([]);
     setRecords(loadRecords(sc.id));
     setRole(sc.interview.role);
@@ -575,7 +581,7 @@ function GuideTab(props: {
           <ul className="space-y-1 text-sm text-slate-600">
             <li>• {props.identifiedCount} azonosított red flag (Red Flag mátrix)</li>
             <li>• {props.missingCount} hiányzó dokumentum</li>
-            <li>• {props.facts.length} dokumentumokból ismert tény</li>
+            <li>• {props.facts.length} ismert tény (dokumentumok, kérdőív, adattáblák)</li>
             <li>• az interjúalany szerepköre és az átvilágítás típusa</li>
           </ul>
         </Card>
@@ -594,12 +600,12 @@ function FactsEditor({ facts, onChange }: { facts: KnownFact[]; onChange: (f: Kn
     setText('');
   };
   return (
-    <Card title="Ismert tények (dokumentumokból)" icon={<FileText className="h-4 w-4" />}>
+    <Card title="Ismert tények" icon={<FileText className="h-4 w-4" />}>
       <p className="mb-2 text-xs text-slate-500">
-        Ezekkel veti össze az elemzés az interjúban elhangzottakat. Élesben a dokumentumok AI-előszűréséből töltődnek.
+        Ezekkel veti össze az elemzés az interjúban elhangzottakat. Az Adatgyűjtés oldalról (kérdőív, táblák, dokumentumok) automatikusan bekerülnek.
       </p>
       <ul className="space-y-2 text-xs">
-        {facts.map((f) => (
+        {facts.filter((f) => f.askInInterview !== false).map((f) => (
           <li key={f.id} className="rounded border border-slate-100 bg-slate-50 p-2">
             <div className="flex justify-between gap-2">
               <span className="font-medium text-slate-500">{f.id} · {PILLAR_LABEL[f.pillar]}</span>
@@ -610,6 +616,11 @@ function FactsEditor({ facts, onChange }: { facts: KnownFact[]; onChange: (f: Kn
           </li>
         ))}
       </ul>
+      {facts.some((f) => f.askInInterview === false) && (
+        <p className="mt-2 text-xs text-slate-500">
+          + {facts.filter((f) => f.askInInterview === false).length} kérdőív- és táblaadat, csak az ellentmondás-kereséshez (külön kérdés nem lesz belőlük).
+        </p>
+      )}
       <div className="mt-2 flex gap-1">
         <select value={pillar} onChange={(e) => setPillar(e.target.value as Pillar)} className="rounded border border-slate-200 text-xs">
           {PILLARS.map((p) => <option key={p} value={p}>{PILLAR_LABEL[p]}</option>)}

@@ -49,7 +49,7 @@ export interface RiskItem {
   ignoreKindAdjustment?: boolean;
 }
 
-export type RiskSource = 'MANUAL' | 'CHECKLIST' | 'AI_DOCUMENT' | 'AI_INTERVIEW';
+export type RiskSource = 'MANUAL' | 'CHECKLIST' | 'DATA_TABLE' | 'AI_DOCUMENT' | 'AI_INTERVIEW';
 
 export interface ScoredRisk extends RiskItem {
   /** A szakértő által megadott (korrekció előtti) értékek; likelihood/impact már a korrigált. */

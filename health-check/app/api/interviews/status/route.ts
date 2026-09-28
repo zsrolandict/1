@@ -10,5 +10,5 @@ export function GET() {
   // Zárt módban a felület a funkciókat kikapcsoltként mutatja.
   const mode = authMode();
   const open = mode !== 'LOCKED';
-  return NextResponse.json({ ai: open && isAiConfigured(), transcription: open && isTranscriptionConfigured(), auth: mode });
+  return NextResponse.json({ ai: open && isAiConfigured(), documents: open && isAiConfigured(), transcription: open && isTranscriptionConfigured(), auth: mode });
 }

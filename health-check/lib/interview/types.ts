@@ -31,6 +31,8 @@ export interface KnownFact {
   statement: string;
   /** pl. "Top 5 szerződés #2, 14. o. 8.2 pont" vagy "Csekklista 12. kérdés" */
   source: string;
+  /** false: csak az ellentmondás-kereséshez kell, külön interjúkérdés nem lesz belőle. */
+  askInInterview?: boolean;
 }
 
 export interface GuideContext {

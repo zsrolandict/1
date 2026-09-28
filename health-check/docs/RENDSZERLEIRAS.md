@@ -18,29 +18,26 @@ Alapelv: **a gép előkészít és számol, a szakértő dönt.** Minden AI-java
 
 ## 2. Hogyan készül a diagnosztika? Kézzel vagy feltöltött adatokból?
 
-**Röviden: ma félautomata.** A számolás teljesen automatikus: pontozás, forintosítás, akcióterv, ajánlat és PDF-riport. A bemenet nagy részéről azonban még a szakértő dönt. Az interjúkat már AI dolgozza fel, a feltöltött dokumentumok automatikus elemzése viszont még nincs kész.
+**Röviden: most már a bemenet nagy része is automatikusan előjelölődik; a szakértő ellenőriz és dönt.** A számolás teljesen automatikus (pontozás, forintosítás, akcióterv, ajánlat, PDF). A kérdőív, a táblázatok, a dokumentumok és az interjúk **javaslatokat** adnak, amelyek egy kattintással (egyenként vagy együtt) kerülnek a Red Flag mátrixba. Semmi nem kerül be jóváhagyás nélkül.
 
 | # | Adatforrás | Ki adja | Hogyan kerül a rendszerbe | Állapot |
 |---|---|---|---|---|
-| 1 | **Kockázati katalógus** (16 alaptétel + szektorspecifikus tételek) | ICT módszertan | Előre betöltve, indoklással és javaslattal | ✅ |
-| 2 | **Szakértői értékelés** (fennáll-e, valószínűség, hatás) | Pillér-szakértő | Kézzel: pipálás és két legördülő menü soronként | ✅ |
-| 3 | **Cégadatok** (árbevétel, fedezet, DSO) | Szakértő a főkönyvből | Kézzel a projekt fejlécébe; ebből számolnak a forintosító képletek | ✅ (automatikus kinyerés a főkönyvből ⬜) |
-| 4 | **Vezetői interjúk** | Szakértő + interjúalany | Hangfájl → leirat, vagy beillesztett jegyzet → **AI-elemzés** → javasolt kockázatok és ellentmondások → a szakértő egy kattintással elfogadja | ✅ (élesben API-kulcs kell) |
-| 5 | **Feltöltött dokumentumok** (szerződések, főkönyv, cégkivonat) | Ügyfél | **AI-előszűrés** → „ismert tények” (pl. Change of Control záradék, hiányzó jogátruházás) és előjelölt kockázatok | ⬜ Most a tényeket a szakértő rögzíti kézzel; a mintaesetekben előre kitöltött példák vannak |
-| 6 | **Ügyfél-kérdőív** (30 pont) | Ügyfél | Válaszok → szabályalapú előjelölés (pl. „nincs transzferár-nyilvántartás” → transzferár-kockázat) | 🟡 Kezdetben MS Forms is megfelel |
+| 1 | **Kockázati katalógus** (17 alaptétel + típus- és szektortételek) | ICT módszertan | Előre betöltve, indoklással és javaslattal | ✅ |
+| 2 | **Ügyfél-kérdőív** (30 kérdés) | Ügyfél / tanácsadó | Rögzített szabályok (AI nélkül): a jelző válaszból javaslat lesz, a számszerű válasz (pl. érintett árbevétel-arány, hiányzó nyilvántartások száma) a képletbe kerül | ✅ |
+| 3 | **Adattáblák** (vevői korosítás, vevőnkénti árbevétel, szállítónkénti beszerzés, kapcsolt ügyletek; CSV/XLSX) | Ügyfél | A böngészőben számolt mutatók (DSO, 90 napon túli arány, vevő- és szállítókoncentráció, HHI, nyilvántartás nélküli kapcsolt ügyletek) → javaslat és cégadat-frissítés | ✅ |
+| 4 | **Dokumentumok** (szerződések, szabályzatok; PDF/DOCX/TXT) | Ügyfél | Személyes azonosítók maszkolása → AI-elemzés → **szó szerinti idézet + oldalszám**; a nem található idézetű tételt a rendszer eldobja | ✅ (élesben API-kulcs kell; szkennelt PDF-hez OCR ⬜) |
+| 5 | **Vezetői interjúk** | Szakértő + interjúalany | Hang → leirat vagy jegyzet → AI-elemzés → javaslatok és **ellentmondások** a 2–4. forrás tényeivel szemben | ✅ (élesben API-kulcs kell) |
+| 6 | **Szakértői értékelés** | Pillér-szakértő | A javaslatok elfogadása, pontosítása; bármely tétel kézzel is felvehető és módosítható | ✅ |
 
-**Cél-állapot:** az ügyfél feltölt és kitölt, a gép az 5–6. forrásból előjelöl, az interjúk az ellentmondásokat mutatják meg, a szakértő pedig csak ellenőriz, pontosít és jóváhagy. A mostani prototípusban a 4. forrás (interjú) már így működik, az 5–6. még nem.
+A beolvasztás szabályai: már azonosított tételnél a súlyosság **nem csökken**; nem azonosított tételnél a javaslat értéke érvényes; a képlet paraméterét (arány, darabszám) a tényadat váltja fel, a szakértői felülírás megmarad. Részletek: [06-adatgyujtes.md](06-adatgyujtes.md).
 
 ```
-             MA                                          CÉL
- szakértő pipál + becsül  ──┐              ügyfél-kérdőív ─┐
- cégadatok kézzel ──────────┤              dokumentumok ───┼─► AI/szabály előjelöl
- interjú ─► AI-javaslat ────┤              interjú ────────┘         │
-                            ▼                                        ▼
-                  automatikus: pontozás, forintosítás,     szakértő: ellenőriz, jóváhagy
-                  akcióterv, ajánlat, PDF-riport                     │
-                                                                     ▼
-                                                           automatikus riport
+ ügyfél-kérdőív ──► szabályok ─────────┐
+ adattáblák ──────► számolt mutatók ───┼─► JAVASLATOK ─► szakértő: elfogad / elvet ─► Red Flag mátrix
+ dokumentumok ────► AI + idézet-ellenőrzés ┤                                              │
+ interjúk ────────► AI + idézet-ellenőrzés ┘  ◄── tények (ellentmondás-keresés)            ▼
+                                                              automatikus: pontozás, forintosítás,
+                                                              akcióterv, ajánlat, PDF-riport
 ```
 
 ---
@@ -109,8 +106,10 @@ A jogosultságokat az adatbázis érvényesíti sorszintű szabályokkal, ezt te
 | **Ajánlat és beszámítás** | Pipeline divíziónként, 1,2 M Ft kredit, nettó összeg | ✅ számítás · 🟡 CRM-folyamat |
 | **PDF-riport** | Egy kattintás: vezetői összefoglaló, scorecard, részletező, akcióterv, ajánlat, módszertan | ✅ · záró workshop diasora ⬜ |
 | **Interjúmodul** | Célzott kérdéslista, hang/jegyzet → leirat, AI-elemzés, ellentmondás-keresés, átvétel a mátrixba | ✅ |
-| **Dokumentum AI-előszűrés** | Szerződésekből záradékok, főkönyvből kulcsszámok, oldal-hivatkozással | ⬜ |
-| **Ügyfélportál / kérdőív** | 30 pontos kérdőív, dokumentumfeltöltés, hiánypótlás | 🟡 (MS Forms / SharePoint javasolt induláshoz) |
+| **Adatgyűjtés: kérdőív** | 30 kérdés, feltételes kérdések, szabályalapú előjelölés, a válaszok tényként az interjúkhoz | ✅ · ügyfélportálos kitöltés 🟡 |
+| **Adatgyűjtés: adattáblák** | CSV/XLSX beolvasás a böngészőben, oszlopfelismerés, 4 táblatípus mutatói | ✅ · főkönyvi kivonat ⬜ |
+| **Dokumentumelemzés (AI)** | Maszkolás, idézet + oldalszám, hiányzó szokásos rendelkezések, tények az interjúkhoz | ✅ · OCR ⬜ |
+| **Ügyfélportál** | Az ügyfél maga tölti ki a kérdőívet és tölt fel, hiánypótlás | 🟡 (a kérdőív és a feltöltés kész, az ügyféloldali belépés még nem) |
 | **Időkeret-követés** | Óraszámfogyás pillérenként, fedezet | 🟡 |
 | **Bejelentkezés** | Céges Microsoft-fiók vagy meghívásos e-mail link | ✅ kód · élesítéshez Supabase-projekt kell |
 | **Adatmentés szerverre** | Projektek, kockázatok mentése adatbázisba | 🟡 (a prototípus a böngészőben tárol) |
@@ -162,11 +161,11 @@ A riport a böngészőben készül, az adatok nem hagyják el a gépet. Az arcul
 ## 9. AI-használati elvek
 
 1. **Az AI javasol, a szakértő dönt.** Semmi nem kerül riportba emberi jóváhagyás nélkül.
-2. **Bizonyíték nélkül nincs állítás.** Minden AI-tételhez szó szerinti idézet kell a leiratból; ha az idézet nem található, a rendszer automatikusan kiszűri.
+2. **Bizonyíték nélkül nincs állítás.** Minden AI-tételhez szó szerinti idézet kell a leiratból vagy a dokumentumból; ha az idézet nem található, a rendszer automatikusan kiszűri. Dokumentumnál az oldalszámot is a rendszer állapítja meg, nem a modell.
 3. **Ellentmondás csak dokumentált tényhez képest** jelezhető, forrásmegjelöléssel.
 4. **A feltöltött tartalom adat, nem utasítás.**
-5. **Adatvédelem:** hozzájárulás nélkül nincs hangfeldolgozás, a hangot nem tároljuk, a kulcsembereket álnév jelöli, a bizalmas interjúkat csak a HR-szakértő és a partner látja.
-6. **AI nélkül is működik:** a kérdéslista, a pontozás, a forintosítás és a riport kulcs nélkül is elkészül.
+5. **Adatvédelem:** a dokumentumokból az AI-hívás előtt kimaszkoljuk az e-mail-címet, telefonszámot, bankszámlát, adóazonosító jelet, TAJ- és igazolványszámot; a feltöltött fájlt nem tároljuk; az adattáblák a böngészőben dolgozódnak fel. Hozzájárulás nélkül nincs hangfeldolgozás, a hangot nem tároljuk, a kulcsembereket álnév jelöli, a bizalmas interjúkat csak a HR-szakértő és a partner látja.
+6. **AI nélkül is működik:** a kérdőív-előjelölés, a táblamutatók, a kérdéslista, a pontozás, a forintosítás és a riport kulcs nélkül is elkészül.
 
 ---
 
@@ -205,15 +204,19 @@ A prototípusban négy mintaeset választható („Minta:” menü a mátrix és
 
 - **Alkalmazás:** Next.js (React), Tailwind; magyar felület, mobilon is használható.
 - **Adatbázis és bejelentkezés:** Supabase (PostgreSQL, EU régió), sorszintű jogosultságkezelés, audit napló; belépés céges Microsoft-fiókkal vagy meghívásos e-mail linkkel.
-- **AI:** Claude API (interjúelemzés, kérdésjavaslat), Azure AI Speech (magyar leirat); mindkettő csak a szerveren, bejelentkezés után érhető el.
+- **AI:** Claude API (interjú- és dokumentumelemzés, kérdésjavaslat), Azure AI Speech (magyar leirat); mindkettő csak a szerveren, bejelentkezés után érhető el.
 - **Riport:** böngészőben generált PDF (react-pdf, Inter betűkészlet).
-- **Tesztek:** 65 automatikus teszt (számítás, idézet-ellenőrzés, PDF-generálás, jogosultság, mintaesetek) és adatbázis-jogosultsági tesztek.
+- **Tesztek:** 114 automatikus teszt (számítás, kérdőív-szabályok, táblabeolvasás, maszkolás, idézet-ellenőrzés, PDF-generálás, jogosultság, mintaesetek) és adatbázis-tesztek.
 
 ---
 
 ## 12. Ami kipróbálható az előnézetben
 
 - Mintaeset kiválasztása (építőipar, könyvelő, IT, gyártó).
+- **Adatgyűjtés:**
+  - „Minta-válaszok betöltése” a kérdőívben, és a javaslatok elfogadása;
+  - „Mintatábla” a négy táblatípushoz, vagy **saját CSV/XLSX** (a böngészőben marad);
+  - mintadokumentum megnyitása: összefoglaló, maszkolt szöveg, idézet oldalszámmal, és egy szándékosan kitalált idézet, amit a rendszer kiszűr.
 - **Red Flag mátrix:**
   - cégadatok módosítása, amire a forintösszegek azonnal újraszámolódnak;
   - sor lenyitása: indoklás, képlet és felülírás;
@@ -223,7 +226,7 @@ A prototípusban négy mintaeset választható („Minta:” menü a mátrix és
   - kérdéslista szerepkör és típus szerint;
   - „Minta interjú betöltése”, majd „Minta-elemzés megtekintése”: ellentmondások, javaslatok;
   - javaslat elfogadása, ami „AI · interjú” jelöléssel megjelenik a mátrixban.
-- **Nem elérhető az előnézetben:** az élő AI-elemzés és a hangfeldolgozás, mert szerver és kulcsok kellenek hozzá, és a szerveres mentés. A módosítások csak a néző böngészőjében maradnak meg.
+- **Nem elérhető az előnézetben:** az élő AI-elemzés (interjú és saját dokumentum) és a hangfeldolgozás, mert szerver és kulcsok kellenek hozzá, és a szerveres mentés. A módosítások csak a néző böngészőjében maradnak meg.
 
 ---
 

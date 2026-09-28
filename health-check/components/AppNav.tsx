@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const LINKS = [
-  { href: '/', label: 'Red Flag mátrix' },
+  { href: '/adatok', label: 'Adatgyűjtés' },
   { href: '/interjuk', label: 'Interjúk' },
+  { href: '/', label: 'Red Flag mátrix' },
 ];
 
 export default function AppNav() {

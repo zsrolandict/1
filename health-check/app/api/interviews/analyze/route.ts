@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { analyzeInterview, isAiConfigured } from '@/lib/interview/ai.server';
 import { AnalyzeRequestSchema, MAX_TRANSCRIPT_CHARS } from '@/lib/interview/schemas';
 import { requireStaff } from '@/lib/auth/guard.server';
-import { errorResponse } from '../_errors';
+import { errorResponse } from '../../_errors';
 
 export const maxDuration = 300;
 

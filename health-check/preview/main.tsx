@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import RedFlagMatrix from '@/components/risk/RedFlagMatrix';
 import InterviewWorkspace from '@/components/interview/InterviewWorkspace';
+import IntakeWorkspace from '@/components/intake/IntakeWorkspace';
 import type { SaveFile } from '@/components/report/ExportPdfButton';
 import './styles.css';
 
@@ -11,7 +12,7 @@ import './styles.css';
  * a nézőnek a `downloads` képesség adja át.
  */
 
-type Tab = 'matrix' | 'interjuk';
+type Tab = 'matrix' | 'adatok' | 'interjuk';
 
 interface DownloadsNs {
   save(req: { filename: string; data: Blob }): Promise<{ status: string }>;
@@ -37,7 +38,8 @@ const savePdf: SaveFile = async (blob, filename) => {
 const fontBase = new URL('fonts', document.baseURI).href;
 
 function tabFromHash(): Tab {
-  return window.location.hash === '#interjuk' ? 'interjuk' : 'matrix';
+  const h = window.location.hash.slice(1);
+  return h === 'interjuk' || h === 'adatok' ? h : 'matrix';
 }
 
 function App() {
@@ -51,7 +53,7 @@ function App() {
   const go = (t: Tab) => {
     setTab(t);
     try {
-      history.replaceState(null, '', t === 'interjuk' ? '#interjuk' : '#matrix');
+      history.replaceState(null, '', `#${t}`);
     } catch {
       /* keretben tiltott lehet – a fül állapota így is megmarad */
     }
@@ -60,16 +62,17 @@ function App() {
   return (
     <>
       <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs text-amber-900">
-        <b>Prototípus, kitalált mintaadatokkal.</b> Az AI-elemzés és a hangfeldolgozás itt ki van kapcsolva; a minta-interjú
-        és a minta-elemzés kipróbálható. A módosítások csak ebben a böngészőben maradnak meg.
+        <b>Prototípus, kitalált mintaadatokkal.</b> Az AI-elemzés és a hangfeldolgozás itt ki van kapcsolva; a kérdőív, a táblák
+        (saját CSV/XLSX is), valamint a minta-dokumentumok és a minta-interjú kipróbálhatók. A módosítások csak ebben a böngészőben maradnak meg.
       </div>
       <nav className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-6 px-4 sm:px-6 lg:px-8">
           <span className="py-3 text-sm font-semibold tracking-tight text-slate-900">ICT Health Check</span>
           {(
             [
-              ['matrix', 'Red Flag mátrix'],
+              ['adatok', 'Adatgyűjtés'],
               ['interjuk', 'Interjúk'],
+              ['matrix', 'Red Flag mátrix'],
             ] as const
           ).map(([t, label]) => (
             <button
@@ -86,11 +89,9 @@ function App() {
         </div>
       </nav>
       <main>
-        {tab === 'matrix' ? (
-          <RedFlagMatrix savePdf={savePdf} fontBase={fontBase} showPrint={false} />
-        ) : (
-          <InterviewWorkspace showPrint={false} />
-        )}
+        {tab === 'matrix' && <RedFlagMatrix savePdf={savePdf} fontBase={fontBase} showPrint={false} />}
+        {tab === 'adatok' && <IntakeWorkspace onOpenMatrix={() => go('matrix')} />}
+        {tab === 'interjuk' && <InterviewWorkspace showPrint={false} />}
       </main>
     </>
   );

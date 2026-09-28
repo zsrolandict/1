@@ -1,6 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
+import { AiRefusalError, isAiConfigured, parseStructured as callStructured } from '@/lib/ai/client.server';
 import { ENGAGEMENT_KINDS } from '@/lib/engagement/kinds';
 import { DEFAULT_CATALOG, PILLAR_LABEL } from '@/lib/risk/catalog';
 import { ROLE_LABEL } from './questionBank';
@@ -10,20 +9,7 @@ import type { EngagementKind } from '@/lib/engagement/kinds';
 
 // Csak szerveroldalon (route handler) importálható: az API-kulcs nem kerülhet a kliensre.
 
-const MODEL = 'claude-opus-5';
-const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
-
-export function isAiConfigured(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
-}
-
-let client: Anthropic | null = null;
-function getClient(): Anthropic {
-  client ??= new Anthropic();
-  return client;
-}
-
-export class AiRefusalError extends Error {}
+export { AiRefusalError, isAiConfigured };
 
 const PillarEnum = z.enum(['FINANCE', 'LEGAL', 'OPERATIONS', 'HR']);
 const Scale = z.number().int().describe('1 és 5 közötti egész');
@@ -105,35 +91,8 @@ function factsText(facts: KnownFact[]): string {
   return facts.map((f) => `- id=${f.id} [${PILLAR_LABEL[f.pillar]}] ${f.statement} (forrás: ${f.source})`).join('\n');
 }
 
-async function parseStructured<T extends z.ZodType>(schema: T, user: string, maxTokens: number): Promise<z.infer<T>> {
-  // create() + saját parse: a stop_reason-t a JSON-feldolgozás ELŐTT kell vizsgálni,
-  // különben egy elutasítás (üres tartalom) parse-hibaként jelenne meg.
-  const response = await getClient().beta.messages.create({
-    model: MODEL,
-    max_tokens: maxTokens,
-    betas: [FALLBACK_BETA],
-    fallbacks: 'default',
-    thinking: { type: 'adaptive' },
-    output_config: { effort: 'high', format: betaZodOutputFormat(schema) },
-    system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
-    messages: [{ role: 'user', content: user }],
-  });
-  if (response.stop_reason === 'refusal') {
-    throw new AiRefusalError('A modell elutasította a kérést.');
-  }
-  if (response.stop_reason === 'max_tokens') {
-    throw new Error('Az AI-válasz hiányos (túl hosszú leirat?). Bontsa részekre az interjút.');
-  }
-  const text = response.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('');
-  let json: unknown;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    throw new Error('Az AI-válasz nem értelmezhető.');
-  }
-  const parsed = schema.safeParse(json);
-  if (!parsed.success) throw new Error('Az AI-válasz formátuma eltér a várttól.');
-  return parsed.data as z.infer<T>;
+function parseStructured<T extends z.ZodType>(schema: T, user: string, maxTokens: number): Promise<z.infer<T>> {
+  return callStructured(schema, SYSTEM, user, maxTokens);
 }
 
 export async function analyzeInterview(input: {

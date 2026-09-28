@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { MAX_AUDIO_BYTES } from '@/lib/interview/schemas';
 import { azureSpeech, isTranscriptionConfigured } from '@/lib/interview/transcribe.server';
 import { requireStaff } from '@/lib/auth/guard.server';
-import { errorResponse } from '../_errors';
+import { errorResponse } from '../../_errors';
 
 export const maxDuration = 300;
 

@@ -46,7 +46,7 @@ export function buildInterviewGuide(ctx: GuideContext): InterviewQuestion[] {
 
   // 2. Dokumentumokból ismert tények megerősíttetése (ellentmondás-keresés alapja).
   for (const fact of ctx.facts) {
-    if (!covers(fact.pillar)) continue;
+    if (!covers(fact.pillar) || fact.askInInterview === false) continue;
     out.push({
       id: `fact-${fact.id}`,
       pillar: fact.pillar,

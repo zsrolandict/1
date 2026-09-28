@@ -1,0 +1,34 @@
+import type { ChecklistAnswers } from '../checklist';
+
+/**
+ * KITALÁLT kérdőív-válaszok a mintaesetekhez. Szándékosan az ügyfél
+ * önértékelését tükrözik: helyenként szépítenek (pl. az IT-cég szerint
+ * minden fejlesztői szerződés rendben van), ezt a dokumentumok és az
+ * interjúk ellentmondás-keresése hozza felszínre.
+ */
+export const SAMPLE_ANSWERS: Record<string, ChecklistAnswers> = {
+  gyarto: {
+    Q01: false, Q02: 4, Q03: true, Q04: false, Q05: 12, Q06: true, Q07: false, Q08: false,
+    Q09: 'IGEN', Q10: 38, Q11: 'NEM', Q12: true, Q13: true, Q14: 'IGEN', Q15: false, Q16: 'EGY',
+    Q17: 45, Q18: false, Q19: 'IGEN', Q20: 'MENTES', Q21: false, Q22: 18, Q23: true,
+    Q24: true, Q25: 30, Q26: 'NEM', Q27: 4, Q28: true, Q29: 15, Q30: false,
+  },
+  epitoipar: {
+    Q01: true, Q03: true, Q04: false, Q05: 35, Q06: false, Q07: false, Q08: false,
+    Q09: 'NEM', Q11: 'NINCS', Q12: true, Q13: true, Q14: 'RESZBEN', Q15: true, Q16: 'IGEN',
+    Q17: 60, Q18: false, Q19: 'IGEN', Q20: 'MENTES', Q21: false, Q22: 20, Q23: false,
+    Q24: true, Q25: 25, Q26: 'NEM', Q27: 14, Q28: false, Q29: 20, Q30: true,
+  },
+  konyvelo: {
+    Q01: true, Q03: false, Q04: false, Q05: 8, Q06: true, Q07: false, Q08: false,
+    Q09: 'NEM', Q11: 'NINCS', Q12: false, Q13: false, Q14: 'NEM', Q15: false, Q16: 'NEM',
+    Q17: 20, Q18: true, Q19: 'NEM', Q20: 'MENTES', Q21: false, Q22: 6, Q23: false,
+    Q24: true, Q25: 35, Q26: 'RESZBEN', Q27: 0, Q28: true, Q29: 30, Q30: false,
+  },
+  'it-fejleszto': {
+    Q01: true, Q03: false, Q04: false, Q05: 10, Q06: true, Q07: false, Q08: true,
+    Q09: 'NEM_TUDJUK', Q11: 'IGEN', Q12: true, Q13: false, Q14: 'RESZBEN', Q15: false, Q16: 'NEM',
+    Q17: 15, Q18: true, Q19: 'EGYEDI', Q20: 'NEM', Q21: false, Q22: 55, Q23: true,
+    Q24: true, Q25: 40, Q26: 'NEM', Q27: 12, Q28: true, Q29: 20, Q30: false,
+  },
+};

@@ -30,7 +30,7 @@ export const WINDOW_LABEL: Record<ActionWindow, string> = {
 };
 
 /**
- * Alapértelmezett Red Flag katalógus (4 pillér × 4 tétel).
+ * Alapértelmezett Red Flag katalógus (4 pillér, 17 tétel).
  * Élesben a `risk_templates` táblából töltődik; ez a seed és a demo forrása.
  */
 export const DEFAULT_CATALOG: RiskItem[] = [
@@ -147,6 +147,16 @@ export const DEFAULT_CATALOG: RiskItem[] = [
     remediation: 'Engedély-nyilvántartás és megújítási naptár.',
     division: 'LEGAL', serviceFeeHuf: 250_000,
     reasoning: "A működéshez szükséges egy vagy több hatósági engedély a közeljövőben lejár, és nincs kijelölt felelőse a megújításnak. Az engedély hiánya a tevékenység korlátozását vagy felfüggesztését és bírságot vonhat maga után.",
+  },
+  {
+    id: 'OPS-05', code: 'OPS-05', pillar: 'OPERATIONS',
+    title: 'Vevőkoncentráció (> 25% egy vevő)',
+    description: 'Egyetlen vevő adja az árbevétel jelentős részét, hosszú távú szerződés nélkül.',
+    identified: false, likelihood: 2, impact: 4, exposureHuf: 50_000_000, remediationDays: 30,
+    remediation: 'Vevőportfólió bővítése, hosszú távú keretszerződés a kulcsvevővel.',
+    division: 'ADVISORY', serviceFeeHuf: 900_000,
+    reasoning: "Az árbevétel jelentős része egyetlen vevőhöz kötődik. A vevő elvesztése vagy egyoldalú árcsökkentési követelése közvetlenül a fedezetet érinti, a társaság alkupozíciója gyenge, és egy vevő vagy finanszírozó ezt a kockázatot a cégértékben vagy a hitelfeltételekben beárazza.",
+    valuation: { formula: { type: 'REVENUE_SHARE', share: 0.25, marginBased: true, label: 'legnagyobb vevő árbevétel-aránya' }, overrideHuf: null },
   },
   // ── HR ──────────────────────────────────────────────────────────
   {

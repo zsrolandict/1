@@ -1,10 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { NextResponse } from 'next/server';
-import { AiRefusalError } from '@/lib/interview/ai.server';
+import { AiRefusalError } from '@/lib/ai/client.server';
 
 /** Egységes, felhasználóbarát hibaválasz; a részleteket csak a szerver naplózza. */
 export function errorResponse(err: unknown): NextResponse {
-  console.error('[interviews]', err);
+  console.error('[api]', err);
   if (err instanceof AiRefusalError) {
     return NextResponse.json({ error: 'Az AI nem dolgozta fel a kérést. Kérjük, ellenőrizze kézzel.' }, { status: 422 });
   }

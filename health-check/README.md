@@ -17,6 +17,7 @@ Belső eszköz az ICT Európa átvilágítási szolgáltatásaihoz. Nem csak ven
 | 7 | Forintosító képletek + szakmai indoklás | [`lib/risk/valuation.ts`](lib/risk/valuation.ts), [`lib/risk/parameters.ts`](lib/risk/parameters.ts), `0003_*.sql` |
 | 8 | Egykattintásos PDF-riport (vezetői összefoglaló, scorecard, részletező, akcióterv, ajánlat) | [`lib/report/`](lib/report), „PDF riport” gomb |
 | 9 | Bejelentkezés és API-védelem (Supabase) | [`lib/auth/`](lib/auth), `/login` |
+| 10 | Adatgyűjtés: kérdőív-előjelölés, adattáblák (CSV/XLSX), AI-dokumentumelemzés | [`docs/06-adatgyujtes.md`](docs/06-adatgyujtes.md), [`lib/intake/`](lib/intake), `/adatok`, `0005_intake.sql` |
 
 ## Futtatás
 
@@ -24,7 +25,7 @@ Belső eszköz az ICT Európa átvilágítási szolgáltatásaihoz. Nem csak ven
 cd health-check
 npm install
 cp .env.example .env.local   # opcionális: ANTHROPIC_API_KEY, AZURE_SPEECH_* – nélkülük demó módban fut
-npm run dev        # http://localhost:3000  (Red Flag mátrix) · /interjuk (interjúk)
+npm run dev        # http://localhost:3000  (Red Flag mátrix) · /adatok (adatgyűjtés) · /interjuk (interjúk)
 npm test           # motor + interjúmodul tesztjei (vitest; az AI-hívást helyi mock szerver ellenőrzi)
 npm run typecheck
 npm run build
@@ -89,12 +90,13 @@ companies 1─* engagements 1─* engagement_members *─1 profiles
 | Health Score | pillérenként `100 × Π(1 − 0,6 × pont/25)`, összesítve a 4 pillér átlaga |
 | Pipeline | csak sárga és piros tételből lesz lead; a kredit = min(audit díj, remediációs díjak) |
 
-Ugyanez a RAG-logika SQL-ben is megvan: `red_flag_rag(score, exposure, materiality)`.
+Ugyanez a RAG-logika SQL-ben is megvan: `red_flag_rag(likelihood, impact, exposure, materiality)` (0004).
 
 ## Következő lépések (javasolt sorrend)
 
 > ✅ Kész: interjúkérdés-generátor, jegyzet/hang → leirat, AI-elemzés ellentmondás-kereséssel, átvilágítás-típusok,
-> forintosító képletek felülírással, előtöltött szakmai indoklás, egykattintásos PDF-riport, API-végpontok bejelentkezés mögött.
+> forintosító képletek felülírással, előtöltött szakmai indoklás, egykattintásos PDF-riport, API-végpontok bejelentkezés mögött,
+> ügyfélkérdőív szabályalapú előjelöléssel, adattáblák mutatói (DSO, koncentráció, kapcsolt ügyletek), AI-dokumentumelemzés maszkolással és idézet-ellenőrzéssel.
 
 ### Forintosítás és indoklás
 
