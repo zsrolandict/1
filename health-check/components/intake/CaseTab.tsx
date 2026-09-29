@@ -23,6 +23,7 @@ import { PILLAR_LABEL } from '@/lib/risk/catalog';
 import { PILLARS } from '@/lib/risk/engine';
 import type { Pillar } from '@/lib/risk/types';
 import { useAiBackend } from '@/components/AiBackendContext';
+import RegistryCard from './RegistryCard';
 
 const FLAGS = Object.keys(FLAG_LABEL) as CaseFlag[];
 const SECTORS = Object.keys(SECTOR_LABEL) as Sector[];
@@ -194,6 +195,14 @@ export default function CaseTab({
           </button>
           {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
         </div>
+
+        <RegistryCard
+          intake={intake}
+          update={update}
+          scenarioId={scenarioId}
+          aiReady={aiReady}
+          onAddSector={(sec) => setSectors([...new Set([...profileRef.current.sectors, sec])])}
+        />
 
         {suggestion && (
           <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-4 text-sm shadow-sm">

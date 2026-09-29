@@ -2,6 +2,7 @@ import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { DocumentAnalysis, DocumentFormat } from '@/lib/intake/documents/types';
 import type { CaseSuggestion } from '@/lib/intake/casePrompts';
 import type { SynthesisResult, SynthesisSource } from '@/lib/intake/synthesis';
+import type { RegistryData } from '@/lib/intake/registry';
 import type { RiskItem } from '@/lib/risk/types';
 import type { CaseProfile, DocRequest } from '@/lib/intake/requests';
 import type { GuideContext, InterviewAnalysis, InterviewQuestion, IntervieweeRole, KnownFact, Transcript } from '@/lib/interview/types';
@@ -37,6 +38,7 @@ export interface AiBackend {
   analyzeDocument(file: File, kind: EngagementKind): Promise<DocumentResult>;
   suggestCase(req: CaseRequest): Promise<CaseSuggestion>;
   synthesize(req: SynthesisRequest): Promise<SynthesisResult>;
+  extractRegistry(text: string): Promise<RegistryData>;
 }
 
 export interface SynthesisRequest {
@@ -100,5 +102,8 @@ export const serverBackend: AiBackend = {
   },
   async synthesize(req) {
     return (await callApi<{ result: SynthesisResult }>('/api/intake/synthesis', json(req))).result;
+  },
+  async extractRegistry(text) {
+    return (await callApi<{ data: RegistryData }>('/api/intake/registry', json({ text }))).data;
   },
 };

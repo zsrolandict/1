@@ -5,6 +5,7 @@ import { documentToIntake } from './documents/toIntake';
 import type { DocumentRecord } from './documents/types';
 import { buildRequestList, EMPTY_PROFILE, normalizeProfile, type CaseProfile, type DocRequest, type RequestStatus } from './requests';
 import type { SynthesisResult } from './synthesis';
+import { registryFindings, type RegistryRecord } from './registry';
 import type { TableAnalysis } from './tables/metrics';
 import type { TableKind } from './tables/spec';
 import type { IntakeResult } from './types';
@@ -24,6 +25,8 @@ export interface IntakeState {
   extraRequests: DocRequest[];
   /** Az utolsó AI-szintézis eredménye. */
   synthesis?: SynthesisResult | null;
+  /** Kiolvasott cégkivonat. */
+  registry?: RegistryRecord | null;
   answers: ChecklistAnswers;
   tables: Partial<Record<TableKind, TableAnalysis>>;
   documents: DocumentRecord[];
@@ -86,7 +89,8 @@ export function intakeResults(state: IntakeState, kind: EngagementKind): IntakeR
 /** Az interjúk ellentmondás-kereséséhez: a mintaeset tényei + az adatgyűjtés tényei. */
 export function intakeFacts(state: IntakeState, kind: EngagementKind): KnownFact[] {
   const r = intakeResults(state, kind);
-  return [...r.documents.facts, ...r.tables.facts, ...r.checklist.facts];
+  const reg = state.registry ? registryFindings(state.registry, state).facts : [];
+  return [...r.documents.facts, ...r.tables.facts, ...r.checklist.facts, ...reg];
 }
 
 

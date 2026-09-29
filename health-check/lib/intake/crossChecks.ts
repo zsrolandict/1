@@ -7,6 +7,7 @@ import type { Pillar, Scale5 } from '@/lib/risk/types';
 import { templateFor } from './apply';
 import { CHECKLIST, formatAnswer, isVisible } from './checklist';
 import { documentToIntake } from './documents/toIntake';
+import { registryFindings } from './registry';
 import type { IntakeState } from './state';
 import type { IntakeSuggestion } from './types';
 
@@ -234,6 +235,13 @@ export function crossChecks(
         );
       }
     }
+  }
+
+  // ── 5. Cégkivonat: eljárások, vezetőváltás, ellentmondás a kérdőívvel ──
+  if (state.registry) {
+    const reg = registryFindings(state.registry, state);
+    conflicts.push(...reg.conflicts);
+    suggestions.push(...reg.suggestions);
   }
 
   const order: Record<Severity, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
