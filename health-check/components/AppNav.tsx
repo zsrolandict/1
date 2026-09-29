@@ -7,6 +7,7 @@ const LINKS = [
   { href: '/adatok', label: 'Adatgyűjtés' },
   { href: '/interjuk', label: 'Interjúk' },
   { href: '/', label: 'Red Flag mátrix' },
+  { href: '/projekt', label: 'Projekt' },
 ];
 
 export default function AppNav() {

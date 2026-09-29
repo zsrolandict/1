@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import RedFlagMatrix from '@/components/risk/RedFlagMatrix';
 import InterviewWorkspace from '@/components/interview/InterviewWorkspace';
 import IntakeWorkspace from '@/components/intake/IntakeWorkspace';
+import ProjectWorkspace from '@/components/project/ProjectWorkspace';
 import type { SaveFile } from '@/components/report/ExportPdfButton';
 import { AiBackendProvider } from '@/components/AiBackendContext';
 import { sampleBackend } from './sampleBackend';
@@ -14,7 +15,7 @@ import './styles.css';
  * a néző fiókján); a PDF-et a nézőnek a `downloads` képesség adja át.
  */
 
-type Tab = 'matrix' | 'adatok' | 'interjuk';
+type Tab = 'matrix' | 'adatok' | 'interjuk' | 'projekt';
 
 interface DownloadsNs {
   save(req: { filename: string; data: Blob }): Promise<{ status: string }>;
@@ -36,7 +37,7 @@ const fontBase = new URL('fonts', document.baseURI).href;
 
 function tabFromHash(): Tab {
   const h = window.location.hash.slice(1);
-  return h === 'interjuk' || h === 'adatok' ? h : 'matrix';
+  return h === 'interjuk' || h === 'adatok' || h === 'projekt' ? h : 'matrix';
 }
 
 function App() {
@@ -71,6 +72,7 @@ function App() {
               ['adatok', 'Adatgyűjtés'],
               ['interjuk', 'Interjúk'],
               ['matrix', 'Red Flag mátrix'],
+              ['projekt', 'Projekt'],
             ] as const
           ).map(([t, label]) => (
             <button
@@ -90,6 +92,7 @@ function App() {
         {tab === 'matrix' && <RedFlagMatrix savePdf={savePdf} fontBase={fontBase} showPrint={false} />}
         {tab === 'adatok' && <IntakeWorkspace onOpenMatrix={() => go('matrix')} />}
         {tab === 'interjuk' && <InterviewWorkspace showPrint={false} />}
+        {tab === 'projekt' && <ProjectWorkspace />}
       </main>
     </>
   );
