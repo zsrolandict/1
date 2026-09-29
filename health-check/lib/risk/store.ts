@@ -130,15 +130,61 @@ export function listProjects(): ProjectMeta[] {
   return [meta];
 }
 
+/**
+ * Az aktív projekt BÖNGÉSZŐLAPONKÉNT: így két lapon két különböző projekt
+ * lehet nyitva egyszerre, és az egyik lap váltása nem viszi el a másikat.
+ * Új lap a legutóbb használt projekttel indul.
+ */
+const TAB_KEY = 'ict-hc:tab-project';
+
+function tabGet(): string | null {
+  try {
+    return typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem(TAB_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function tabSet(id: string): void {
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(TAB_KEY, id);
+  } catch {
+    /* ignore */
+  }
+}
+
+function exists(id: string): boolean {
+  return isDemoScenario(id) || listProjects().some((p) => p.id === id);
+}
+
 export function activeProjectId(): string {
   listProjects(); // migráció, ha kell
+  const tab = tabGet();
+  if (tab && exists(tab)) return tab;
   const id = read<string>(ACTIVE_KEY);
-  return typeof id === 'string' && id ? id : DEFAULT_WORKSPACE.projectId;
+  return typeof id === 'string' && id && exists(id) ? id : DEFAULT_WORKSPACE.projectId;
 }
 
 export function setActiveProject(id: string): void {
-  write(ACTIVE_KEY, id);
+  tabSet(id);
+  write(ACTIVE_KEY, id); // a legutóbb használt: új lap ezzel indul
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(PROJECT_EVENT));
+}
+
+// ── Hol tartottál: projektenként az utoljára nyitott oldal ─────────
+const LAST_PAGE_KEY = 'ict-hc:last-page:v1';
+export type ProjectPage = 'adatok' | 'interjuk' | 'matrix' | 'projekt';
+
+export function rememberPage(projectId: string, page: ProjectPage): void {
+  const map = read<Record<string, ProjectPage>>(LAST_PAGE_KEY) ?? {};
+  if (map[projectId] === page) return;
+  write(LAST_PAGE_KEY, { ...map, [projectId]: page });
+}
+
+/** Az utoljára nyitott oldal; saját projektnél alapból az Adatgyűjtés, bemutatónál a mátrix. */
+export function lastPageOf(projectId: string): ProjectPage {
+  const page = (read<Record<string, ProjectPage>>(LAST_PAGE_KEY) ?? {})[projectId];
+  return page ?? (isDemoScenario(projectId) ? 'matrix' : 'adatok');
 }
 
 export function loadProject(id: string): Workspace {

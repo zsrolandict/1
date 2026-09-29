@@ -69,19 +69,19 @@ export default function InterviewPlanPanel({
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold text-slate-900">{p.label}</h3>
                     <span
-                      className={`rounded px-1.5 text-[11px] font-medium ${
+                      className={`rounded px-1.5 text-xs font-medium ${
                         p.priority === 'REQUIRED' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
                       }`}
                     >
                       {p.priority === 'REQUIRED' ? 'Kötelező' : 'Ajánlott'}
                     </span>
-                    <span className={`rounded px-1.5 text-[11px] font-medium ${STATUS_STYLE[status]}`}>
+                    <span className={`rounded px-1.5 text-xs font-medium ${STATUS_STYLE[status]}`}>
                       {status === 'ANALYZED' ? <CheckCircle2 className="mr-0.5 inline h-3 w-3" /> : <CircleDot className="mr-0.5 inline h-3 w-3" />}
                       {STATUS_LABEL[status]}
                     </span>
                     {isAnalysisStale(rec, kind) && (
                       <span
-                        className="rounded bg-amber-100 px-1.5 text-[11px] font-medium text-amber-800"
+                        className="rounded bg-amber-100 px-1.5 text-xs font-medium text-amber-800"
                         title={`Az elemzés más célra készült (${ENGAGEMENT_KINDS[rec!.analysisKind!].label}); futtasd újra.`}
                       >
                         Újraelemzés kell
@@ -113,7 +113,7 @@ export default function InterviewPlanPanel({
                   <ul className="mt-1 space-y-1 text-slate-700">
                     {p.topics.map((q) => (
                       <li key={q.id}>
-                        <span className="text-[11px] text-slate-400">{PILLAR_LABEL[q.pillar]} · </span>
+                        <span className="text-xs text-slate-500">{PILLAR_LABEL[q.pillar]} · </span>
                         {q.text}
                       </li>
                     ))}

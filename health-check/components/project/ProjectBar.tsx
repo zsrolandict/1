@@ -1,14 +1,17 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Check, ChevronDown, FolderOpen, HardDrive, Plus, RotateCcw, Trash2, Upload } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, FolderOpen, HardDrive, LayoutList, Plus, RotateCcw, Trash2, Upload } from 'lucide-react';
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 import { ago, lastSaved, SAVED_EVENT } from '@/lib/localSave';
-import { backupDue, BackupError, deleteProject, exportProject, importProject, lastBackup, markBackedUp, parseBackup, resetDemo } from '@/lib/projects';
-import { createProject, openDemo, setActiveProject, type ProjectMeta } from '@/lib/risk/store';
+import { backupDue, BackupError, projectHasContent, deleteProject, exportProject, importProject, lastBackup, markBackedUp, parseBackup, resetDemo } from '@/lib/projects';
+import { createProject, openDemo, type ProjectMeta } from '@/lib/risk/store';
 import { SCENARIOS } from '@/lib/scenarios';
 import ConfirmDialog from '../ConfirmDialog';
 import { browserDownload, slug, type SaveFile } from '../report/ExportPdfButton';
+import { useNav } from '../Nav';
+import { openProject } from './openProject';
+import ProjectsOverview from './ProjectsOverview';
 import { useProjects } from './useProjects';
 
 type Pending = { type: 'delete' | 'reset'; project: ProjectMeta } | null;
@@ -17,8 +20,10 @@ type Pending = { type: 'delete' | 'reset'; project: ProjectMeta } | null;
  * A felső sáv projektkezelője: projektváltás, új projekt, bemutató minták,
  * és a helyi mentés állapota (mentés fájlba, visszatöltés).
  */
-export default function ProjectBar({ saveFile = browserDownload }: { saveFile?: SaveFile }) {
+export default function ProjectBar({ saveFile = browserDownload, allowNewTab = true }: { saveFile?: SaveFile; allowNewTab?: boolean }) {
   const { activeId, projects } = useProjects();
+  const nav = useNav();
+  const [overview, setOverview] = useState(false);
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
@@ -49,14 +54,18 @@ export default function ProjectBar({ saveFile = browserDownload }: { saveFile?: 
         >
           <FolderOpen className="h-4 w-4 shrink-0 text-slate-500" />
           <span className="truncate">{label}</span>
-          {isDemo && <span className="shrink-0 rounded bg-indigo-100 px-1 text-[10px] font-medium text-indigo-800">bemutató</span>}
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+          {isDemo && <span className="shrink-0 rounded bg-indigo-100 px-1 text-xs font-medium text-indigo-800">bemutató</span>}
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-500" />
         </button>
 
         {open && (
           <div className="absolute right-0 z-40 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white p-2 text-sm shadow-xl">
             {creating ? (
-              <NewProjectForm onCancel={() => setCreating(false)} onCreate={(input) => choose(() => createProject(input))} />
+              <NewProjectForm onCancel={() => setCreating(false)} onCreate={(input) => choose(() => {
+                  createProject(input);
+                  // Saját projekt az Adatgyűjtéssel indul.
+                  if (nav && nav.page !== 'adatok') nav.go('adatok');
+                })} />
             ) : (
               <button
                 onClick={() => setCreating(true)}
@@ -66,24 +75,27 @@ export default function ProjectBar({ saveFile = browserDownload }: { saveFile?: 
               </button>
             )}
 
-            <p className="mt-3 px-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Saját projektek</p>
+            <p className="mt-3 px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Saját projektek</p>
             {own.length === 0 ? (
               <p className="px-2 py-1 text-xs text-slate-500">Még nincs saját projekt. Valódi ügyfélhez hozz létre újat.</p>
             ) : (
               <ul className="max-h-56 overflow-auto">
                 {own.map((p) => (
-                  <ProjectRow key={p.id} p={p} active={p.id === activeId} onOpen={() => choose(() => setActiveProject(p.id))} onDelete={() => setPending({ type: 'delete', project: p })} />
+                  <ProjectRow key={p.id} p={p} active={p.id === activeId} onOpen={() => choose(() => openProject(p.id, nav))} onDelete={() => setPending({ type: 'delete', project: p })} />
                 ))}
               </ul>
             )}
 
-            <p className="mt-3 px-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Bemutató (kitalált cégek)</p>
+            <p className="mt-3 px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Bemutató (kitalált cégek)</p>
             <ul>
               {SCENARIOS.map((s) => {
                 const opened = demos.find((d) => d.id === s.id);
                 return (
                   <li key={s.id} className="group flex items-center gap-1">
-                    <button onClick={() => choose(() => openDemo(s.id))} className="flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-50">
+                    <button onClick={() => choose(() => {
+                      openDemo(s.id);
+                      openProject(s.id, nav);
+                    })} className="flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-50">
                       {s.id === activeId ? <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" /> : <span className="w-3.5" />}
                       <span className="truncate">{s.label}</span>
                     </button>
@@ -92,7 +104,7 @@ export default function ProjectBar({ saveFile = browserDownload }: { saveFile?: 
                         onClick={() => setPending({ type: 'reset', project: opened })}
                         title="Visszaállítás a minta kiinduló állapotára"
                         aria-label={`${s.label} visszaállítása`}
-                        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                        className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
                       </button>
@@ -102,11 +114,21 @@ export default function ProjectBar({ saveFile = browserDownload }: { saveFile?: 
               })}
             </ul>
 
+            <button
+              onClick={() => {
+                setOpen(false);
+                setOverview(true);
+              }}
+              className="mt-2 flex w-full items-center gap-2 rounded border-t border-slate-100 px-2 pb-1.5 pt-2.5 text-left text-slate-700 hover:bg-slate-50"
+            >
+              <LayoutList className="h-3.5 w-3.5" /> Projektjeim – hol tartok, folytatás…
+            </button>
             <ImportButton onDone={() => setOpen(false)} />
           </div>
         )}
       </div>
 
+      {overview && <ProjectsOverview onClose={() => setOverview(false)} allowNewTab={allowNewTab} />}
       <SaveStatus projectId={activeId} meta={active} companyName={label} saveFile={saveFile} />
 
       <ConfirmDialog
@@ -154,14 +176,14 @@ function ProjectRow({ p, active, onOpen, onDelete }: { p: ProjectMeta; active: b
           </span>
         </span>
       </button>
-      <button onClick={onDelete} aria-label={`${p.companyName || 'Projekt'} törlése`} className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600">
+      <button onClick={onDelete} aria-label={`${p.companyName || 'Projekt'} törlése`} className="rounded p-1 text-slate-500 hover:bg-red-50 hover:text-red-600">
         <Trash2 className="h-3.5 w-3.5" />
       </button>
     </li>
   );
 }
 
-function NewProjectForm({ onCreate, onCancel }: { onCreate: (input: { companyName: string; kind: EngagementKind }) => void; onCancel: () => void }) {
+export function NewProjectForm({ onCreate, onCancel }: { onCreate: (input: { companyName: string; kind: EngagementKind }) => void; onCancel: () => void }) {
   const [name, setName] = useState('');
   const [kind, setKind] = useState<EngagementKind>('HEALTH_CHECK');
   const [touched, setTouched] = useState(false);
@@ -254,7 +276,7 @@ function SaveStatus({ projectId, meta, companyName, saveFile }: { projectId: str
   }, []);
   const saved = lastSaved();
   const backupAt = projectId ? lastBackup(projectId) : null;
-  const due = backupDue(meta, backupAt);
+  const due = projectId ? backupDue(meta, backupAt, Date.now(), projectHasContent(projectId)) : false;
 
   const backup = async () => {
     setNote(null);
@@ -294,7 +316,7 @@ function SaveStatus({ projectId, meta, companyName, saveFile }: { projectId: str
           <button onClick={backup} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
             Projekt mentése fájlba
           </button>
-          <p className="mt-2 text-[11px] text-slate-500">Visszatölteni a projektválasztóban lehet („Projekt visszatöltése fájlból…”).</p>
+          <p className="mt-2 text-xs text-slate-500">Visszatölteni a projektválasztóban lehet („Projekt visszatöltése fájlból…”).</p>
           {note && <p className="mt-1 text-xs text-slate-700">{note}</p>}
         </div>
       )}

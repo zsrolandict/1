@@ -25,8 +25,11 @@ export default function ExportPdfButton({
   input,
   saveFile = browserDownload,
   fontBase,
+  beforeExport,
 }: {
   input: ReportInput;
+  /** Opcionális kérdés a generálás előtt (pl. üres értékelésnél); false esetén nem készül PDF. */
+  beforeExport?: () => Promise<boolean>;
   saveFile?: SaveFile;
   /** A betűkészletek mappája (alapból: <origin>/fonts). */
   fontBase?: string;
@@ -35,6 +38,7 @@ export default function ExportPdfButton({
   const [note, setNote] = useState<{ kind: 'error' | 'warn'; text: string } | null>(null);
 
   const generate = async () => {
+    if (beforeExport && !(await beforeExport())) return;
     setBusy(true);
     setNote(null);
     try {

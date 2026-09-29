@@ -32,7 +32,7 @@ export default function BuyerQuestionsPanel({ companyName, result, highlighted }
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left">
         <span className="flex items-center gap-2 text-sm font-semibold text-slate-900">
           <MessagesSquare className="h-4 w-4" /> Várható vevői kérdések
-          {highlighted && <span className="rounded bg-indigo-50 px-1.5 text-[10px] font-medium text-indigo-700">eladói átvilágításhoz</span>}
+          {highlighted && <span className="rounded bg-indigo-50 px-1.5 text-xs font-medium text-indigo-700">eladói átvilágításhoz</span>}
         </span>
         <span className="text-xs text-slate-500">{open ? 'Bezár' : `${list.length} tétel, kérdésekkel, válaszvázlattal és iratlistával`}</span>
       </button>
@@ -55,7 +55,7 @@ export default function BuyerQuestionsPanel({ companyName, result, highlighted }
             {list.map((q) => (
               <li key={q.code} className="rounded-md border border-slate-200 p-3 text-sm">
                 <p className="font-medium text-slate-900">
-                  <span className="mr-1.5 font-mono text-[11px] text-slate-400">{q.code}</span>
+                  <span className="mr-1.5 font-mono text-xs text-slate-500">{q.code}</span>
                   {q.title}
                   <span className={`ml-2 text-xs ${q.rag === 'RED' ? 'text-red-700' : q.rag === 'AMBER' ? 'text-amber-700' : 'text-emerald-700'}`}>{RAG_LABEL[q.rag]}</span>
                 </p>

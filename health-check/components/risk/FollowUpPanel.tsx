@@ -90,7 +90,7 @@ export default function FollowUpPanel({
             <ul className="mt-2 max-h-96 divide-y divide-slate-100 overflow-auto rounded-md border border-slate-100 text-sm">
               {identified.map((r) => (
                 <li key={r.id} className="flex items-center gap-2 px-3 py-1.5">
-                  <span className="w-14 font-mono text-[11px] text-slate-400">{r.code}</span>
+                  <span className="w-14 font-mono text-xs text-slate-500">{r.code}</span>
                   <span className="min-w-0 flex-1 truncate text-slate-800">{r.title}</span>
                   <select
                     value={r.remediationStatus ?? 'OPEN'}
@@ -119,7 +119,7 @@ export default function FollowUpPanel({
                 </select>
               )}
               {snap && (
-                <button onClick={() => remove(snap.id)} aria-label="Pillanatkép törlése" className="text-slate-400 hover:text-red-600">
+                <button onClick={() => remove(snap.id)} aria-label="Pillanatkép törlése" className="text-slate-500 hover:text-red-600">
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               )}
@@ -143,7 +143,7 @@ export default function FollowUpPanel({
                 <ul className="mt-2 max-h-72 divide-y divide-slate-100 overflow-auto rounded-md border border-slate-100 text-sm">
                   {cmp.changes.map((c) => (
                     <li key={c.id} className="flex items-center gap-2 px-3 py-1.5">
-                      <span className={`w-28 shrink-0 rounded px-1.5 text-center text-[11px] font-medium ${CHANGE_STYLE[c.change]}`}>{CHANGE_LABEL[c.change]}</span>
+                      <span className={`w-28 shrink-0 rounded px-1.5 text-center text-xs font-medium ${CHANGE_STYLE[c.change]}`}>{CHANGE_LABEL[c.change]}</span>
                       <span className="min-w-0 flex-1 truncate text-slate-800">{c.code} {c.title}</span>
                       <span className="text-xs tabular-nums text-slate-500">
                         {c.before ? `${RAG_LABEL[c.before.rag]} ${c.before.score}` : '—'} → {c.after ? `${RAG_LABEL[c.after.rag]} ${c.after.score}` : 'megoldva'}
@@ -166,7 +166,7 @@ function Kpi({ label, before, after, lowerIsBetter, money }: { label: string; be
   const f = (n: number) => (money ? formatHufShort(n) : String(n));
   return (
     <div className="rounded-md bg-slate-50 p-2">
-      <dt className="text-[11px] text-slate-500">{label}</dt>
+      <dt className="text-xs text-slate-500">{label}</dt>
       <dd className="mt-0.5 tabular-nums">
         <span className="text-slate-500">{f(before)}</span> →{' '}
         <b className={better ? 'text-emerald-700' : worse ? 'text-red-700' : 'text-slate-900'}>{f(after)}</b>

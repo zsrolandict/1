@@ -2,34 +2,26 @@
 
 import { useEffect, useState } from 'react';
 import { Check, ChevronRight, Compass, Lightbulb, SlidersHorizontal, X } from 'lucide-react';
-import { guideSteps, nextStep, PAGE_TIPS, requestIntakeTab, type GuideStep, type PageId } from '@/lib/guide';
-import { loadIntake } from '@/lib/intake/state';
-import { loadRecords } from '@/lib/interview/records';
-import { loadBenchmark } from '@/lib/learning/benchmark';
+import { nextStep, PAGE_TIPS, requestIntakeTab, type GuideStep, type PageId } from '@/lib/guide';
 import { MODULES, type ModuleArea } from '@/lib/modules';
-import { loadSnapshots } from '@/lib/risk/followup';
 import { SAMPLE_PROFILES } from '@/lib/intake/samples/profiles';
 import { SAVED_EVENT } from '@/lib/localSave';
 import { applySampleProfile } from '@/lib/projects';
 import { loadWorkspace, PROJECT_EVENT } from '@/lib/risk/store';
-import { loadTimesheet } from '@/lib/timesheet/timesheet';
 import { useModules } from '../useModules';
+import { projectSteps } from '@/lib/projectProgress';
+import { createProject } from '@/lib/risk/store';
+import { ago } from '@/lib/localSave';
+import { NewProjectForm } from '../project/ProjectBar';
+import { openProject } from '../project/openProject';
+import { useProjects } from '../project/useProjects';
+import type { Nav } from '../Nav';
 
 const SEEN_KEY = 'ict-hc:guide-seen';
 const AREAS: ModuleArea[] = ['Adatgyűjtés', 'Interjúk', 'Red Flag mátrix', 'Projekt'];
 
-function readSteps(disabled: Parameters<typeof guideSteps>[0]['disabled']): GuideStep[] {
-  const ws = loadWorkspace();
-  const id = ws.projectId;
-  return guideSteps({
-    intake: loadIntake(id),
-    interviews: loadRecords(id),
-    identified: ws.items.filter((r) => r.identified).length,
-    snapshots: loadSnapshots(id).length,
-    hoursLogged: loadTimesheet(id).entries.reduce((a, e) => a + e.hours, 0),
-    benchmarked: loadBenchmark().some((r) => r.ref === id),
-    disabled,
-  });
+function readSteps(disabled: Parameters<typeof projectSteps>[1]): GuideStep[] {
+  return projectSteps(loadWorkspace().projectId, disabled);
 }
 
 /**
@@ -40,15 +32,22 @@ function readSteps(disabled: Parameters<typeof guideSteps>[0]['disabled']): Guid
 export default function Guide({ page, go }: { page: PageId; go: (page: PageId) => void }) {
   const { disabled, isOn, toggle } = useModules();
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<'steps' | 'modules'>('steps');
+  const [view, setView] = useState<'start' | 'steps' | 'modules'>('steps');
   const [steps, setSteps] = useState<GuideStep[]>([]);
   const [seen, setSeen] = useState(true);
 
+  // Első látogatás: a kalauz magától nyílik, üdvözlő nézettel.
   useEffect(() => {
+    let first = false;
     try {
-      setSeen(localStorage.getItem(SEEN_KEY) === '1');
+      first = localStorage.getItem(SEEN_KEY) !== '1';
+      if (first) localStorage.setItem(SEEN_KEY, '1');
     } catch {
       /* ignore */
+    }
+    if (first) {
+      setView('start');
+      setOpen(true);
     }
   }, []);
   const [note, setNote] = useState<string | null>(null);
@@ -116,6 +115,9 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
         <Compass className="h-4 w-4 text-slate-700" />
         <span className="text-sm font-semibold text-slate-900">Kalauz</span>
         <div className="ml-auto flex gap-1 text-xs">
+          <button onClick={() => setView('start')} className={`rounded px-2 py-1 ${view === 'start' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+            Kezdés
+          </button>
           <button onClick={() => setView('steps')} className={`rounded px-2 py-1 ${view === 'steps' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
             Merre tovább
           </button>
@@ -123,17 +125,24 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
             <SlidersHorizontal className="h-3 w-3" /> Modulok
           </button>
         </div>
-        <button onClick={() => setOpen(false)} aria-label="Kalauz bezárása" className="text-slate-400 hover:text-slate-700">
+        <button onClick={() => setOpen(false)} aria-label="Kalauz bezárása" className="text-slate-500 hover:text-slate-700">
           <X className="h-4 w-4" />
         </button>
       </header>
 
       <div className="overflow-auto p-4 text-sm">
+        {view === 'start' && (
+          <StartView
+            onDone={() => setView('steps')}
+            nav={{ page, go }}
+          />
+        )}
+
         {view === 'steps' && (
           <>
             {next ? (
               <div className="rounded-lg bg-slate-900 p-3 text-white">
-                <p className="text-[11px] uppercase tracking-wide text-slate-300">Következő lépés</p>
+                <p className="text-xs uppercase tracking-wide text-slate-300">Következő lépés</p>
                 <p className="mt-0.5 font-semibold">{next.title}</p>
                 <p className="mt-1 text-xs text-slate-200">{next.how}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -147,7 +156,7 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
                   )}
                 </div>
                 {next.id === 'case' && hasSample && (
-                  <p className="mt-1.5 text-[11px] text-slate-300">Ez egy kitalált bemutató cég: a minta-tényállással rögtön továbbléphetsz.</p>
+                  <p className="mt-1.5 text-xs text-slate-300">Ez egy kitalált bemutató cég: a minta-tényállással rögtön továbbléphetsz.</p>
                 )}
               </div>
             ) : (
@@ -167,7 +176,7 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
                     </span>
                     <span className="min-w-0">
                       <span className={s.done ? 'text-slate-500' : 'text-slate-900'}>{s.title}</span>
-                      <span className="block text-xs text-slate-400">{s.detail}</span>
+                      <span className="block text-xs text-slate-500">{s.detail}</span>
                     </span>
                   </button>
                 </li>
@@ -192,7 +201,7 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
             </p>
             {AREAS.map((area) => (
               <div key={area} className="mt-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{area}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{area}</p>
                 <ul className="mt-1 space-y-1">
                   {MODULES.filter((m) => m.area === area).map((m) => (
                     <li key={m.id}>
@@ -200,7 +209,7 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
                         <input type="checkbox" checked={isOn(m.id)} onChange={() => toggle(m.id)} className="mt-1" />
                         <span>
                           <span className="text-slate-900">{m.label}</span>
-                          {m.ai && <span className="ml-1 rounded bg-violet-100 px-1 text-[10px] text-violet-800">AI</span>}
+                          {m.ai && <span className="ml-1 rounded bg-violet-100 px-1 text-xs text-violet-800">AI</span>}
                           <span className="block text-xs text-slate-500">{m.description}</span>
                         </span>
                       </label>
@@ -213,5 +222,76 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
         )}
       </div>
     </aside>
+  );
+}
+
+/** Üdvözlő nézet: új ügyfél indítása, bemutató, vagy folytatás ott, ahol abbahagytad. */
+function StartView({ onDone, nav }: { onDone: () => void; nav: Nav }) {
+  const { projects } = useProjects();
+  const [creating, setCreating] = useState(false);
+  const recent = projects
+    .filter((p) => !p.isDemo)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, 3);
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="font-semibold text-slate-900">Üdv az ICT Health Checkben!</p>
+        <p className="mt-1 text-xs text-slate-600">
+          Egy átvilágítás menete: <b>Adatgyűjtés</b> (tényállás, kérdőív, táblák, dokumentumok) → <b>Interjúk</b> → <b>Red Flag mátrix</b> (a
+          kockázatok értékelése) → PDF- és Excel-riport. A kalauz minden lépésnél megmutatja, mi jön.
+        </p>
+      </div>
+
+      {creating ? (
+        <NewProjectForm
+          onCancel={() => setCreating(false)}
+          onCreate={(input) => {
+            createProject(input);
+            if (nav.page !== 'adatok') nav.go('adatok');
+            onDone();
+          }}
+        />
+      ) : (
+        <button onClick={() => setCreating(true)} className="w-full rounded-lg bg-slate-900 px-3 py-2.5 text-left text-white hover:bg-slate-800">
+          <span className="block font-medium">Új ügyfél indítása</span>
+          <span className="block text-xs text-slate-300">Cégnév és átvilágítás-típus, utána az Adatgyűjtéssel kezdünk.</span>
+        </button>
+      )}
+
+      {recent.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Folytatás, ahol abbahagytad</p>
+          <ul className="mt-1 space-y-1">
+            {recent.map((p) => (
+              <li key={p.id}>
+                <button
+                  onClick={() => {
+                    openProject(p.id, nav);
+                    onDone();
+                  }}
+                  className="flex w-full items-center justify-between gap-2 rounded-md border border-slate-200 px-3 py-2 text-left hover:bg-slate-50"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-slate-900">{p.companyName || 'Névtelen projekt'}</span>
+                    <span className="block text-xs text-slate-600">módosítva {ago(Date.parse(p.updatedAt))}</span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-slate-500" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <button onClick={onDone} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-left hover:bg-slate-50">
+        <span className="block font-medium text-slate-900">Körbenézek a bemutatóban</span>
+        <span className="block text-xs text-slate-600">Négy kitalált cég kész adatokkal – a projektválasztóban (jobb fent) váltható.</span>
+      </button>
+
+      <p className="text-xs text-slate-600">
+        Az adatok ebben a böngészőben tárolódnak; a jobb felső „Helyben mentve” gombbal a projekt fájlba menthető.
+      </p>
+    </div>
   );
 }

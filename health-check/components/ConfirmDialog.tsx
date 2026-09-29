@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 /**
  * Megerősítő ablak. Nem a böngésző `confirm()`-ját használja, mert az
@@ -63,4 +63,37 @@ export default function ConfirmDialog({
       </div>
     </div>
   );
+}
+
+interface AskOptions {
+  title: string;
+  body?: ReactNode;
+  confirmLabel?: string;
+  danger?: boolean;
+}
+
+/**
+ * Kérdés ígérettel: `if (await ask({ title: '…' })) …`. A visszaadott
+ * `dialog` elemet a komponens renderelje.
+ */
+export function useConfirm(): [ReactNode, (opts: AskOptions) => Promise<boolean>] {
+  const [state, setState] = useState<(AskOptions & { resolve: (v: boolean) => void }) | null>(null);
+  const ask = useCallback((opts: AskOptions) => new Promise<boolean>((resolve) => setState({ ...opts, resolve })), []);
+  const close = (v: boolean) => {
+    state?.resolve(v);
+    setState(null);
+  };
+  const dialog = (
+    <ConfirmDialog
+      open={Boolean(state)}
+      title={state?.title ?? ''}
+      confirmLabel={state?.confirmLabel}
+      danger={state?.danger}
+      onCancel={() => close(false)}
+      onConfirm={() => close(true)}
+    >
+      {state?.body}
+    </ConfirmDialog>
+  );
+  return [dialog, ask];
 }

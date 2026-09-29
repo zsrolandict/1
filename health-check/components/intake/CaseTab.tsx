@@ -262,7 +262,7 @@ export default function CaseTab({
                         </button>
                       </div>
                       <p className="mt-0.5 text-slate-600">{d.why}</p>
-                      <p className="mt-0.5 italic text-slate-400">„{d.quote}”</p>
+                      <p className="mt-0.5 italic text-slate-500">„{d.quote}”</p>
                     </li>
                   );
                 })}
@@ -312,11 +312,11 @@ export default function CaseTab({
                       <div className="min-w-0 flex-1 basis-72">
                         <p className="text-sm text-slate-900">
                           {d.title}
-                          {d.priority === 'REQUIRED' && <span className="ml-1.5 rounded bg-slate-900 px-1.5 text-[10px] font-medium text-white">Kötelező</span>}
-                          <span className="ml-1.5 rounded bg-slate-100 px-1.5 text-[10px] font-medium text-slate-600">{SOURCE_LABEL[d.source]}</span>
+                          {d.priority === 'REQUIRED' && <span className="ml-1.5 rounded bg-slate-900 px-1.5 text-xs font-medium text-white">Kötelező</span>}
+                          <span className="ml-1.5 rounded bg-slate-100 px-1.5 text-xs font-medium text-slate-600">{SOURCE_LABEL[d.source]}</span>
                         </p>
                         <p className="mt-0.5 text-xs text-slate-500">{d.why.join(' · ')}</p>
-                        {d.table && <p className="mt-0.5 text-[11px] text-indigo-700">Beérkezés után: Adattáblák → {TABLE_SPECS[d.table].label}</p>}
+                        {d.table && <p className="mt-0.5 text-xs text-indigo-700">Beérkezés után: Adattáblák → {TABLE_SPECS[d.table].label}</p>}
                       </div>
                       <div className="flex items-center gap-1.5">
                         <div className="inline-flex" role="group" aria-label={`Állapot: ${d.title}`}>
@@ -325,7 +325,7 @@ export default function CaseTab({
                               key={s}
                               onClick={() => setStatus(d.id, s)}
                               aria-pressed={st === s}
-                              className={`px-2 py-0.5 text-[11px] ring-1 ring-inset first:rounded-l-md last:rounded-r-md ${
+                              className={`px-2 py-0.5 text-xs ring-1 ring-inset first:rounded-l-md last:rounded-r-md ${
                                 st === s ? STATUS_STYLE[s] : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
                               }`}
                             >
@@ -337,7 +337,7 @@ export default function CaseTab({
                           <button
                             onClick={() => update({ extraRequests: intake.extraRequests.filter((x) => x.id !== d.id) })}
                             aria-label="Tétel törlése"
-                            className="text-slate-400 hover:text-red-600"
+                            className="text-slate-500 hover:text-red-600"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>

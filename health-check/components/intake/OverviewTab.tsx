@@ -58,7 +58,7 @@ export default function OverviewTab({
               nem talál meg a forrásban, azt a rendszer eldobja. A javaslatok jobb oldalt jelennek meg.
             </p>
             {synthesis && (
-              <p className="mt-1 text-[11px] text-indigo-900/70">
+              <p className="mt-1 text-xs text-indigo-900/70">
                 Utolsó futtatás: {new Date(synthesis.createdAt).toLocaleString('hu-HU')} · {synthesis.suggestions.length} javaslat
                 {synthesis.discardedUnverified ? ` · ${synthesis.discardedUnverified} nem igazolhatót kiszűrt` : ''}
               </p>
@@ -115,7 +115,7 @@ export default function OverviewTab({
           <ul className="space-y-3 p-3">
             {shown.map((c) => (
               <li key={c.key} className={`rounded-md border p-3 text-sm ${SEV[c.severity].cls}`}>
-                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-medium">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium">
                   <span className="text-slate-500">
                     {PILLAR_LABEL[c.pillar]} · {c.topic}
                   </span>
@@ -125,11 +125,11 @@ export default function OverviewTab({
                 </div>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   <div className="rounded bg-white/70 p-2 text-slate-800 ring-1 ring-inset ring-slate-200">
-                    <p className="text-[11px] font-medium text-slate-500">{c.a.source}</p>
+                    <p className="text-xs font-medium text-slate-500">{c.a.source}</p>
                     <p className="mt-0.5">{c.a.statement}</p>
                   </div>
                   <div className="rounded bg-white/70 p-2 text-slate-800 ring-1 ring-inset ring-slate-200">
-                    <p className="text-[11px] font-medium text-slate-500">{c.b.source}</p>
+                    <p className="text-xs font-medium text-slate-500">{c.b.source}</p>
                     <p className="mt-0.5">{c.b.statement}</p>
                   </div>
                 </div>

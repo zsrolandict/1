@@ -395,7 +395,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
               </label>
               <label
                 className={`mt-3 flex cursor-pointer flex-col items-center gap-1 rounded-md border-2 border-dashed p-4 text-center text-sm ${
-                  consent && status?.transcription ? 'border-slate-300 text-slate-600 hover:bg-slate-50' : 'cursor-not-allowed border-slate-200 text-slate-400'
+                  consent && status?.transcription ? 'border-slate-300 text-slate-600 hover:bg-slate-50' : 'cursor-not-allowed border-slate-200 text-slate-500'
                 }`}
               >
                 {busy === 'transcribe' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
@@ -442,7 +442,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
 
           <Card title="Leirat" icon={<MessageSquareQuote className="h-4 w-4" />}>
             {!transcript ? (
-              <p className="py-10 text-center text-sm text-slate-400">Töltsön fel hangfájlt vagy illesszen be jegyzetet.</p>
+              <p className="py-10 text-center text-sm text-slate-500">Töltsön fel hangfájlt vagy illesszen be jegyzetet.</p>
             ) : (
               <>
                 <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -469,7 +469,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
                 <ol className="max-h-[420px] space-y-2 overflow-y-auto pr-1 text-sm">
                   {namedTranscript!.segments.map((s, i) => (
                     <li key={i} className="grid grid-cols-[56px_1fr] gap-2">
-                      <span className="pt-0.5 font-mono text-[11px] text-slate-400">{transcript.timed ? formatMs(s.startMs) : ''}</span>
+                      <span className="pt-0.5 font-mono text-xs text-slate-500">{transcript.timed ? formatMs(s.startMs) : ''}</span>
                       <p><b className="font-medium text-slate-900">{s.speaker}:</b> <span className="text-slate-700">{s.text}</span></p>
                     </li>
                   ))}
@@ -569,8 +569,8 @@ function GuideTab(props: {
                     {done ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <span className="block h-5 w-5 rounded-full border-2 border-slate-300" />}
                   </button>
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                      <span className="font-mono text-slate-400">{i + 1}.</span>
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                      <span className="font-mono text-slate-500">{i + 1}.</span>
                       <span className="text-slate-500">{PILLAR_LABEL[q.pillar]}</span>
                       <span className={`rounded px-1.5 font-medium ring-1 ring-inset ${badge.cls}`}>{badge.label}</span>
                       {q.priority === 1 && <span className="rounded bg-slate-900 px-1.5 font-medium text-white">{PRIORITY_LABEL[1]}</span>}
@@ -623,10 +623,10 @@ function FactsEditor({ facts, onChange }: { facts: KnownFact[]; onChange: (f: Kn
           <li key={f.id} className="rounded border border-slate-100 bg-slate-50 p-2">
             <div className="flex justify-between gap-2">
               <span className="font-medium text-slate-500">{f.id} · {PILLAR_LABEL[f.pillar]}</span>
-              <button onClick={() => onChange(facts.filter((x) => x.id !== f.id))} className="text-slate-400 hover:text-red-600" aria-label="Törlés">✕</button>
+              <button onClick={() => onChange(facts.filter((x) => x.id !== f.id))} className="text-slate-500 hover:text-red-600" aria-label="Törlés">✕</button>
             </div>
             <p className="mt-0.5 text-slate-700">{f.statement}</p>
-            <p className="mt-0.5 text-slate-400">{f.source}</p>
+            <p className="mt-0.5 text-slate-500">{f.source}</p>
           </li>
         ))}
       </ul>
@@ -708,17 +708,17 @@ function AnalysisTab({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title={`Ellentmondások a dokumentumokkal (${analysis.contradictions.length})`} icon={<AlertTriangle className="h-4 w-4 text-red-600" />}>
-          {analysis.contradictions.length === 0 && <p className="text-sm text-slate-400">Nincs talált ellentmondás.</p>}
+          {analysis.contradictions.length === 0 && <p className="text-sm text-slate-500">Nincs talált ellentmondás.</p>}
           <ul className="space-y-3">
             {analysis.contradictions.map((c, i) => (
               <li key={i} className={`rounded-md border p-3 text-sm ${c.severity === 'HIGH' ? 'border-red-200 bg-red-50/60' : c.severity === 'MEDIUM' ? 'border-amber-200 bg-amber-50/60' : 'border-slate-200'}`}>
-                <div className="flex items-center justify-between text-[11px] font-medium">
+                <div className="flex items-center justify-between text-xs font-medium">
                   <span className="text-slate-500">{PILLAR_LABEL[c.pillar]}</span>
                   <span className={c.severity === 'HIGH' ? 'text-red-700' : c.severity === 'MEDIUM' ? 'text-amber-800' : 'text-slate-500'}>
                     {{ HIGH: 'Súlyos', MEDIUM: 'Közepes', LOW: 'Enyhe' }[c.severity]}
                   </span>
                 </div>
-                <p className="mt-1 text-slate-900"><b>Elhangzott:</b> „{c.quote}” {c.startMs != null && <span className="font-mono text-xs text-slate-400">[{formatMs(c.startMs)}]</span>}</p>
+                <p className="mt-1 text-slate-900"><b>Elhangzott:</b> „{c.quote}” {c.startMs != null && <span className="font-mono text-xs text-slate-500">[{formatMs(c.startMs)}]</span>}</p>
                 <p className="mt-1 text-slate-700"><b>Dokumentum:</b> {factById.get(c.conflictingFactId)?.statement ?? c.conflictingFactId}</p>
                 <p className="mt-0.5 text-xs text-slate-500">{c.conflictingSource}</p>
                 <p className="mt-2 text-slate-700">{c.explanation}</p>
@@ -728,18 +728,18 @@ function AnalysisTab({
         </Card>
 
         <Card title={`Javasolt red flagek (${analysis.suggestedRedFlags.length})`} icon={<Bot className="h-4 w-4 text-indigo-600" />}>
-          {analysis.suggestedRedFlags.length === 0 && <p className="text-sm text-slate-400">Nincs javaslat.</p>}
+          {analysis.suggestedRedFlags.length === 0 && <p className="text-sm text-slate-500">Nincs javaslat.</p>}
           <ul className="space-y-3">
             {analysis.suggestedRedFlags.map((f, i) => {
               const key = `${f.templateCode ?? f.title}-${i}`;
               const done = accepted.has(key);
               return (
                 <li key={key} className="rounded-md border border-slate-200 p-3 text-sm">
-                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                  <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-slate-500">
                       {f.templateCode ?? 'Új tétel'} · {PILLAR_LABEL[f.pillar]} · V{f.likelihood}×H{f.impact}
                     </span>
-                    <span className="text-slate-400">biztosság {Math.round(f.confidence * 100)}%</span>
+                    <span className="text-slate-500">biztosság {Math.round(f.confidence * 100)}%</span>
                   </div>
                   <p className="mt-1 font-medium text-slate-900">{f.title}</p>
                   <p className="mt-0.5 text-slate-600">{f.rationale}</p>
@@ -767,7 +767,7 @@ function AnalysisTab({
           <ul className="space-y-2 text-sm">
             {analysis.statements.map((s, i) => (
               <li key={i}>
-                <span className="text-[11px] text-slate-500">{PILLAR_LABEL[s.pillar]} · {s.speaker} {s.startMs != null && `· ${formatMs(s.startMs)}`}</span>
+                <span className="text-xs text-slate-500">{PILLAR_LABEL[s.pillar]} · {s.speaker} {s.startMs != null && `· ${formatMs(s.startMs)}`}</span>
                 <p className="text-slate-800">{s.summary}</p>
               </li>
             ))}

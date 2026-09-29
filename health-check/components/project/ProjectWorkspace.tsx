@@ -142,7 +142,7 @@ function TimesheetSection({ projectId, kind }: { projectId: string; kind: Engage
               <div className={`h-full ${BAR[b.level]}`} style={{ width: `${Math.min(100, b.ratio * 100)}%` }} />
             </div>
             {b.level !== 'OK' && (
-              <p className={`mt-0.5 text-[10px] font-medium ${b.level === 'OVER' ? 'text-red-700' : 'text-amber-700'}`}>{b.level === 'OVER' ? 'Túllépés' : '80% felett'}</p>
+              <p className={`mt-0.5 text-xs font-medium ${b.level === 'OVER' ? 'text-red-700' : 'text-amber-700'}`}>{b.level === 'OVER' ? 'Túllépés' : '80% felett'}</p>
             )}
           </div>
         ))}
@@ -172,14 +172,14 @@ function TimesheetSection({ projectId, kind }: { projectId: string; kind: Engage
             <span className="flex items-center gap-1 py-1 text-slate-800">
               {me.name}
               {me.source === 'login' ? (
-                <span className="text-[10px] text-slate-400">(bejelentkezve)</span>
+                <span className="text-xs text-slate-500">(bejelentkezve)</span>
               ) : (
                 <button
                   onClick={() => {
                     setNameDraft(me.name ?? '');
                     setEditingName(true);
                   }}
-                  className="text-[10px] text-slate-400 underline hover:text-slate-700"
+                  className="text-xs text-slate-500 underline hover:text-slate-700"
                 >
                   módosít
                 </button>
@@ -207,7 +207,7 @@ function TimesheetSection({ projectId, kind }: { projectId: string; kind: Engage
               </button>
             </span>
           ) : (
-            <span className="py-1 text-slate-400">…</span>
+            <span className="py-1 text-slate-500">…</span>
           )}
         </Labeled>
         <Labeled label="Óra">
@@ -271,7 +271,7 @@ function TimesheetSection({ projectId, kind }: { projectId: string; kind: Engage
                 <td className="text-right tabular-nums">{fmt(e.hours)}</td>
                 <td className="pl-3 text-slate-600">{e.note}</td>
                 <td className="text-right">
-                  <button onClick={() => setState((s) => removeEntry(s, e.id))} aria-label="Bejegyzés törlése" className="text-slate-400 hover:text-red-600">
+                  <button onClick={() => setState((s) => removeEntry(s, e.id))} aria-label="Bejegyzés törlése" className="text-slate-500 hover:text-red-600">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </td>
@@ -374,7 +374,7 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
                 {s.codes.slice(0, 15).map((c) => (
                   <tr key={c.code}>
                     <td className="py-1">
-                      <span className="font-mono text-slate-400">{c.code}</span> {c.title}
+                      <span className="font-mono text-slate-500">{c.code}</span> {c.title}
                     </td>
                     <td className="text-right tabular-nums">
                       {c.count}/{s.n} ({Math.round(c.frequency * 100)}%)
@@ -434,7 +434,7 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
                 <span className="flex-1">
                   {ENGAGEMENT_KINDS[r.kind].label} · {r.sectors.map((x) => SECTOR_LABEL[x]).join(', ') || '—'} · {REVENUE_BAND_LABEL[r.revenueBand]} · Health Score {r.healthScore}
                 </span>
-                <button onClick={() => remove(r.id)} aria-label="Rekord törlése" className="text-slate-400 hover:text-red-600">
+                <button onClick={() => remove(r.id)} aria-label="Rekord törlése" className="text-slate-500 hover:text-red-600">
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </li>
@@ -452,7 +452,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: Bur
   const color = tone === 'OVER' ? 'text-red-700' : tone === 'WARN' ? 'text-amber-700' : 'text-slate-900';
   return (
     <div className="rounded-md bg-slate-50 p-2">
-      <dt className="text-[11px] text-slate-500">{label}</dt>
+      <dt className="text-xs text-slate-500">{label}</dt>
       <dd className={`mt-0.5 font-semibold tabular-nums ${color}`}>{value}</dd>
     </div>
   );

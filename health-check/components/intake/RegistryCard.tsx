@@ -162,7 +162,7 @@ export default function RegistryCard({
               Másik cégkivonat
             </button>
           </div>
-          <p className="text-slate-400">
+          <p className="text-slate-500">
             {rec.isSample ? 'Kitalált minta. ' : ''}
             {rec.data.discardedUnverified ? `${rec.data.discardedUnverified} nem igazolható adatot kiszűrt. ` : ''}
             A figyelmeztetések és ellentmondások az Összkép fülön is megjelennek.

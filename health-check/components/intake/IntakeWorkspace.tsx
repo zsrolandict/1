@@ -447,16 +447,16 @@ function ChecklistTab({
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0 flex-1 basis-72">
                     <p className="text-sm text-slate-900">
-                      <span className="mr-1.5 font-mono text-[11px] text-slate-400">{q.id}</span>
+                      <span className="mr-1.5 font-mono text-xs text-slate-500">{q.id}</span>
                       {q.sectors && (
-                        <span className="mr-1.5 rounded bg-indigo-50 px-1.5 text-[10px] font-medium text-indigo-700">
+                        <span className="mr-1.5 rounded bg-indigo-50 px-1.5 text-xs font-medium text-indigo-700">
                           {q.sectors.filter((x) => sectors.includes(x)).map((x) => SECTOR_LABEL[x]).join(', ')}
                         </span>
                       )}
                       {q.text}
                     </p>
                     {q.help && <p className="mt-0.5 text-xs text-slate-500">{q.help}</p>}
-                    {q.document && <p className="mt-0.5 text-[11px] text-slate-400">Kért dokumentum: {q.document}</p>}
+                    {q.document && <p className="mt-0.5 text-xs text-slate-500">Kért dokumentum: {q.document}</p>}
                   </div>
                   <div className="flex items-center gap-2">
                     <AnswerInput q={q} value={answers[q.id]} onChange={(a) => onAnswer(q.id, a)} />
@@ -552,7 +552,7 @@ function TablesTab({
               <div className="min-w-0 flex-1 basis-64">
                 <h2 className="text-sm font-semibold text-slate-900">{spec.label}</h2>
                 <p className="mt-0.5 text-xs text-slate-500">{spec.request}</p>
-                <p className="mt-0.5 text-[11px] text-slate-400">Oszlopok: {spec.columns.map((c) => c.label + (c.required ? '' : ' (opc.)')).join(' · ')}</p>
+                <p className="mt-0.5 text-xs text-slate-500">Oszlopok: {spec.columns.map((c) => c.label + (c.required ? '' : ' (opc.)')).join(' · ')}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
@@ -574,7 +574,7 @@ function TablesTab({
                   </button>
                 )}
                 {(t || r) && (
-                  <button onClick={() => onRemove(kind)} aria-label="Tábla eltávolítása" className="rounded-md border border-slate-200 px-2 text-slate-400 hover:text-red-600">
+                  <button onClick={() => onRemove(kind)} aria-label="Tábla eltávolítása" className="rounded-md border border-slate-200 px-2 text-slate-500 hover:text-red-600">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 )}
@@ -630,7 +630,7 @@ function TablesTab({
                       <dd className={`text-right font-medium tabular-nums ${m.alert ? 'text-red-700' : 'text-slate-900'}`}>{m.value}</dd>
                     </div>
                   ))}
-                  <div className="pt-1 text-[11px] text-slate-400">{t.rows} sor feldolgozva{t.skipped ? `, ${t.skipped} kihagyva (összesítő / üres / nem szám)` : ''} · {t.fileName}</div>
+                  <div className="pt-1 text-xs text-slate-500">{t.rows} sor feldolgozva{t.skipped ? `, ${t.skipped} kihagyva (összesítő / üres / nem szám)` : ''} · {t.fileName}</div>
                   {t.warnings.map((w) => <p key={w} className="text-xs text-amber-700">⚠ {w}</p>)}
                 </dl>
                 {t.topPartners.length > 0 && (
@@ -693,7 +693,7 @@ function DocumentsTab({
           </div>
           <label
             className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-              aiReady && !busy ? 'cursor-pointer bg-slate-900 text-white hover:bg-slate-800' : 'cursor-not-allowed bg-slate-100 text-slate-400'
+              aiReady && !busy ? 'cursor-pointer bg-slate-900 text-white hover:bg-slate-800' : 'cursor-not-allowed bg-slate-100 text-slate-500'
             }`}
             title={aiReady ? undefined : 'Az AI-elemzés ebben a környezetben nincs beállítva'}
           >
@@ -740,14 +740,14 @@ function DocumentCard({ d, kind, sample, onRemove }: { d: DocumentRecord; kind: 
     <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+          <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
             <FileSearch className="h-3.5 w-3.5" /> {d.format} · {d.pageLabels.length} {d.format === 'PDF' ? 'oldal' : 'szakasz'}
             {d.isSample && <span className="rounded bg-amber-100 px-1.5 font-medium text-amber-800">Minta-elemzés</span>}
           </p>
           <h3 className="mt-0.5 truncate font-medium text-slate-900">{d.fileName}</h3>
           <p className="text-xs text-slate-500">{a.documentType}</p>
         </div>
-        <button onClick={onRemove} aria-label="Dokumentum eltávolítása" className="text-slate-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+        <button onClick={onRemove} aria-label="Dokumentum eltávolítása" className="text-slate-500 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
       </div>
       {d.kind && d.kind !== kind && (
         <p className="mt-2 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900">
@@ -771,7 +771,7 @@ function DocumentCard({ d, kind, sample, onRemove }: { d: DocumentRecord; kind: 
           <p className="text-xs font-medium text-slate-500">Tények (az interjúkon ellenőrizzük)</p>
           <ul className="mt-1 space-y-1 text-sm">
             {a.facts.map((f, i) => (
-              <li key={i} className="text-slate-700">• {f.statement} <span className="text-xs text-slate-400">({where(f.pageIndex)})</span></li>
+              <li key={i} className="text-slate-700">• {f.statement} <span className="text-xs text-slate-500">({where(f.pageIndex)})</span></li>
             ))}
           </ul>
         </div>
@@ -860,7 +860,7 @@ function SuggestionPanel({
         </ul>
       )}
       {result.suggestions.length === 0 ? (
-        <p className="p-4 text-sm text-slate-400">{empty}</p>
+        <p className="p-4 text-sm text-slate-500">{empty}</p>
       ) : (
         <ul className="max-h-[70vh] divide-y divide-slate-100 overflow-auto">
           {result.suggestions.map((s) => (
@@ -915,18 +915,18 @@ function SuggestionRow({
           : null;
   return (
     <li className={`p-3 text-sm ${state === 'dismissed' ? 'opacity-50' : ''}`}>
-      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-        <span className="font-mono text-slate-400">{s.code ?? 'Új'}</span>
+      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+        <span className="font-mono text-slate-500">{s.code ?? 'Új'}</span>
         <span className="text-slate-500">{PILLAR_LABEL[s.pillar]}</span>
         <span className={`rounded px-1.5 font-medium ring-1 ring-inset ${RAG_BADGE[rag]}`}>V{s.likelihood}×H{s.impact} = {score}</span>
-        {s.confidence != null && <span className="text-slate-400">biztosság {Math.round(s.confidence * 100)}%</span>}
+        {s.confidence != null && <span className="text-slate-500">biztosság {Math.round(s.confidence * 100)}%</span>}
         <span className="ml-auto rounded bg-indigo-50 px-1.5 font-medium text-indigo-700">{ORIGIN_LABEL[s.origin]}</span>
       </div>
       <p className="mt-1 font-medium text-slate-900">{s.title}</p>
       <p className="mt-0.5 text-xs text-slate-600">{s.rationale}</p>
       <p className="mt-1 text-xs italic text-slate-500">{s.evidence}</p>
       {patch && <p className="mt-1 text-xs text-slate-600">{patch}</p>}
-      <p className="mt-1 text-[11px] text-slate-400">{status}</p>
+      <p className="mt-1 text-xs text-slate-500">{status}</p>
       <div className="mt-2 flex gap-2">
         {state === 'accepted' ? (
           <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700"><Check className="h-3.5 w-3.5" /> Átvéve a mátrixba</span>
@@ -971,6 +971,6 @@ function TabButton({ active, onClick, icon, children }: { active: boolean; onCli
 }
 
 function Count({ children }: { children: ReactNode }) {
-  return <span className="rounded-full bg-slate-100 px-1.5 text-[11px] font-medium text-slate-600">{children}</span>;
+  return <span className="rounded-full bg-slate-100 px-1.5 text-xs font-medium text-slate-600">{children}</span>;
 }
 

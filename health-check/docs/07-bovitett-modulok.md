@@ -102,3 +102,24 @@ Minden piros és sárga tételhez elkészíti a várható vevői kérdéseket, e
 - **Adatkezelési kapcsoló:** éles buildben (`NODE_ENV=production`) az AI-végpontok zárva vannak, amíg az üzemeltető be nem állítja az `AI_DPA_CONFIRMED=1` értéket, vagyis azt, hogy a beállított AI-szolgáltatóval adatfeldolgozói szerződés van, fizetős, EU-s adatkezeléssel. Ingyenes Gemini-kulccsal ezt nem szabad beállítani. Fejlesztői gépen (`npm run dev`) nincs korlát.
 - **Hívásszám-korlát:** felhasználónként óránként 40 AI-hívás és 10 leiratkészítés (felülírható: `AI_RATE_LIMIT_PER_HOUR`, `TRANSCRIBE_RATE_LIMIT_PER_HOUR`). Túllépéskor 429-es válasz, `Retry-After` fejléccel. A számláló egy szerverpéldányon belül érvényes; több példánynál közös tár kell.
 - **Tömörítési bomba elleni védelem:** DOCX és XLSX kicsomagolása legfeljebb 80 MB-ig, és gyanúsan nagy tömörítési arány (200× felett, 1 MB feletti fájlnál) esetén elutasítás (`lib/intake/safeUnzip.ts`).
+
+## Több projekt egyszerre, folytatás
+
+- **Laponként külön projekt:** az aktív projekt böngészőlaponként tárolódik, így két lapon két különböző projekt lehet nyitva, és az egyik lapon történő váltás nem viszi el a másikat. Új lap a legutóbb használt projekttel indul.
+- **Projektjeim** (projektválasztó › „Projektjeim – hol tartok, folytatás…”): minden projekt haladása (kalauz-lépések), következő lépése, az azonosított tételek száma, és egy „Folytatás” gomb, ami azon az oldalon nyitja meg, ahol legutóbb abbahagytad. Az „Új lapon” gomb (a Next-alkalmazásban) külön lapon nyitja meg (`?projekt=<azonosító>`).
+- **Hol tartottál:** projektenként megjegyzi az utoljára nyitott oldalt. Új saját projekt az Adatgyűjtéssel indul, bemutató a mátrixszal.
+- **Ütközésjelzés:** ha ugyanazt a projektet egy másik lapon is módosítják, sárga sáv jelzi, „Frissítés” gombbal.
+
+## Első élmény és üres állapotok
+
+- **Üdvözlő kalauz** első látogatáskor („Kezdés” nézet): „Új ügyfél indítása”, „Folytatás, ahol abbahagytad” (legutóbbi 3 projekt), „Körbenézek a bemutatóban”.
+- **Még nincs értékelés:** amíg egyetlen tétel sincs bepipálva, a mátrix nem mutat „Zöld / 100” eredményt, hanem teendőt (Adatgyűjtés indítása, kézi bepipálás). PDF- és Excel-export előtt ilyenkor rákérdez.
+- **Üres cégadatok** új projektnél: nincs kitalált árbevétel; amíg nincs megadva, sárga keret és magyarázat jelzi, hogy forintosítás nincs.
+- **Mentés-figyelmeztetés** csak akkor, ha a projektben már van munka, és egy napnál régebbi (vagy az utolsó fájlba mentés 7 napnál régebbi).
+
+## Akadálymentesség
+
+- A mátrix címsora szöveg (a cégnév ceruza gombbal szerkeszthető), így a képernyőolvasó is felolvassa.
+- A színek mellett szöveg: „5 piros · 2 sárga · 0 zöld”, a pillérkártyákon a besorolás neve, a hőtérkép celláin felolvasható leírás.
+- Olvasandó szöveg legalább `slate-500` (a korábbi `slate-400` helyett), legkisebb betűméret 12 px; minden beviteli mezőn látható fókusz.
+- A mobil nézetet szándékosan nem optimalizáljuk: a program asztali munkára készül.

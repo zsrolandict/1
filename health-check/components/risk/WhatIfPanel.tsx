@@ -86,15 +86,15 @@ export default function WhatIfPanel({ items, opts, result }: { items: RiskItem[]
                 <li key={r.id}>
                   <label className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-slate-50">
                     <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} className="accent-slate-900" />
-                    <span className="w-14 font-mono text-[11px] text-slate-400">{r.code}</span>
+                    <span className="w-14 font-mono text-xs text-slate-500">{r.code}</span>
                     <span className="min-w-0 flex-1 truncate text-slate-800">{r.title}</span>
                     <span className={`text-xs ${r.rag === 'RED' ? 'text-red-700' : 'text-amber-700'}`}>{RAG_LABEL[r.rag]}</span>
                     <span className="w-20 text-right text-xs tabular-nums text-slate-500">{formatHufShort(r.serviceFeeHuf)}</span>
-                    <span className="w-12 text-right text-xs tabular-nums text-slate-400">{r.remediationDays} nap</span>
+                    <span className="w-12 text-right text-xs tabular-nums text-slate-500">{r.remediationDays} nap</span>
                   </label>
                 </li>
               ))}
-              {candidates.length === 0 && <li className="px-3 py-2 text-slate-400">Nincs piros vagy sárga tétel.</li>}
+              {candidates.length === 0 && <li className="px-3 py-2 text-slate-500">Nincs piros vagy sárga tétel.</li>}
             </ul>
           </div>
           <dl className="space-y-2 rounded-md bg-slate-50 p-3 text-sm">
@@ -111,7 +111,7 @@ export default function WhatIfPanel({ items, opts, result }: { items: RiskItem[]
                 <b className="tabular-nums text-emerald-700">{sim.returnMultiple != null ? `${sim.returnMultiple.toLocaleString('hu-HU', { maximumFractionDigits: 1 })}×` : '—'}</b>
               </p>
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-xs text-slate-500">
               Becslés: a várható veszteség a kitettség × valószínűség; a díj az ICT remediációs díja. A szimuláció a mátrixot nem módosítja.
             </p>
           </dl>

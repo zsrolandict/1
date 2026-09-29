@@ -38,7 +38,8 @@ export const BLANK: Scenario = {
   situation: '',
   companyName: '',
   kind: 'HEALTH_CHECK',
-  company: DEFAULT_COMPANY,
+  // Nincs kitalált árbevétel: amíg a tanácsadó meg nem adja, nincs forintosítás.
+  company: { revenueHuf: 0, grossMarginPct: DEFAULT_COMPANY.grossMarginPct, actualDsoDays: 0, industryDsoDays: 0 },
   materialityHuf: 50_000_000,
   items: DEFAULT_CATALOG.map((r) => ({ ...r, identified: false })),
   facts: [],

@@ -9,6 +9,8 @@ import { AiBackendProvider } from '@/components/AiBackendContext';
 import Guide from '@/components/guide/Guide';
 import ProjectBar from '@/components/project/ProjectBar';
 import ProjectScope from '@/components/project/ProjectScope';
+import { NavProvider } from '@/components/Nav';
+import { activeProjectId, lastPageOf } from '@/lib/risk/store';
 import { useModules } from '@/components/useModules';
 import { INTAKE_MODULES, PROJECT_MODULES, type ModuleId } from '@/lib/modules';
 import { sampleBackend } from './sampleBackend';
@@ -42,7 +44,13 @@ const fontBase = new URL('fonts', document.baseURI).href;
 
 function tabFromHash(): Tab {
   const h = window.location.hash.slice(1);
-  return h === 'interjuk' || h === 'adatok' || h === 'projekt' ? h : 'matrix';
+  if (h === 'interjuk' || h === 'adatok' || h === 'projekt' || h === 'matrix') return h;
+  // Cím nélkül: ahol a projektet legutóbb abbahagytad.
+  try {
+    return lastPageOf(activeProjectId());
+  } catch {
+    return 'matrix';
+  }
 }
 
 const TAB_MODULES: Record<Tab, ModuleId[] | null> = { adatok: INTAKE_MODULES, interjuk: ['INTERVIEWS'], matrix: null, projekt: PROJECT_MODULES };
@@ -66,7 +74,7 @@ function App() {
   };
 
   return (
-    <>
+    <NavProvider value={{ page: tab, go }}>
       <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs text-amber-900">
         <b>Prototípus, csak kitalált tesztanyaggal.</b> Az AI-elemzés élő (interjú-jegyzet, saját Word/PDF/szöveg dokumentum): a claude.ai
         AI-ja fut a te fiókodon, első használatkor engedélyt kér. Hangfájl itt nem dolgozható fel, azt a saját gépes változat tudja.
@@ -97,7 +105,7 @@ function App() {
             </button>
           ))}
           <div className="ml-auto py-2">
-            <ProjectBar saveFile={savePdf} />
+            <ProjectBar saveFile={savePdf} allowNewTab={false} />
           </div>
         </div>
       </nav>
@@ -110,7 +118,7 @@ function App() {
         </ProjectScope>
       </main>
       <Guide page={tab} go={go} />
-    </>
+    </NavProvider>
   );
 }
 

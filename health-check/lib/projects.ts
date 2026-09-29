@@ -46,9 +46,10 @@ function removeModuleData(id: string): void {
 
 /** Projekt végleges törlése minden moduladatával. Az aktív projekt helyére a legutóbbi másik kerül. */
 export function deleteProject(id: string): void {
+  const wasActive = activeProjectId() === id; // törlés előtt: utána már nem létező projektre mutatna
   removeModuleData(id);
   removeProjectWorkspace(id);
-  if (activeProjectId() === id) {
+  if (wasActive) {
     const next = [...listProjects()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
     setActiveProject(next?.id ?? DEFAULT_WORKSPACE.projectId);
   }
@@ -129,12 +130,34 @@ export function lastBackup(id: string): number | null {
   }
 }
 
-/** Figyelmeztessünk-e: volt módosítás a legutóbbi fájlba mentés óta, és az 7 napnál régebbi (vagy nem volt). */
-export function backupDue(meta: ProjectMeta | undefined, backupAt: number | null, now = Date.now()): boolean {
-  if (!meta || meta.isDemo) return false;
+/** Van-e a projektben olyan munka, amit kár lenne elveszíteni. */
+export function projectHasContent(id: string): boolean {
+  if (loadProject(id).items.some((r) => r.identified)) return true;
+  const intake = loadIntake(id);
+  if (Object.keys(intake.answers).length || intake.documents.length || Object.keys(intake.tables).length || intake.profile.narrative.trim()) return true;
+  for (const k of [MODULE_KEYS.interviews, MODULE_KEYS.timesheet, MODULE_KEYS.snapshots]) {
+    try {
+      const raw = localStorage.getItem(k(id));
+      if (raw && raw !== '{}' && raw !== '[]' && !raw.startsWith('{"entries":[]')) return true;
+    } catch {
+      /* ignore */
+    }
+  }
+  return false;
+}
+
+const DAY = 86_400_000;
+
+/**
+ * Figyelmeztessünk-e a fájlba mentésre. Csak saját projektnél, ha már van
+ * benne munka, és: még nem volt mentés, de a projekt egy napnál régebbi;
+ * vagy az utolsó mentés 7 napnál régebbi, és azóta módosult.
+ */
+export function backupDue(meta: ProjectMeta | undefined, backupAt: number | null, now = Date.now(), hasContent = true): boolean {
+  if (!meta || meta.isDemo || !hasContent) return false;
   const updated = Date.parse(meta.updatedAt);
-  if (backupAt == null) return true;
-  return updated > backupAt && now - backupAt > 7 * 86_400_000;
+  if (backupAt == null) return now - Date.parse(meta.createdAt) > DAY;
+  return updated > backupAt && now - backupAt > 7 * DAY;
 }
 
 export class BackupError extends Error {}
