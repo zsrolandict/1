@@ -6,8 +6,23 @@
 
 const KEY = 'ict-hc:last-saved';
 export const SAVED_EVENT = 'ict-hc:saved';
+export const SAVE_FAILED_EVENT = 'ict-hc:save-failed';
+
+/** Az utolsó sikertelen mentés ideje ebben a lapban (sikeres mentés törli). */
+let failedAt: number | null = null;
+
+/** Mentés nem sikerült (betelt a böngésző tárhelye, vagy privát mód): a felület figyelmeztet. */
+export function markSaveFailed(now = Date.now()): void {
+  failedAt = now;
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(SAVE_FAILED_EVENT));
+}
+
+export function saveFailedAt(): number | null {
+  return failedAt;
+}
 
 export function markSaved(now = Date.now()): void {
+  failedAt = null;
   try {
     localStorage.setItem(KEY, String(now));
   } catch {

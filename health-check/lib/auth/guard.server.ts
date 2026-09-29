@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { dataPolicy, limitFor, RateLimiter, type LimitKind } from '@/lib/ai/policy';
 import { authMode, isStaffRole, type AuthMode } from './mode';
+import { logEvent } from '@/lib/monitoring';
 
 export type Access = { ok: true; mode: AuthMode; userId: string | null; role: string | null } | { ok: false; response: NextResponse };
 
@@ -59,10 +60,14 @@ export async function requireAi(req: Request, kind: LimitKind = 'ai'): Promise<A
   const access = await requireStaff();
   if (!access.ok) return access;
   const policy = dataPolicy();
-  if (!policy.ok) return { ok: false, response: NextResponse.json({ error: policy.error }, { status: policy.status }) };
+  if (!policy.ok) {
+    logEvent({ event: 'ai_blocked_policy' });
+    return { ok: false, response: NextResponse.json({ error: policy.error }, { status: policy.status }) };
+  }
   const who = access.userId ?? req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local';
   const hit = limiter.hit(`${kind}:${who}`, limitFor(kind));
   if (!hit.ok) {
+    logEvent({ event: 'ai_rate_limited', kind });
     return {
       ok: false,
       response: NextResponse.json(

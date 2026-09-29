@@ -6,6 +6,7 @@ import type { Rag, ScoredRisk } from '@/lib/risk/types';
 import { BRAND } from './brand';
 import { formatAdjustment, KIND_ADJUSTMENTS_STATUS } from '@/lib/engagement/adjustments';
 import { firstSentence, formatDateHu, WINDOW_ORDER, type ReportModel } from './model';
+import { hasRevenue } from '@/lib/risk/valuation';
 
 const C = BRAND.colors;
 
@@ -425,7 +426,7 @@ function OfferPage({ m }: { m: ReportModel }) {
       )}
       <Text style={[s.small, { marginTop: 16 }]}>
         Készítette: {m.preparedBy ?? BRAND.firmName} · Lényegességi küszöb: {formatHuf(m.materialityHuf)} · Árbevétel-alap:{' '}
-        {formatHufShort(m.company.revenueHuf)}
+        {hasRevenue(m.company) ? formatHufShort(m.company.revenueHuf) : 'nincs megadva (a forintosított összegek 0 Ft-ot mutatnak)'}
       </Text>
     </Page>
   );

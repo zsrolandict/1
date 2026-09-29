@@ -10,6 +10,15 @@ export interface CompanyProfile {
   industryDsoDays: number;
 }
 
+/**
+ * Az árbevétel „nincs megadva” állapota egy helyen: a 0 ezt jelenti (új,
+ * saját projekt). Ilyenkor a forintosító képletek 0 Ft-ot adnak; a felület
+ * és a riport ezt jelzi, nem mutat félrevezető összeget.
+ */
+export function hasRevenue(c: Pick<CompanyProfile, 'revenueHuf'>): boolean {
+  return c.revenueHuf > 0;
+}
+
 export const DEFAULT_COMPANY: CompanyProfile = {
   revenueHuf: 2_400_000_000,
   grossMarginPct: 0.25,
@@ -74,7 +83,7 @@ export function computeFormula(formula: Formula, c: CompanyProfile): FormulaResu
       const share = clamp01(formula.share);
       const margin = clamp01(c.grossMarginPct);
       const value = c.revenueHuf * share * (formula.marginBased ? margin : 1);
-      const parts = [`árbevétel ${short(c.revenueHuf)}`, `× ${pct(share)} (${formula.label})`];
+      const parts = [hasRevenue(c) ? `árbevétel ${short(c.revenueHuf)}` : 'árbevétel nincs megadva', `× ${pct(share)} (${formula.label})`];
       if (formula.marginBased) parts.push(`× fedezet ${pct(margin)}`);
       return { valueHuf: Math.round(value), explanation: parts.join(' '), unapprovedParameter: false };
     }

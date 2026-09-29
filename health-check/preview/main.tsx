@@ -106,6 +106,8 @@ function App() {
           {tab === 'interjuk' && <InterviewWorkspace showPrint={false} />}
           {tab === 'projekt' && <ProjectWorkspace />}
         </ProjectScope>
+        {/* Hely a lebegő Kalauz gombnak, hogy ne takarja a lap alját. */}
+        <div className="h-20" aria-hidden />
       </main>
       <Guide />
     </NavProvider>

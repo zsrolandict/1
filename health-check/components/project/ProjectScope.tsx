@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { rememberPage, RELOAD_EVENT, setActiveProject } from '@/lib/risk/store';
+import { ensureListed, rememberPage, RELOAD_EVENT, setActiveProject } from '@/lib/risk/store';
 import { useNav } from '../Nav';
 import { useActiveProjectId } from './useProjects';
 
@@ -45,6 +45,10 @@ export default function ProjectScope({ children }: { children: ReactNode }) {
     lastPage.current = nav.page;
     rememberPage(id, nav.page);
   }, [nav, id]);
+
+  useEffect(() => {
+    if (id) ensureListed(id);
+  }, [id]);
 
   // Másik böngészőlap ugyanezt a projektet írta.
   useEffect(() => {

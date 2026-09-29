@@ -16,7 +16,8 @@
     "format:check": "prettier --check .",
     "build:preview:publish": "vite build --config preview/vite.config.ts && node scripts/split-preview.mjs",
     "e2e": "vite build --config preview/vite.config.ts && node scripts/split-preview.mjs --harness && node e2e/smoke.mjs",
-    "check": "npm run typecheck && npm run lint && npm test"
+    "check": "npm run typecheck && npm run lint && npm test",
+    "e2e:next": "node e2e/next-smoke.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.129.0",

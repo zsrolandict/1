@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, ChevronDown, FolderOpen, HardDrive, LayoutList, Plus, RotateCcw, Trash2, Upload } from 'lucide-react';
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
-import { ago, lastSaved, SAVED_EVENT } from '@/lib/localSave';
+import { ago, lastSaved, SAVE_FAILED_EVENT, saveFailedAt, SAVED_EVENT } from '@/lib/localSave';
 import {
   backupDue,
   BackupError,
@@ -290,15 +290,26 @@ function SaveStatus({ projectId, meta, companyName, saveFile }: { projectId: str
   useEffect(() => {
     const t = window.setInterval(() => tick((n) => n + 1), 30_000);
     const onSave = () => tick((n) => n + 1);
+    // Sikertelen mentésnél azonnal kinyílik a magyarázat (nem elég egy halvány jelzés).
+    const onFail = () => {
+      tick((n) => n + 1);
+      setOpen(true);
+    };
     window.addEventListener(SAVED_EVENT, onSave);
+    window.addEventListener(SAVE_FAILED_EVENT, onFail);
     return () => {
       window.clearInterval(t);
       window.removeEventListener(SAVED_EVENT, onSave);
+      window.removeEventListener(SAVE_FAILED_EVENT, onFail);
     };
   }, []);
-  const saved = lastSaved();
-  const backupAt = projectId ? lastBackup(projectId) : null;
-  const due = projectId ? backupDue(meta, backupAt, Date.now(), () => projectHasContent(projectId)) : false;
+  // A böngésző tárolóját csak betöltés után olvassuk: a szerveren renderelt HTML-lel egyeznie kell (hidratálás).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const failed = mounted ? saveFailedAt() : null;
+  const saved = mounted ? lastSaved() : null;
+  const backupAt = mounted && projectId ? lastBackup(projectId) : null;
+  const due = mounted && projectId ? backupDue(meta, backupAt, Date.now(), () => projectHasContent(projectId)) : false;
 
   const backup = async () => {
     setNote(null);
@@ -319,11 +330,17 @@ function SaveStatus({ projectId, meta, companyName, saveFile }: { projectId: str
       <button
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs ${due ? 'bg-amber-50 text-amber-800 hover:bg-amber-100' : 'text-slate-500 hover:bg-slate-100'}`}
+        className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs ${
+          failed
+            ? 'bg-red-600 font-medium text-white hover:bg-red-700'
+            : due
+              ? 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+              : 'text-slate-500 hover:bg-slate-100'
+        }`}
       >
-        {due ? <AlertTriangle className="h-3.5 w-3.5" /> : <HardDrive className="h-3.5 w-3.5" />}
-        <span className="hidden sm:inline">{saved ? `Helyben mentve – ${ago(saved)}` : 'Helyi mentés'}</span>
-        {due && <span className="hidden md:inline">· nincs mentés fájlba</span>}
+        {failed || due ? <AlertTriangle className="h-3.5 w-3.5" /> : <HardDrive className="h-3.5 w-3.5" />}
+        <span className="hidden sm:inline">{failed ? 'A mentés nem sikerült!' : saved ? `Helyben mentve – ${ago(saved)}` : 'Helyi mentés'}</span>
+        {!failed && due && <span className="hidden md:inline">· nincs mentés fájlba</span>}
       </button>
       {open && (
         <div
@@ -331,6 +348,16 @@ function SaveStatus({ projectId, meta, companyName, saveFile }: { projectId: str
           aria-label="Mentés"
           className="absolute right-0 z-40 mt-1 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-xl"
         >
+          {failed && (
+            <div role="alert" className="mb-3 rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-900">
+              <p className="font-semibold">A legutóbbi módosítás nem mentődött el.</p>
+              <p className="mt-1">
+                Valószínűleg betelt a böngésző tárhelye (vagy privát ablakban dolgozol). A képernyőn lévő munka megvan, de bezárás vagy frissítés után elveszne.
+                Szabadíts fel helyet: a Projektjeimben töröld a nem használt projekteket (előtte mentsd őket fájlba), aztán módosíts bármit, és a mentés újra
+                megtörténik.
+              </p>
+            </div>
+          )}
           <p className="font-medium text-slate-900">Az adatok csak ebben a böngészőben vannak</p>
           <p className="mt-1 text-xs text-slate-600">
             Minden módosítás azonnal mentődik ide{saved ? ` (utoljára ${ago(saved)})` : ''}. Ha törlöd a böngészési adatokat, másik gépre vagy böngészőre

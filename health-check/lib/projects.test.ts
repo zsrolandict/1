@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { lastSaved } from './localSave';
+import { lastSaved, saveFailedAt } from './localSave';
 import { backupDue, BackupError, deleteProject, exportProject, importProject, MODULE_KEYS, parseBackup, projectHasContent, resetDemo } from './projects';
 import { saveIntake, loadIntake, EMPTY_INTAKE } from './intake/state';
 import { saveTimesheet, loadTimesheet, EMPTY_TIMESHEET } from './timesheet/timesheet';
@@ -125,6 +125,21 @@ describe('projektek', () => {
     expect(projectHasContent(b.projectId)).toBe(false);
   });
 
+  it('sikertelen mentés jelzése (betelt tárhely), sikeres mentés törli', () => {
+    const a = createProject({ companyName: 'A Kft.', kind: 'HEALTH_CHECK' });
+    expect(saveFailedAt()).toBeNull();
+    const orig = store.setItem.bind(store);
+    store.setItem = () => {
+      throw new Error('QuotaExceededError');
+    };
+    saveWorkspace({ ...loadProject(a.projectId), companyName: 'B' });
+    saveTimesheet(a.projectId, EMPTY_TIMESHEET);
+    expect(saveFailedAt()).not.toBeNull();
+    store.setItem = orig;
+    saveWorkspace({ ...loadProject(a.projectId), companyName: 'C' });
+    expect(saveFailedAt()).toBeNull();
+  });
+
   it('laponként külön aktív projekt; új lap a legutóbbival indul', () => {
     const g = globalThis as { sessionStorage?: unknown };
     const tab1 = new MemoryStorage();
@@ -161,6 +176,15 @@ describe('projektek', () => {
   it('hibás fájl visszautasítása', () => {
     expect(() => parseBackup('nem json')).toThrow(BackupError);
     expect(() => parseBackup('{"format":"mas"}')).toThrow('Ez nem');
+    // Formailag projektmentés, de sérült tétellel: nem kerülhet a tárolóba.
+    const a = createProject({ companyName: 'A Kft.', kind: 'HEALTH_CHECK' });
+    const good = exportProject(a.projectId);
+    const bad = { ...good, workspace: { ...good.workspace, items: [{ ...good.workspace.items[0], likelihood: 9 }] } };
+    expect(() => parseBackup(JSON.stringify(bad))).toThrow(/sérült.*items\.0\.likelihood/);
+    expect(() => parseBackup(JSON.stringify({ ...good, workspace: { ...good.workspace, company: undefined } }))).toThrow(/company/);
+    // Ismeretlen (újabb verzióbeli) mező megmarad.
+    const extra = { ...good, workspace: { ...good.workspace, items: [{ ...good.workspace.items[0], jovobeliMezo: 1 }] } };
+    expect((parseBackup(JSON.stringify(extra)).workspace.items[0] as unknown as Record<string, unknown>).jovobeliMezo).toBe(1);
   });
 
   it('figyelmeztetés, ha régóta nincs mentés fájlba', () => {

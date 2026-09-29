@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import AccountLink from './AccountLink';
 import { usePathname } from 'next/navigation';
 import { PAGE_IDS, PAGE_LABEL } from '@/lib/guide';
 import { pageVisible } from '@/lib/modules';
@@ -30,9 +31,7 @@ export default function AppNav() {
         <div className="ml-auto py-2">
           <ProjectBar />
         </div>
-        <Link href="/login" className="py-3 text-sm text-slate-500 hover:text-slate-800">
-          Belépés
-        </Link>
+        <AccountLink />
       </div>
     </nav>
   );

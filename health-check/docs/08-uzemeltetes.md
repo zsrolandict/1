@@ -11,6 +11,7 @@ Ez a leírás annak szól, aki a programot fejleszti, élesíti vagy üzemelteti
 | `npm run format` | Prettier-formázás (a CI csak ellenőrzi: `format:check`). |
 | `npm run build` | Éles build. |
 | `npm run e2e` | Előnézet-build + böngészős füstteszt (12 lépés, szerver és AI-kulcs nélkül). Helyi Chromiummal: `CHROMIUM_PATH=/út/chrome npm run e2e`. |
+| `npm run build && npm run e2e:next` | A Next-alkalmazás füsttesztje éles buildön: oldalak, biztonsági fejlécek (CSP), belépés-visszairányítás, `?projekt=`, hidratálási és CSP-hibák. |
 | `bash scripts/db-smoke.sh` | Az összes migráció + jogosultsági füsttesztek egy **üres** PostgreSQL-adatbázison (a `PG*` környezeti változók szerint). |
 | `npm run build:preview:publish` | Kattintható előnézet (claude.ai Artifact) közzétehető fájlokra bontva: `dist-preview/publish/` (index.html, app.js, app.css, fonts). |
 
@@ -20,7 +21,7 @@ A `.github/workflows/health-check-ci.yml` minden pushnál és PR-nál (ha a `hea
 
 1. **check** – típusok, lint, formázás, unit tesztek, build.
 2. **database** – PostgreSQL 16-on a `scripts/db-smoke.sh`. Új migrációt a szkript listájába is fel kell venni; ha kimarad, a szkript hibát ad.
-3. **e2e** – az előnézet-build böngészős füsttesztje (`e2e/smoke.mjs`).
+3. **e2e** – az előnézet-build böngészős füsttesztje (`e2e/smoke.mjs`), majd a Next-alkalmazásé éles buildön (`e2e/next-smoke.mjs`).
 
 **Lint-szabályok:** a Next.js ajánlott szabályai. A React Compiler négy szabálya (`set-state-in-effect`, `refs`, `purity`, `preserve-manual-memoization`) átmenetileg csak figyelmeztet: a munkaterületek mount után a böngészős tárolóból töltenek. A közös `useWorkspace` hook (technikai adósság, 2. szakasz) után ezek visszaállnak hibára.
 
@@ -58,6 +59,19 @@ Tilos élesben: `ALLOW_DEMO_API`. Kulcs soha nem kerül a repóba (`.env*.local`
 2. A hosting környezeti változójának cseréje, újraindítás.
 3. A régi kulcs visszavonása a szolgáltatónál.
 4. Ha egy kulcs nyilvánosságra került (pl. nyilvános repóba): azonnal visszavonni, a git-történetből nem elég törölni.
+
+## Monitoring (strukturált napló)
+
+A szerver minden fontos eseményt egy JSON-sorként ír a standard kimenetre (`lib/monitoring.ts`); tartalmat, személyes adatot, kulcsot nem:
+
+| `event` | Mikor | Riasztási javaslat |
+|---|---|---|
+| `ai_call` (`provider`, `ok`, `ms`, `error`) | minden AI-hívás | `ok=false` arány 1 órán át > 10%; `ms` medián > 60 000 |
+| `api_error` (`status`, `kind`) | minden API-hibaválasz | 5xx > 2% 15 percen át |
+| `ai_rate_limited` (`kind`) | valaki elérte az óránkénti korlátot | szokatlan gyakoriság (visszaélés vagy túl szigorú korlát) |
+| `ai_blocked_policy` | éles módban DPA-megerősítés nélküli AI-kérés | bármely előfordulás (beállítási hiba) |
+
+A naplót a hosting gyűjti (pl. Vercel Log Drains, Fly.io log shipping); a riasztás ott állítható. Külső hibakövetőhöz (pl. Sentry EU) a `setMonitoringSink` ad bekötési pontot.
 
 ## Hibakeresés
 

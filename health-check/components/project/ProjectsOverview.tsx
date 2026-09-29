@@ -8,7 +8,7 @@ import { benchmarkedRefs, projectProgress } from '@/lib/projectProgress';
 import { PAGE_LABEL } from '@/lib/guide';
 import { byRecent, lastPageOf, type ProjectMeta } from '@/lib/risk/store';
 import { useModules } from '../useModules';
-import { useEscape } from '../useDismiss';
+import { useEscape, useFocusTrap } from '../useDismiss';
 import { openProject } from './openProject';
 import { PAGE_PATH, useNav } from '../Nav';
 import { useProjects } from './useProjects';
@@ -23,7 +23,9 @@ export default function ProjectsOverview({ onClose, allowNewTab = true }: { onCl
   const { disabled } = useModules();
   const nav = useNav();
   const closeRef = useRef<HTMLButtonElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   useEscape(onClose);
+  useFocusTrap(boxRef);
   useEffect(() => closeRef.current?.focus(), []);
 
   const rows = useMemo(() => {
@@ -41,6 +43,7 @@ export default function ProjectsOverview({ onClose, allowNewTab = true }: { onCl
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-900/40 p-4 pt-16 print:hidden" onClick={onClose}>
       <div
+        ref={boxRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="projects-title"

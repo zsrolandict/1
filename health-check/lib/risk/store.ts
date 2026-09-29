@@ -1,7 +1,7 @@
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { SuggestedRedFlag } from '@/lib/interview/types';
 import type { PageId } from '@/lib/guide';
-import { markSaved } from '@/lib/localSave';
+import { markSaved, markSaveFailed } from '@/lib/localSave';
 import { readJson as read, readRaw, removeKey, writeJson as write } from '@/lib/storage';
 import { BLANK, getScenario, GYARTO, isDemoScenario, type Scenario } from '@/lib/scenarios';
 import { catalogDefault, PILLAR_LABEL } from './catalog';
@@ -212,7 +212,10 @@ export function hydrateItem(item: RiskItem): RiskItem {
 const UPDATED_AT_RESOLUTION_MS = 60_000;
 
 export function saveWorkspace(ws: Workspace, now = Date.now()): void {
-  if (!write(wsKey(ws.projectId), ws)) return; // privát mód – a munkamenet végéig memóriában marad
+  if (!write(wsKey(ws.projectId), ws)) {
+    markSaveFailed(); // betelt tárhely vagy privát mód: a felület jelzi, a munka a memóriában megmarad
+    return;
+  }
   const list = listProjects();
   const prev = list.find((p) => p.id === ws.projectId);
   const unchanged =
@@ -244,6 +247,15 @@ export function createProject(input: { companyName: string; kind: EngagementKind
   saveWorkspace(ws);
   setActiveProject(id);
   return ws;
+}
+
+/**
+ * A nyitott bemutató akkor is szerepeljen a Projektjeimben, ha még nem
+ * módosítottál rajta (első látogatás). Saját projektet nem érint.
+ */
+export function ensureListed(id: string): void {
+  if (!isDemoScenario(id) || listProjects().some((p) => p.id === id)) return;
+  saveWorkspace(loadProject(id));
 }
 
 /** Bemutató projekt megnyitása: ha már dolgoztál rajta, a mentett állapot jön vissza. */

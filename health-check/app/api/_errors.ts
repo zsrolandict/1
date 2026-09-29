@@ -3,10 +3,17 @@ import { NextResponse } from 'next/server';
 import { AiRefusalError } from '@/lib/ai/client.server';
 import { AiServiceError } from '@/lib/ai/gemini.server';
 import { UserFacingError } from '@/lib/errors';
+import { logEvent } from '@/lib/monitoring';
 
 /** Egységes, felhasználóbarát hibaválasz; a részleteket csak a szerver naplózza. */
 export function errorResponse(err: unknown): NextResponse {
   console.error('[api]', err);
+  const res = toResponse(err);
+  logEvent({ event: 'api_error', status: res.status, kind: err instanceof Error ? err.name : 'unknown' });
+  return res;
+}
+
+function toResponse(err: unknown): NextResponse {
   if (err instanceof AiRefusalError) {
     return NextResponse.json({ error: 'Az AI nem dolgozta fel a kérést. Kérjük, ellenőrizze kézzel.' }, { status: 422 });
   }

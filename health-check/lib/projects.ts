@@ -19,6 +19,8 @@ import { interviewsKey, loadRecords } from '@/lib/interview/records';
 import { loadSnapshots, snapshotsKey } from '@/lib/risk/followup';
 import { loadTimesheet, timesheetKey } from '@/lib/timesheet/timesheet';
 import { readJson, removeKey, writeJson } from '@/lib/storage';
+import { markSaveFailed } from '@/lib/localSave';
+import { BackupSchema, describeBackupIssue } from '@/lib/backupSchema';
 import { SAMPLE_PROFILES } from '@/lib/intake/samples/profiles';
 import { missingSectorRisks } from '@/lib/risk/sectorRisks';
 
@@ -157,11 +159,11 @@ export function parseBackup(text: string): ProjectBackup {
   } catch {
     throw new BackupError('A fájl nem olvasható (nem projektmentés).');
   }
-  const b = data as Partial<ProjectBackup>;
-  if (!b || b.format !== BACKUP_FORMAT || b.version !== 1 || !b.workspace || !Array.isArray(b.workspace.items)) {
-    throw new BackupError('Ez nem az ICT Health Check projektmentése.');
-  }
-  return b as ProjectBackup;
+  const f = (data as { format?: unknown } | null)?.format;
+  if (f !== BACKUP_FORMAT) throw new BackupError('Ez nem az ICT Health Check projektmentése.');
+  const parsed = BackupSchema.safeParse(data);
+  if (!parsed.success) throw new BackupError(`A projektmentés sérült vagy hiányos, nem töltöttük vissza (${describeBackupIssue(parsed.error)}).`);
+  return parsed.data as unknown as ProjectBackup;
 }
 
 /**
@@ -174,7 +176,7 @@ export function importProject(backup: ProjectBackup, now = Date.now()): string {
   const id = original && !taken.has(original) ? original : newProjectId(now);
   const suffix = id === original ? '' : ' (visszatöltve)';
   for (const [name, value] of Object.entries(backup.modules ?? {}) as [ModuleKey, unknown][]) {
-    if (name in MODULE_KEYS) writeJson(MODULE_KEYS[name](id), value);
+    if (name in MODULE_KEYS && !writeJson(MODULE_KEYS[name](id), value)) markSaveFailed();
   }
   saveWorkspace({ ...backup.workspace, projectId: id, companyName: `${backup.workspace.companyName}${suffix}` });
   markBackedUp(id, now);

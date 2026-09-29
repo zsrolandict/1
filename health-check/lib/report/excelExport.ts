@@ -7,6 +7,7 @@ import { REMEDIATION_LABEL } from '@/lib/risk/followup';
 import { buildBuyerQuestions } from './buyerQuestions';
 import type { ReportInput } from './model';
 import { writeXlsx, type Sheet } from './xlsx';
+import { hasRevenue } from '@/lib/risk/valuation';
 
 /**
  * Red Flag értékelés → olvasható Excel a tanácsadóknak (szűrhető, továbbküldhető).
@@ -47,7 +48,11 @@ export function buildWorkbook(input: ReportInput): Sheet[] {
       ['Bruttó kitettség', huf(a.totals.grossExposureHuf), null],
       ['Várható veszteség', huf(a.totals.expectedLossHuf), 'kitettség × valószínűség'],
       ['Lényegességi küszöb', huf(input.materialityHuf), 'E fölötti várható veszteség pontszámtól függetlenül piros'],
-      ['Árbevétel', huf(company.revenueHuf), null],
+      [
+        'Árbevétel',
+        hasRevenue(company) ? huf(company.revenueHuf) : 'nincs megadva',
+        hasRevenue(company) ? null : 'A forintosított összegek árbevétel nélkül 0 Ft-ot mutatnak',
+      ],
       ['Fedezet', `${Math.round(company.grossMarginPct * 100)}%`, null],
       ['DSO / iparági DSO', `${company.actualDsoDays} / ${company.industryDsoDays} nap`, null],
       ['Javasolt remediáció összesen', huf(a.pipeline.totalFeeHuf), null],

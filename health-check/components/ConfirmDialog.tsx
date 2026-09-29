@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { useEscape } from './useDismiss';
+import { useEscape, useFocusTrap } from './useDismiss';
 
 /**
  * Megerősítő ablak. Nem a böngésző `confirm()`-ját használja, mert az
@@ -27,7 +27,9 @@ export default function ConfirmDialog({
   onCancel: () => void;
 }) {
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   useEscape(onCancel, open);
+  useFocusTrap(boxRef, open);
   useEffect(() => {
     if (open) cancelRef.current?.focus();
   }, [open]);
@@ -35,6 +37,7 @@ export default function ConfirmDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 print:hidden" onClick={onCancel}>
       <div
+        ref={boxRef}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-title"

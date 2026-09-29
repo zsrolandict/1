@@ -17,9 +17,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="hu">
       <body className="min-h-screen antialiased">
         <NextNavProvider>
-          <AppNav />
           <SupabaseIdentity>
+            <AppNav />
             <ProjectScope>{children}</ProjectScope>
+            {/* Hely a lebegő Kalauz gombnak, hogy ne takarja a lap alját. */}
+            <div className="h-20 print:hidden" aria-hidden />
           </SupabaseIdentity>
           <GuideHost />
         </NextNavProvider>

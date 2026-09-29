@@ -37,3 +37,32 @@ export function useOutside(ref: RefObject<HTMLElement | null>, onClose: () => vo
     return () => document.removeEventListener('mousedown', onDown);
   }, [ref, active]);
 }
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Fókuszcsapda felugró ablakhoz: Tab/Shift+Tab az ablakon belül körbe jár,
+ * nem lép ki a háttérbe (billentyűzetes és képernyőolvasós használat).
+ */
+export function useFocusTrap(ref: RefObject<HTMLElement | null>, active = true): void {
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !ref.current) return;
+      const items = Array.from(ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null);
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const inside = ref.current.contains(document.activeElement);
+      if (e.shiftKey && (document.activeElement === first || !inside)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [ref, active]);
+}

@@ -32,6 +32,7 @@ import { catalogDefault, DEFAULT_CATALOG, DIVISION_LABEL, PILLAR_LABEL, RAG_LABE
 import type { Division, Pillar, Rag, RiskItem, RiskSource, Scale5, ScoredRisk } from '@/lib/risk/types';
 import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario } from '@/lib/risk/store';
 import { useConfirm } from '../ConfirmDialog';
+import { hasRevenue } from '@/lib/risk/valuation';
 import { useNav } from '../Nav';
 import InfoTip from '../InfoTip';
 import type { GlossaryKey } from '@/lib/glossary';
@@ -283,7 +284,7 @@ export default function RedFlagMatrix({
     );
 
   const { totals, pillars, actionPlan, pipeline } = result;
-  const missingRevenue = company.revenueHuf <= 0;
+  const missingRevenue = !hasRevenue(company);
   const noAssessment = totals.identified === 0;
   const settingsOpen = settingsPref ?? missingRevenue;
 
@@ -563,6 +564,7 @@ export default function RedFlagMatrix({
               <HufInput
                 value={company.revenueHuf}
                 placeholder="pl. 800 000 000"
+                emptyWhenZero
                 onChange={(v) => setCompany((c) => ({ ...c, revenueHuf: v }))}
                 className="w-40 rounded border border-slate-200 px-2 py-1 text-right tabular-nums"
               />
@@ -1288,19 +1290,22 @@ function HufInput({
   onChange,
   className = '',
   placeholder,
+  emptyWhenZero,
 }: {
   value: number;
   onChange: (v: number) => void;
   className?: string;
   placeholder?: string;
+  /** A 0 „nincs megadva”: üres mező a helyőrzővel (pl. árbevétel). */
+  emptyWhenZero?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   return (
     <input
       inputMode="numeric"
-      value={draft ?? (placeholder && !value ? '' : value.toLocaleString('hu-HU'))}
+      value={draft ?? (emptyWhenZero && !value ? '' : value.toLocaleString('hu-HU'))}
       placeholder={placeholder}
-      onFocus={() => setDraft(String(value))}
+      onFocus={() => setDraft(emptyWhenZero && !value ? '' : String(value))}
       onChange={(e) => {
         const digits = e.target.value.replace(/[^\d]/g, '');
         setDraft(digits);

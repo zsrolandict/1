@@ -3,6 +3,7 @@ import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import type { z } from 'zod';
 import { geminiJson, GeminiBlockedError, geminiKey } from './gemini.server';
 import { UserFacingError } from '@/lib/errors';
+import { timedAiCall } from '@/lib/monitoring';
 
 // Közös AI-hívás az interjú- és a dokumentumelemzéshez, szolgáltató-függetlenül.
 // Csak szerveroldalon (route handler) importálható: az API-kulcs nem kerülhet a kliensre.
@@ -43,6 +44,10 @@ export class AiRefusalError extends Error {}
  * mert kérésenként nem változik.
  */
 export async function parseStructured<T extends z.ZodType>(schema: T, system: string, user: string, maxTokens: number): Promise<z.infer<T>> {
+  return timedAiCall(aiProvider() ?? 'none', () => callStructured(schema, system, user, maxTokens));
+}
+
+async function callStructured<T extends z.ZodType>(schema: T, system: string, user: string, maxTokens: number): Promise<z.infer<T>> {
   if (aiProvider() === 'gemini') {
     let json: unknown;
     try {
