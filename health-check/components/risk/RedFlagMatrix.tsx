@@ -35,6 +35,9 @@ import { SECTOR_LABEL } from '@/lib/intake/requests';
 import { missingSectorRisks } from '@/lib/risk/sectorRisks';
 import { EXPERT_PARAMETERS } from '@/lib/risk/parameters';
 import { computeFormula, resolveExposure, type CompanyProfile, type Formula } from '@/lib/risk/valuation';
+import WhatIfPanel from './WhatIfPanel';
+import FollowUpPanel from './FollowUpPanel';
+import BuyerQuestionsPanel from './BuyerQuestionsPanel';
 import ExportPdfButton, { browserDownload, slug, type SaveFile } from '@/components/report/ExportPdfButton';
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, hourSplit, PM_HOURS, type EngagementKind } from '@/lib/engagement/kinds';
 import { KIND_RISKS } from '@/lib/engagement/kindRisks';
@@ -594,6 +597,22 @@ export default function RedFlagMatrix({
           ))}
         </div>
       </section>
+
+      {/* ── Mi lenne, ha…? ──────────────────────────────────────── */}
+      <WhatIfPanel key={scenarioId} items={items} opts={engineOpts} result={result} />
+
+      {/* ── Várható vevői kérdések ───────────────────────────────── */}
+      <BuyerQuestionsPanel companyName={companyName} result={result} highlighted={kind === 'VENDOR_DD' || kind === 'BUY_SIDE_DD'} />
+
+      {/* ── Utókövetés ─────────────────────────────────────────── */}
+      <FollowUpPanel
+        scenarioId={scenarioId}
+        kind={kind}
+        items={items}
+        opts={engineOpts}
+        result={result}
+        onStatus={(id, status) => update(id, { remediationStatus: status })}
+      />
 
       {/* ── Keresztértékesítés + kredit ─────────────────────────── */}
       <section className="grid gap-4 lg:grid-cols-[1fr_360px]">

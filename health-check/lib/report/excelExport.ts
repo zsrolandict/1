@@ -3,6 +3,8 @@ import { ENGAGEMENT_KINDS } from '@/lib/engagement/kinds';
 import { DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
 import { DIVISIONS, PILLARS, WINDOWS } from '@/lib/risk/engine';
 import type { RiskSource } from '@/lib/risk/types';
+import { REMEDIATION_LABEL } from '@/lib/risk/followup';
+import { buildBuyerQuestions } from './buyerQuestions';
 import type { ReportInput } from './model';
 import { writeXlsx, type Sheet } from './xlsx';
 
@@ -72,6 +74,7 @@ export function buildWorkbook(input: ReportInput): Sheet[] {
       { header: 'Munkanap', width: 10, format: 'int' },
       { header: 'Felelős divízió', width: 15 },
       { header: 'Becsült díj', width: 14, format: 'huf' },
+      { header: 'Javítás állapota', width: 16 },
       { header: 'Indoklás', width: 70, format: 'wrap' },
     ],
     rows: a.risks.map((r) => [
@@ -94,6 +97,7 @@ export function buildWorkbook(input: ReportInput): Sheet[] {
       r.remediationDays,
       DIVISION_LABEL[r.division],
       r.serviceFeeHuf,
+      REMEDIATION_LABEL[r.remediationStatus ?? 'OPEN'],
       r.reasoning ?? '',
     ]),
   };
@@ -144,7 +148,23 @@ export function buildWorkbook(input: ReportInput): Sheet[] {
     }),
   };
 
-  return [summary, risks, plan, offer, pillars];
+  const buyer: Sheet = {
+    name: 'Vevői kérdések',
+    columns: [
+      { header: 'Kód', width: 9 },
+      { header: 'Tétel', width: 40, format: 'wrap' },
+      { header: 'Besorolás', width: 11 },
+      { header: 'Várható vevői kérdések', width: 60, format: 'wrap' },
+      { header: 'Válaszvázlat', width: 60, format: 'wrap' },
+      { header: 'Szükséges iratok', width: 40, format: 'wrap' },
+    ],
+    rows: buildBuyerQuestions(a).map((q) => [q.code, q.title, RAG_LABEL[q.rag], q.questions.join('\n'), q.answerDraft, q.documents.join('\n')]),
+  };
+
+  const sheets = [summary, risks, plan, offer, pillars];
+  // Eladói és vevői átvilágításnál a vevői kérdéslista is része a munkafüzetnek.
+  if (input.kind === 'VENDOR_DD' || input.kind === 'BUY_SIDE_DD') sheets.push(buyer);
+  return sheets;
 }
 
 export function exportExcel(input: ReportInput): Uint8Array {

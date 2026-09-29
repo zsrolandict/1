@@ -47,7 +47,11 @@ export interface RiskItem {
   valuation?: Valuation;
   /** A szakértő kikapcsolta a típusfüggő korrekciót ennél a tételnél. */
   ignoreKindAdjustment?: boolean;
+  /** Javítás állapota az átvilágítás után (utókövetés). Hiányzik = nyitott. */
+  remediationStatus?: RemediationStatus;
 }
+
+export type RemediationStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'ACCEPTED_RISK';
 
 export type RiskSource = 'MANUAL' | 'CHECKLIST' | 'DATA_TABLE' | 'CROSS_CHECK' | 'AI_DOCUMENT' | 'AI_INTERVIEW' | 'AI_SYNTHESIS';
 
