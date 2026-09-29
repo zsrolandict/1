@@ -21,8 +21,7 @@ export default function LoginPage() {
     setState(error ? 'error' : 'sent');
   };
 
-  const microsoft = () =>
-    supabaseBrowser().auth.signInWithOAuth({ provider: 'azure', options: { redirectTo: redirectTo(), scopes: 'email' } });
+  const microsoft = () => supabaseBrowser().auth.signInWithOAuth({ provider: 'azure', options: { redirectTo: redirectTo(), scopes: 'email' } });
 
   return (
     <main className="mx-auto max-w-sm px-4 py-16">

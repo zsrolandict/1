@@ -80,24 +80,45 @@ describe('javaslat beolvasztása', () => {
   it('azonosított tételnél nem csökkenti a súlyosságot', () => {
     const hr01 = base.find((r) => r.code === 'HR-01')!; // V3 × H5, azonosított
     const items = applyIntakeSuggestion(base, {
-      key: 'k', origin: 'CHECKLIST', code: 'HR-01', pillar: 'HR', title: '', rationale: '', evidence: 'teszt',
-      likelihood: 2, impact: 2,
+      key: 'k',
+      origin: 'CHECKLIST',
+      code: 'HR-01',
+      pillar: 'HR',
+      title: '',
+      rationale: '',
+      evidence: 'teszt',
+      likelihood: 2,
+      impact: 2,
     });
     expect(items.find((r) => r.code === 'HR-01')).toMatchObject({ likelihood: hr01.likelihood, impact: hr01.impact, identified: true });
   });
 
   it('nem azonosított tételnél a javaslat értékei érvényesek', () => {
     const items = applyIntakeSuggestion(base, {
-      key: 'k', origin: 'DATA_TABLE', code: 'FIN-03', pillar: 'FINANCE', title: '', rationale: '', evidence: 'e',
-      likelihood: 2, impact: 2,
+      key: 'k',
+      origin: 'DATA_TABLE',
+      code: 'FIN-03',
+      pillar: 'FINANCE',
+      title: '',
+      rationale: '',
+      evidence: 'e',
+      likelihood: 2,
+      impact: 2,
     });
     expect(items.find((r) => r.code === 'FIN-03')).toMatchObject({ likelihood: 2, impact: 2, identified: true, source: 'DATA_TABLE' });
   });
 
   it('hiányzó tételt a sablonból vesz fel (típus-tétel)', () => {
     const items = applyIntakeSuggestion(base, {
-      key: 'k', origin: 'CHECKLIST', code: 'SUC-01', pillar: 'LEGAL', title: '', rationale: '', evidence: 'e',
-      likelihood: 3, impact: 4,
+      key: 'k',
+      origin: 'CHECKLIST',
+      code: 'SUC-01',
+      pillar: 'LEGAL',
+      title: '',
+      rationale: '',
+      evidence: 'e',
+      likelihood: 3,
+      impact: 4,
     });
     expect(items).toHaveLength(base.length + 1);
     expect(items[0]).toMatchObject({ code: 'SUC-01', identified: true, likelihood: 3, impact: 4 });
@@ -106,8 +127,16 @@ describe('javaslat beolvasztása', () => {
   it('a képlet paraméterét a tényadat váltja, a szakértői felülírás marad', () => {
     const withOverride = base.map((r) => (r.code === 'LEG-01' ? { ...r, valuation: { ...r.valuation!, overrideHuf: 99 } } : r));
     const items = applyIntakeSuggestion(withOverride, {
-      key: 'k', origin: 'CHECKLIST', code: 'LEG-01', pillar: 'LEGAL', title: '', rationale: '', evidence: 'e',
-      likelihood: 3, impact: 5, valuationPatch: { type: 'REVENUE_SHARE', share: 0.2 },
+      key: 'k',
+      origin: 'CHECKLIST',
+      code: 'LEG-01',
+      pillar: 'LEGAL',
+      title: '',
+      rationale: '',
+      evidence: 'e',
+      likelihood: 3,
+      impact: 5,
+      valuationPatch: { type: 'REVENUE_SHARE', share: 0.2 },
     });
     const v = items.find((r) => r.code === 'LEG-01')!.valuation!;
     expect(v.formula).toMatchObject({ share: 0.2 });
@@ -116,8 +145,15 @@ describe('javaslat beolvasztása', () => {
 
   it('ismeretlen kód nélkül új egyedi tétel', () => {
     const items = applyIntakeSuggestion(base, {
-      key: 'k', origin: 'CHECKLIST', code: null, pillar: 'LEGAL', title: 'Per', rationale: 'r', evidence: 'e',
-      likelihood: 3, impact: 4,
+      key: 'k',
+      origin: 'CHECKLIST',
+      code: null,
+      pillar: 'LEGAL',
+      title: 'Per',
+      rationale: 'r',
+      evidence: 'e',
+      likelihood: 3,
+      impact: 4,
     });
     expect(items[0]).toMatchObject({ code: 'CUS-01', title: 'Per', source: 'CHECKLIST' });
   });
@@ -148,7 +184,10 @@ describe('táblázat beolvasás', () => {
   });
 
   it('CSV idézőjelekkel és pontosvesszővel', () => {
-    expect(parseCsv('a;b\n"x; y";"he said ""hi"""\n')).toEqual([['a', 'b'], ['x; y', 'he said "hi"']]);
+    expect(parseCsv('a;b\n"x; y";"he said ""hi"""\n')).toEqual([
+      ['a', 'b'],
+      ['x; y', 'he said "hi"'],
+    ]);
   });
 
   it('XLSX: megosztott szöveg, szám, üres cella', () => {
@@ -160,7 +199,10 @@ describe('táblázat beolvasás', () => {
       'xl/sharedStrings.xml': strToU8('<sst><si><t>Vevő</t></si><si><r><t>Nettó </t></r><r><t>árbevétel</t></r></si></sst>'),
       'xl/worksheets/sheet1.xml': strToU8(sheet),
     });
-    expect(parseXlsx(bytes)).toEqual([['Vevő', null, 'Nettó árbevétel'], ['Példa & Társa Kft.', null, 1500000]]);
+    expect(parseXlsx(bytes)).toEqual([
+      ['Vevő', null, 'Nettó árbevétel'],
+      ['Példa & Társa Kft.', null, 1500000],
+    ]);
   });
 
   it('oszlopfelismerés és hiányzó oszlop jelzése', () => {
@@ -178,7 +220,10 @@ function runSample(kind: TableKind, scenarioId: string, salesTotalHuf?: number) 
   const grid = parseCsv(csv);
   const d = detectColumns(kind, grid);
   expect(missingColumns(kind, d.mapping), `${scenarioId} ${kind}`).toEqual([]);
-  return analyzeTable({ kind, fileName, grid, headerRow: d.headerRow, mapping: d.mapping, refDay: isoToDay(SAMPLE_REF_DATE) }, { company: sc.company, salesTotalHuf });
+  return analyzeTable(
+    { kind, fileName, grid, headerRow: d.headerRow, mapping: d.mapping, refDay: isoToDay(SAMPLE_REF_DATE) },
+    { company: sc.company, salesTotalHuf },
+  );
 }
 
 describe('mutatók a mintatáblákból', () => {
@@ -245,14 +290,18 @@ describe('dokumentumok', () => {
   });
 
   it('idézet keresése oldalhatáron át, oldalszámmal', () => {
-    const pages = [{ label: '1. oldal', text: 'Első oldal vége: a szerződés' }, { label: '2. oldal', text: 'azonnali hatállyal felmondható.' }];
+    const pages = [
+      { label: '1. oldal', text: 'Első oldal vége: a szerződés' },
+      { label: '2. oldal', text: 'azonnali hatállyal felmondható.' },
+    ];
     expect(findQuoteInPages(pages, 'a szerződés azonnali hatállyal')).toBe(0);
     expect(findQuoteInPages(pages, 'azonnali hatállyal felmondható')).toBe(1);
     expect(findQuoteInPages(pages, 'ilyen szöveg nincs benne sehol')).toBeNull();
   });
 
   it('Word-szöveg kinyerése és szakaszolás', () => {
-    const xml = '<w:document><w:body><w:p><w:r><w:t>Első &amp; bekezdés</w:t></w:r></w:p><w:p><w:r><w:t xml:space="preserve">Második </w:t></w:r><w:r><w:t>sor</w:t></w:r></w:p></w:body></w:document>';
+    const xml =
+      '<w:document><w:body><w:p><w:r><w:t>Első &amp; bekezdés</w:t></w:r></w:p><w:p><w:r><w:t xml:space="preserve">Második </w:t></w:r><w:r><w:t>sor</w:t></w:r></w:p></w:body></w:document>';
     const bytes = zipSync({ 'word/document.xml': strToU8(xml) });
     expect(docxToText(bytes)).toBe('Első & bekezdés\nMásodik sor');
     expect(chunkText('a'.repeat(3000) + '\n' + 'b'.repeat(3000))).toHaveLength(2);
@@ -283,7 +332,11 @@ import { buildRequestList } from './requests';
 
 describe('ágazati katalógus', () => {
   it('minden ágazati kérdés szabálya létező tételre mutat, és kódja egyedi', () => {
-    const codes = new Set(Object.values(SECTOR_RISKS).flat().map((r) => r.code));
+    const codes = new Set(
+      Object.values(SECTOR_RISKS)
+        .flat()
+        .map((r) => r.code),
+    );
     expect(codes.size).toBe(Object.values(SECTOR_RISKS).flat().length);
     for (const q of SECTOR_QUESTIONS) {
       expect(q.sectors?.length, q.id).toBeGreaterThan(0);

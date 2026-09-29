@@ -35,7 +35,15 @@ describe('kalauz', () => {
       tables: { AR: {}, AP: {} } as never,
       answers: Object.fromEntries(Array.from({ length: 80 }, (_, i) => [`Q${String(i).padStart(2, '0')}`, true])),
     };
-    const steps = guideSteps({ ...intakeAll(intake), interviews: { OWNER_CEO: { analysis: {} } as never }, identified: 3, snapshots: 1, hoursLogged: 2, benchmarked: true, disabled: ['CHECKLIST'] });
+    const steps = guideSteps({
+      ...intakeAll(intake),
+      interviews: { OWNER_CEO: { analysis: {} } as never },
+      identified: 3,
+      snapshots: 1,
+      hoursLogged: 2,
+      benchmarked: true,
+      disabled: ['CHECKLIST'],
+    });
     expect(nextStep(steps)).toBeNull();
   });
 

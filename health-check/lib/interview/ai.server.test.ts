@@ -70,17 +70,17 @@ describe('analyzeInterview (mock API)', () => {
     expect(body.messages[0].content).toContain('id=F1');
     expect(body.messages[0].content).toContain('[00:32] Ügyvezető:');
 
-    expect(res.suggestedRedFlags).toHaveLength(3);           // a kitalált idézetű kiesett
+    expect(res.suggestedRedFlags).toHaveLength(3); // a kitalált idézetű kiesett
     expect(res.suggestedRedFlags.every((f) => f.likelihood === 5)).toBe(true); // 9 → 5
-    expect(res.contradictions[0].startMs).toBe(32_000);      // időbélyeg a leiratból
+    expect(res.contradictions[0].startMs).toBe(32_000); // időbélyeg a leiratból
     expect(res.discardedUnverified).toBe(1);
   });
 
   it('elutasítást (refusal) külön hibaként jelez', async () => {
     const { analyzeInterview, AiRefusalError } = await import('./ai.server');
     nextResponse = message('', 'refusal');
-    await expect(
-      analyzeInterview({ transcript: notesToTranscript(SAMPLE_NOTES), role: 'CFO', kind: 'HEALTH_CHECK', facts: [] }),
-    ).rejects.toBeInstanceOf(AiRefusalError);
+    await expect(analyzeInterview({ transcript: notesToTranscript(SAMPLE_NOTES), role: 'CFO', kind: 'HEALTH_CHECK', facts: [] })).rejects.toBeInstanceOf(
+      AiRefusalError,
+    );
   });
 });

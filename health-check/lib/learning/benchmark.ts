@@ -97,7 +97,11 @@ export function demoRecords(): BenchmarkRecord[] {
       adjustments: adjustmentsFor(s.kind),
       pillarWeights: ENGAGEMENT_KINDS[s.kind].weights,
     });
-    const rec = anonymize(result, { ref: `demo:${s.id}`, kind: s.kind, sectors: s.sectors ?? [], revenueHuf: s.company.revenueHuf, source: 'DEMO' }, new Date(Date.UTC(2026, 0, 1 + i)));
+    const rec = anonymize(
+      result,
+      { ref: `demo:${s.id}`, kind: s.kind, sectors: s.sectors ?? [], revenueHuf: s.company.revenueHuf, source: 'DEMO' },
+      new Date(Date.UTC(2026, 0, 1 + i)),
+    );
     return { ...rec, id: `DEMO-${s.id}` };
   });
 }

@@ -179,9 +179,21 @@ const DOCS = {
 } satisfies Record<string, Template>;
 
 const BASE: Template[] = [
-  DOCS.companyExtract, DOCS.articles, DOCS.statements, DOCS.trialBalance, DOCS.arAging, DOCS.salesByCustomer,
-  DOCS.purchases, DOCS.topContracts, DOCS.loans, DOCS.taxReturns, DOCS.headcount, DOCS.employmentForms,
-  DOCS.litigationList, DOCS.insurance, DOCS.relatedParty,
+  DOCS.companyExtract,
+  DOCS.articles,
+  DOCS.statements,
+  DOCS.trialBalance,
+  DOCS.arAging,
+  DOCS.salesByCustomer,
+  DOCS.purchases,
+  DOCS.topContracts,
+  DOCS.loans,
+  DOCS.taxReturns,
+  DOCS.headcount,
+  DOCS.employmentForms,
+  DOCS.litigationList,
+  DOCS.insurance,
+  DOCS.relatedParty,
 ];
 
 type Rule = { doc: Template; why: string; required?: boolean };
@@ -320,7 +332,15 @@ export function buildRequestList(profile: CaseProfile, kind: EngagementKind): Do
       if (required) cur.priority = 'REQUIRED';
       return;
     }
-    out.set(doc.id, { id: doc.id, title: doc.title, pillar: doc.pillar, table: doc.table, why: [why], source, priority: required ? 'REQUIRED' : 'RECOMMENDED' });
+    out.set(doc.id, {
+      id: doc.id,
+      title: doc.title,
+      pillar: doc.pillar,
+      table: doc.table,
+      why: [why],
+      source,
+      priority: required ? 'REQUIRED' : 'RECOMMENDED',
+    });
   };
   for (const d of BASE) add(d, 'BASE', 'minden átvilágításnál bekérjük', true);
   const kindLabel = ENGAGEMENT_KINDS[kind].label;
@@ -343,8 +363,7 @@ export const STATUS_LABEL: Record<RequestStatus, string> = {
 /** Az ügyfélnek küldhető iratlista szövege (e-mailbe másolható). */
 export function requestListText(companyName: string, list: DocRequest[], statuses: Record<string, RequestStatus>): string {
   const open = list.filter((d) => (statuses[d.id] ?? 'REQUESTED') !== 'RECEIVED' && statuses[d.id] !== 'NA');
-  const lines = (prio: DocRequest['priority']) =>
-    open.filter((d) => d.priority === prio).map((d, i) => `${i + 1}. ${d.title}`);
+  const lines = (prio: DocRequest['priority']) => open.filter((d) => d.priority === prio).map((d, i) => `${i + 1}. ${d.title}`);
   const req = lines('REQUIRED');
   const rec = lines('RECOMMENDED');
   return [

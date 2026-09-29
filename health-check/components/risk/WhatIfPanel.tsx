@@ -54,7 +54,11 @@ export default function WhatIfPanel({ items, opts, result }: { items: RiskItem[]
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="text-slate-500">Gyors választás:</span>
               {PRESETS.map(([k, label]) => (
-                <button key={k} onClick={() => setSelected(presetFixes(result, k))} className="rounded-full border border-slate-200 px-2.5 py-0.5 text-slate-700 hover:bg-slate-50">
+                <button
+                  key={k}
+                  onClick={() => setSelected(presetFixes(result, k))}
+                  className="rounded-full border border-slate-200 px-2.5 py-0.5 text-slate-700 hover:bg-slate-50"
+                >
                   {label}
                 </button>
               ))}
@@ -101,14 +105,32 @@ export default function WhatIfPanel({ items, opts, result }: { items: RiskItem[]
             <Row label="Health Score" before={String(b.healthScore)} after={String(a.healthScore)} good={a.healthScore > b.healthScore} />
             <Row label="Összesített besorolás" before={RAG_LABEL[b.rag]} after={RAG_LABEL[a.rag]} good={a.rag !== b.rag} />
             <Row label="Piros / sárga tételek" before={`${b.red} / ${b.amber}`} after={`${a.red} / ${a.amber}`} good={a.red + a.amber < b.red + b.amber} />
-            <Row label="Várható veszteség" before={formatHufShort(b.expectedLossHuf)} after={formatHufShort(a.expectedLossHuf)} good={a.expectedLossHuf < b.expectedLossHuf} />
-            <Row label="Bruttó kitettség" before={formatHufShort(b.grossExposureHuf)} after={formatHufShort(a.grossExposureHuf)} good={a.grossExposureHuf < b.grossExposureHuf} />
+            <Row
+              label="Várható veszteség"
+              before={formatHufShort(b.expectedLossHuf)}
+              after={formatHufShort(a.expectedLossHuf)}
+              good={a.expectedLossHuf < b.expectedLossHuf}
+            />
+            <Row
+              label="Bruttó kitettség"
+              before={formatHufShort(b.grossExposureHuf)}
+              after={formatHufShort(a.grossExposureHuf)}
+              good={a.grossExposureHuf < b.grossExposureHuf}
+            />
             <div className="border-t border-slate-200 pt-2">
-              <p className="flex justify-between"><span className="text-slate-500">A javítás becsült díja</span><b className="tabular-nums">{formatHufShort(sim.costHuf)}</b></p>
-              <p className="flex justify-between"><span className="text-slate-500">Leghosszabb javítás</span><b className="tabular-nums">{sim.maxDays} munkanap</b></p>
+              <p className="flex justify-between">
+                <span className="text-slate-500">A javítás becsült díja</span>
+                <b className="tabular-nums">{formatHufShort(sim.costHuf)}</b>
+              </p>
+              <p className="flex justify-between">
+                <span className="text-slate-500">Leghosszabb javítás</span>
+                <b className="tabular-nums">{sim.maxDays} munkanap</b>
+              </p>
               <p className="flex justify-between">
                 <span className="text-slate-500">Várható veszteség-csökkenés / díj</span>
-                <b className="tabular-nums text-emerald-700">{sim.returnMultiple != null ? `${sim.returnMultiple.toLocaleString('hu-HU', { maximumFractionDigits: 1 })}×` : '—'}</b>
+                <b className="tabular-nums text-emerald-700">
+                  {sim.returnMultiple != null ? `${sim.returnMultiple.toLocaleString('hu-HU', { maximumFractionDigits: 1 })}×` : '—'}
+                </b>
               </p>
             </div>
             <p className="text-xs text-slate-500">

@@ -254,7 +254,10 @@ export function removeProjectWorkspace(id: string): void {
   } catch {
     /* ignore */
   }
-  write(INDEX_KEY, listProjects().filter((p) => p.id !== id));
+  write(
+    INDEX_KEY,
+    listProjects().filter((p) => p.id !== id),
+  );
 }
 
 export function projectStorageKey(id: string): string {
@@ -268,12 +271,7 @@ const clamp5 = (n: number): Scale5 => Math.min(5, Math.max(1, Math.round(n))) as
  * Katalógustételnél: azonosítottá tesszük, a súlyosságot sosem csökkentjük.
  * Egyéb esetben új, egyedi tétel jön létre.
  */
-export function applySuggestion(
-  items: RiskItem[],
-  s: SuggestedRedFlag,
-  evidence: string,
-  company: CompanyProfile = DEFAULT_COMPANY,
-): RiskItem[] {
+export function applySuggestion(items: RiskItem[], s: SuggestedRedFlag, evidence: string, company: CompanyProfile = DEFAULT_COMPANY): RiskItem[] {
   const existing = s.templateCode ? items.find((r) => r.code === s.templateCode) : undefined;
   if (existing) {
     return items.map((r) =>

@@ -53,9 +53,9 @@ export default function OverviewTab({
               <Sparkles className="h-4 w-4" /> Mit nem fed le a katalógus? (AI-összkép)
             </h2>
             <p className="mt-1 text-xs text-indigo-900/80">
-              Az AI egyszerre olvassa a tényállást, a kérdőívet, a táblákat, a dokumentumokat és az interjúkat ({sourceCount} forrás), és olyan
-              kockázatokat keres, amelyek csak ezek összevetéséből derülnek ki. Minden javaslat mellett ott a forrás és a szó szerinti idézet; amit
-              nem talál meg a forrásban, azt a rendszer eldobja. A javaslatok jobb oldalt jelennek meg.
+              Az AI egyszerre olvassa a tényállást, a kérdőívet, a táblákat, a dokumentumokat és az interjúkat ({sourceCount} forrás), és olyan kockázatokat
+              keres, amelyek csak ezek összevetéséből derülnek ki. Minden javaslat mellett ott a forrás és a szó szerinti idézet; amit nem talál meg a
+              forrásban, azt a rendszer eldobja. A javaslatok jobb oldalt jelennek meg.
             </p>
             {synthesis && (
               <p className="mt-1 text-xs text-indigo-900/70">
@@ -75,7 +75,9 @@ export default function OverviewTab({
           </button>
         </div>
         {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
-        {sourceCount === 0 && <p className="mt-2 text-xs text-indigo-900/70">Előbb tölts be legalább egy forrást (tényállás, kérdőív, tábla, dokumentum vagy interjú).</p>}
+        {sourceCount === 0 && (
+          <p className="mt-2 text-xs text-indigo-900/70">Előbb tölts be legalább egy forrást (tényállás, kérdőív, tábla, dokumentum vagy interjú).</p>
+        )}
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -142,8 +144,8 @@ export default function OverviewTab({
         )}
       </div>
       <p className="text-xs text-slate-500">
-        Keresztellenőrzés: {crossCount} szabályalapú javaslat a táblák együttes olvasásából (pl. kapcsolt fél a vevők között, 180 napon túli
-        követelés). Ezek jobb oldalt, „Keresztellenőrzés” jelöléssel jelennek meg.
+        Keresztellenőrzés: {crossCount} szabályalapú javaslat a táblák együttes olvasásából (pl. kapcsolt fél a vevők között, 180 napon túli követelés). Ezek
+        jobb oldalt, „Keresztellenőrzés” jelöléssel jelennek meg.
       </p>
     </section>
   );

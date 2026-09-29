@@ -23,14 +23,16 @@ export const CaseSuggestionSchema = z.object({
       quote: z.string().describe('SZÓ SZERINTI részlet a tényállásból, amely alátámasztja (legalább 3 szó).'),
     }),
   ),
-  documents: z.array(
-    z.object({
-      title: z.string().describe('A bekérendő irat rövid megnevezése.'),
-      pillar: z.enum(['FINANCE', 'LEGAL', 'OPERATIONS', 'HR']),
-      why: z.string().describe('Egy mondat: miért kell ennél a cégnél.'),
-      quote: z.string().describe('SZÓ SZERINTI részlet a tényállásból, amelyből az igény következik.'),
-    }),
-  ).describe('Legfeljebb 8 olyan irat, ami a felsorolt listában még NINCS benne.'),
+  documents: z
+    .array(
+      z.object({
+        title: z.string().describe('A bekérendő irat rövid megnevezése.'),
+        pillar: z.enum(['FINANCE', 'LEGAL', 'OPERATIONS', 'HR']),
+        why: z.string().describe('Egy mondat: miért kell ennél a cégnél.'),
+        quote: z.string().describe('SZÓ SZERINTI részlet a tényállásból, amelyből az igény következik.'),
+      }),
+    )
+    .describe('Legfeljebb 8 olyan irat, ami a felsorolt listában még NINCS benne.'),
 });
 
 export interface CaseSuggestion {

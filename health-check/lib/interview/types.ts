@@ -45,14 +45,14 @@ export interface GuideContext {
 }
 
 export interface TranscriptSegment {
-  speaker: string;          // "A", "B" … vagy név/szerep, ha a tanácsadó átnevezte
+  speaker: string; // "A", "B" … vagy név/szerep, ha a tanácsadó átnevezte
   startMs: number;
   endMs: number;
   text: string;
 }
 
 export interface Transcript {
-  language: string;         // "hu-HU"
+  language: string; // "hu-HU"
   durationMs: number;
   segments: TranscriptSegment[];
   /** Honnan jött: hangfájl-leirat vagy kézzel beillesztett jegyzet. */
@@ -79,12 +79,12 @@ export interface SuggestedRedFlag {
   likelihood: 1 | 2 | 3 | 4 | 5;
   impact: 1 | 2 | 3 | 4 | 5;
   exposureHufEstimate: number | null;
-  confidence: number;       // 0–1
+  confidence: number; // 0–1
 }
 
 export interface Contradiction {
   pillar: Pillar;
-  claim: string;            // amit az interjúalany mondott
+  claim: string; // amit az interjúalany mondott
   quote: string;
   startMs: number | null;
   conflictingFactId: string;

@@ -13,14 +13,17 @@ const Kind = EngagementKindSchema;
 const RequestSchema = z.object({
   kind: Kind,
   companyName: z.string().max(200),
-  sources: z.array(
-    z.object({
-      id: z.string().max(10),
-      kind: z.enum(['TÉNYÁLLÁS', 'KÉRDŐÍV', 'ADATTÁBLA', 'DOKUMENTUM', 'INTERJÚ']),
-      label: z.string().max(300),
-      text: z.string().max(60_000),
-    }),
-  ).min(1).max(60),
+  sources: z
+    .array(
+      z.object({
+        id: z.string().max(10),
+        kind: z.enum(['TÉNYÁLLÁS', 'KÉRDŐÍV', 'ADATTÁBLA', 'DOKUMENTUM', 'INTERJÚ']),
+        label: z.string().max(300),
+        text: z.string().max(60_000),
+      }),
+    )
+    .min(1)
+    .max(60),
   existing: z.array(RiskItemSchema).max(300),
   pending: z.array(z.string().max(300)).max(300),
 });

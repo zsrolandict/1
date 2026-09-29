@@ -60,7 +60,16 @@ describe('iratbekérési lista', () => {
       ...EMPTY_INTAKE,
       profile: tanacsado,
       requestStatus: { K11: 'MISSING' as const },
-      extraRequests: [{ id: 'X1', title: 'Végrendeleti rendelkezés az üzletrészről', pillar: 'LEGAL' as const, why: ['x'], source: 'MANUAL' as const, priority: 'RECOMMENDED' as const }],
+      extraRequests: [
+        {
+          id: 'X1',
+          title: 'Végrendeleti rendelkezés az üzletrészről',
+          pillar: 'LEGAL' as const,
+          why: ['x'],
+          source: 'MANUAL' as const,
+          priority: 'RECOMMENDED' as const,
+        },
+      ],
     };
     expect(missingRequests(state, 'SUCCESSION').map((d) => d.title)).toEqual(['Tulajdonosi (szindikátusi) megállapodás']);
     expect(requestList(state, 'SUCCESSION').some((d) => d.id === 'X1')).toBe(true);

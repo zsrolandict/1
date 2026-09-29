@@ -40,5 +40,9 @@ export function useProjects() {
 }
 
 export function useActiveProjectId(): string {
-  return useSyncExternalStore(subscribe, () => activeProjectId(), () => '');
+  return useSyncExternalStore(
+    subscribe,
+    () => activeProjectId(),
+    () => '',
+  );
 }

@@ -23,9 +23,13 @@ interface Profile {
 
 const PROFILES: Record<string, Profile> = {
   gyarto: {
-    topCustomer: 'Példa Autóipari Beszállító Zrt.', topSalesShare: 0.18, customers: 28,
-    share90: 0.12, topDebtorOf90: 0.4,
-    topSupplier: 'Példa Acélkereskedő Kft.', topSupplierShare: 0.45,
+    topCustomer: 'Példa Autóipari Beszállító Zrt.',
+    topSalesShare: 0.18,
+    customers: 28,
+    share90: 0.12,
+    topDebtorOf90: 0.4,
+    topSupplier: 'Példa Acélkereskedő Kft.',
+    topSupplierShare: 0.45,
     related: [
       { partner: 'Példa Holding Kft.', nature: 'Menedzsmentszolgáltatás', amount: 96_000_000, doc: false },
       { partner: 'Példa Ingatlan Kft.', nature: 'Csarnokbérlet', amount: 84_000_000, doc: false },
@@ -35,26 +39,36 @@ const PROFILES: Record<string, Profile> = {
     ],
   },
   epitoipar: {
-    topCustomer: 'Példa Város Önkormányzata', topSalesShare: 0.38, customers: 16,
-    share90: 0.43, topDebtorOf90: 0.85,
-    topSupplier: 'Példa Építőanyag Nagykereskedés Zrt.', topSupplierShare: 0.6,
+    topCustomer: 'Példa Város Önkormányzata',
+    topSalesShare: 0.38,
+    customers: 16,
+    share90: 0.43,
+    topDebtorOf90: 0.85,
+    topSupplier: 'Példa Építőanyag Nagykereskedés Zrt.',
+    topSupplierShare: 0.6,
     related: [
       { partner: 'Példa Gépbérlő Kft.', nature: 'Munkagép-bérlet', amount: 120_000_000, doc: true },
       { partner: 'Példa Ingatlanfejlesztő Kft.', nature: 'Kivitelezés', amount: 240_000_000, doc: true },
     ],
   },
   konyvelo: {
-    topCustomer: 'Példa Kereskedelmi Kft.', topSalesShare: 0.06, customers: 60,
-    share90: 0.08, topDebtorOf90: 0.3,
-    topSupplier: 'Példa Szoftverforgalmazó Kft.', topSupplierShare: 0.2,
-    related: [
-      { partner: 'Alapító (magánszemély)', nature: 'Irodabérlet', amount: 24_000_000, doc: true },
-    ],
+    topCustomer: 'Példa Kereskedelmi Kft.',
+    topSalesShare: 0.06,
+    customers: 60,
+    share90: 0.08,
+    topDebtorOf90: 0.3,
+    topSupplier: 'Példa Szoftverforgalmazó Kft.',
+    topSupplierShare: 0.2,
+    related: [{ partner: 'Alapító (magánszemély)', nature: 'Irodabérlet', amount: 24_000_000, doc: true }],
   },
   'it-fejleszto': {
-    topCustomer: 'Példa Bank Zrt.', topSalesShare: 0.55, customers: 14,
-    share90: 0.1, topDebtorOf90: 0.5,
-    topSupplier: 'Példa Felhőszolgáltató Kft.', topSupplierShare: 0.15,
+    topCustomer: 'Példa Bank Zrt.',
+    topSalesShare: 0.55,
+    customers: 14,
+    share90: 0.1,
+    topDebtorOf90: 0.5,
+    topSupplier: 'Példa Felhőszolgáltató Kft.',
+    topSupplierShare: 0.15,
     related: [
       { partner: 'Példa Tech Holding Kft.', nature: 'Licencdíj', amount: 70_000_000, doc: true },
       { partner: 'Példa Tech Holding Kft.', nature: 'Menedzsmentszolgáltatás', amount: 45_000_000, doc: false },
@@ -66,7 +80,8 @@ const PROFILES: Record<string, Profile> = {
 function rng(seed: number): () => number {
   let a = seed;
   return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -99,7 +114,13 @@ function split(total: number, topShare: number, n: number, rand: () => number): 
     let spill = 0;
     for (const i of free) {
       const v = values[i] + (weights[i] / sum) * remaining;
-      if (v > cap) { spill += v - cap; values[i] = cap; } else { values[i] = v; next.push(i); }
+      if (v > cap) {
+        spill += v - cap;
+        values[i] = cap;
+      } else {
+        values[i] = v;
+        next.push(i);
+      }
     }
     free = next;
     remaining = spill;
@@ -132,7 +153,10 @@ export function sampleTableCsv(kind: TableKind, sc: Scenario): { fileName: strin
       const n = 20;
       const amounts = split(purchases, p.topSupplierShare, n, rand);
       const names = [p.topSupplier, ...Array.from({ length: n - 1 }, (_, i) => `Példa Szállító ${String(i + 1).padStart(2, '0')} Kft.`)];
-      return { fileName: 'szallitonkenti_beszerzes.csv', csv: ['Szállító;Beszerzés nettó (Ft)', ...names.map((nm, i) => `${nm};${huf(amounts[i])}`)].join('\n') };
+      return {
+        fileName: 'szallitonkenti_beszerzes.csv',
+        csv: ['Szállító;Beszerzés nettó (Ft)', ...names.map((nm, i) => `${nm};${huf(amounts[i])}`)].join('\n'),
+      };
     }
     case 'AR_AGING': {
       const total = (revenue * sc.company.actualDsoDays) / 365;

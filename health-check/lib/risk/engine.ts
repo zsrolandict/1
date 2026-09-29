@@ -1,14 +1,4 @@
-import type {
-  ActionWindow,
-  Division,
-  Pillar,
-  PillarSummary,
-  Rag,
-  RiskAssessment,
-  RiskItem,
-  Scale5,
-  ScoredRisk,
-} from './types';
+import type { ActionWindow, Division, Pillar, PillarSummary, Rag, RiskAssessment, RiskItem, Scale5, ScoredRisk } from './types';
 import { DEFAULT_COMPANY, resolveExposure, type CompanyProfile } from './valuation';
 import type { KindAdjustments } from '@/lib/engagement/adjustments';
 

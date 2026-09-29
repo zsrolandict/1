@@ -63,8 +63,7 @@ export default function ProjectScope({ children }: { children: ReactNode }) {
         <div role="status" className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900 print:hidden">
           <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-3">
             <span>
-              <b>Ezt a projektet egy másik böngészőlapon is módosították.</b> Frissítsd, különben az itteni mentés felülírhatja az ottani
-              változást.
+              <b>Ezt a projektet egy másik böngészőlapon is módosították.</b> Frissítsd, különben az itteni mentés felülírhatja az ottani változást.
             </span>
             <button
               onClick={() => {

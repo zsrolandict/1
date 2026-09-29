@@ -45,7 +45,9 @@ describe('típusfüggő korrekció', () => {
   it('minden korrekció létező tételre vonatkozik, indoklással, ±2-n belül', () => {
     const codes = new Set([
       ...DEFAULT_CATALOG.map((r) => r.code),
-      ...Object.values(KIND_RISKS).flat().map((r) => r.code),
+      ...Object.values(KIND_RISKS)
+        .flat()
+        .map((r) => r.code),
       ...SCENARIOS.flatMap((s) => s.items.map((r) => r.code)),
     ]);
     for (const k of ENGAGEMENT_KIND_LIST) {

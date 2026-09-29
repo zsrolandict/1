@@ -4,9 +4,7 @@ import { NextResponse } from 'next/server';
 import { dataPolicy, limitFor, RateLimiter, type LimitKind } from '@/lib/ai/policy';
 import { authMode, isStaffRole, type AuthMode } from './mode';
 
-export type Access =
-  | { ok: true; mode: AuthMode; userId: string | null; role: string | null }
-  | { ok: false; response: NextResponse };
+export type Access = { ok: true; mode: AuthMode; userId: string | null; role: string | null } | { ok: false; response: NextResponse };
 
 export async function supabaseServer() {
   const store = await cookies();
@@ -34,10 +32,7 @@ export async function requireStaff(): Promise<Access> {
   if (mode === 'LOCKED') {
     return {
       ok: false,
-      response: NextResponse.json(
-        { error: 'A bejelentkezés nincs beállítva a szerveren, ezért az AI-funkciók zárva vannak.' },
-        { status: 503 },
-      ),
+      response: NextResponse.json({ error: 'A bejelentkezés nincs beállítva a szerveren, ezért az AI-funkciók zárva vannak.' }, { status: 503 }),
     };
   }
 

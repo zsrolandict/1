@@ -104,12 +104,7 @@ export function buildInterviewGuide(ctx: GuideContext): InterviewQuestion[] {
   const seen = new Set<string>();
   const unique = out.filter((q) => (seen.has(q.text) ? false : (seen.add(q.text), true)));
   const order = new Map(unique.map((q, i) => [q.id, i]));
-  return unique.sort(
-    (a, b) =>
-      a.priority - b.priority ||
-      profile.weights[b.pillar] - profile.weights[a.pillar] ||
-      order.get(a.id)! - order.get(b.id)!,
-  );
+  return unique.sort((a, b) => a.priority - b.priority || profile.weights[b.pillar] - profile.weights[a.pillar] || order.get(a.id)! - order.get(b.id)!);
 }
 
 export function estimateMinutes(questions: InterviewQuestion[], maxPriority: 1 | 2 | 3 = 2): number {

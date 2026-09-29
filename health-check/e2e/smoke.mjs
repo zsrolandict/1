@@ -78,7 +78,10 @@ try {
   await p.waitForTimeout(400);
   const overview = await p.getByRole('dialog', { name: 'Projektjeim' }).innerText();
   check('Projektjeim: a saját projekt a listában', overview.includes('E2E Teszt Kft.'));
-  await p.getByRole('button', { name: /Folytatás/ }).first().click();
+  await p
+    .getByRole('button', { name: /Folytatás/ })
+    .first()
+    .click();
   await p.waitForTimeout(800);
   check('folytatás: ott, ahol abbahagytad', (await projectButton(p).innerText()).includes('E2E Teszt Kft.') && (await currentTab(p)) === 'Red Flag mátrix');
 

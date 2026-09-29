@@ -23,8 +23,8 @@ describe('buildInterviewGuide', () => {
   it('azonosított red flagre célzott kérdés készül, nem azonosítottra nem', () => {
     const qs = buildInterviewGuide({ ...base, role: 'OWNER_CEO' });
     const codes = qs.flatMap((q) => (q.source.type === 'RED_FLAG' ? [q.source.code] : []));
-    expect(codes).toContain('LEG-01');      // azonosított a katalógusban
-    expect(codes).not.toContain('LEG-03');  // nem azonosított
+    expect(codes).toContain('LEG-01'); // azonosított a katalógusban
+    expect(codes).not.toContain('LEG-03'); // nem azonosított
   });
 
   it('hiányzó dokumentum kötelező kérdés a pénzügyi vezetőnek', () => {
@@ -78,10 +78,7 @@ describe('findQuote / verifyAnalysis', () => {
   it('kiszűri a leiratban nem szereplő idézetet és az ismeretlen tényre hivatkozó ellentmondást', () => {
     const raw = {
       ...SAMPLE_ANALYSIS_RAW,
-      contradictions: [
-        ...SAMPLE_ANALYSIS_RAW.contradictions,
-        { ...SAMPLE_ANALYSIS_RAW.contradictions[0], conflictingFactId: 'NINCS-ILYEN' },
-      ],
+      contradictions: [...SAMPLE_ANALYSIS_RAW.contradictions, { ...SAMPLE_ANALYSIS_RAW.contradictions[0], conflictingFactId: 'NINCS-ILYEN' }],
     };
     const res = verifyAnalysis(raw, transcript, SAMPLE_FACTS);
     expect(res.suggestedRedFlags).toHaveLength(3);
@@ -121,8 +118,16 @@ describe('azureToTranscript', () => {
 
 describe('applySuggestion', () => {
   const s = {
-    templateCode: 'LEG-03', pillar: 'LEGAL' as const, title: 't', rationale: 'r', quote: 'q',
-    startMs: null, likelihood: 4 as const, impact: 1 as const, exposureHufEstimate: 2_000_000, confidence: 0.8,
+    templateCode: 'LEG-03',
+    pillar: 'LEGAL' as const,
+    title: 't',
+    rationale: 'r',
+    quote: 'q',
+    startMs: null,
+    likelihood: 4 as const,
+    impact: 1 as const,
+    exposureHufEstimate: 2_000_000,
+    confidence: 0.8,
   };
 
   it('katalógustételt azonosít, a súlyosságot nem csökkenti', () => {

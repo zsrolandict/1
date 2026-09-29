@@ -142,29 +142,54 @@ function TimesheetSection({ projectId, kind }: { projectId: string; kind: Engage
               <div className={`h-full ${BAR[b.level]}`} style={{ width: `${Math.min(100, b.ratio * 100)}%` }} />
             </div>
             {b.level !== 'OK' && (
-              <p className={`mt-0.5 text-xs font-medium ${b.level === 'OVER' ? 'text-red-700' : 'text-amber-700'}`}>{b.level === 'OVER' ? 'Túllépés' : '80% felett'}</p>
+              <p className={`mt-0.5 text-xs font-medium ${b.level === 'OVER' ? 'text-red-700' : 'text-amber-700'}`}>
+                {b.level === 'OVER' ? 'Túllépés' : '80% felett'}
+              </p>
             )}
           </div>
         ))}
       </div>
       {sum.warnings.length > 0 && (
         <ul className="mt-3 space-y-1 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
-          {sum.warnings.map((w) => <li key={w}>{w}</li>)}
+          {sum.warnings.map((w) => (
+            <li key={w}>{w}</li>
+          ))}
         </ul>
       )}
 
       <div className="mt-4 flex flex-wrap items-end gap-2 text-xs">
         <Labeled label="Dátum">
-          <input type="date" value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} className="rounded border border-slate-200 px-2 py-1" />
+          <input
+            type="date"
+            value={draft.date}
+            onChange={(e) => setDraft({ ...draft, date: e.target.value })}
+            className="rounded border border-slate-200 px-2 py-1"
+          />
         </Labeled>
         <Labeled label="Terület">
-          <select value={draft.bucket} onChange={(e) => setDraft({ ...draft, bucket: e.target.value as Bucket })} className="rounded border border-slate-200 px-2 py-1">
-            {budgetFor(kind).map((b) => <option key={b.bucket} value={b.bucket}>{BUCKET_LABEL[b.bucket]}</option>)}
+          <select
+            value={draft.bucket}
+            onChange={(e) => setDraft({ ...draft, bucket: e.target.value as Bucket })}
+            className="rounded border border-slate-200 px-2 py-1"
+          >
+            {budgetFor(kind).map((b) => (
+              <option key={b.bucket} value={b.bucket}>
+                {BUCKET_LABEL[b.bucket]}
+              </option>
+            ))}
           </select>
         </Labeled>
         <Labeled label="Szerepkör">
-          <select value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value as Role })} className="rounded border border-slate-200 px-2 py-1">
-            {(Object.keys(ROLE_LABEL) as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+          <select
+            value={draft.role}
+            onChange={(e) => setDraft({ ...draft, role: e.target.value as Role })}
+            className="rounded border border-slate-200 px-2 py-1"
+          >
+            {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABEL[r]}
+              </option>
+            ))}
           </select>
         </Labeled>
         <Labeled label="Rögzítő">
@@ -211,10 +236,20 @@ function TimesheetSection({ projectId, kind }: { projectId: string; kind: Engage
           )}
         </Labeled>
         <Labeled label="Óra">
-          <input value={draft.hours} onChange={(e) => setDraft({ ...draft, hours: e.target.value })} inputMode="decimal" className="w-16 rounded border border-slate-200 px-2 py-1" />
+          <input
+            value={draft.hours}
+            onChange={(e) => setDraft({ ...draft, hours: e.target.value })}
+            inputMode="decimal"
+            className="w-16 rounded border border-slate-200 px-2 py-1"
+          />
         </Labeled>
         <Labeled label="Tevékenység">
-          <input value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} placeholder="pl. interjú a pénzügyi vezetővel" className="w-64 rounded border border-slate-200 px-2 py-1" />
+          <input
+            value={draft.note}
+            onChange={(e) => setDraft({ ...draft, note: e.target.value })}
+            placeholder="pl. interjú a pénzügyi vezetővel"
+            className="w-64 rounded border border-slate-200 px-2 py-1"
+          />
         </Labeled>
         <button onClick={add} className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 font-medium text-white hover:bg-slate-800">
           <Plus className="h-3.5 w-3.5" /> Rögzítés
@@ -299,17 +334,28 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
   const s = useMemo(() => stats(records), [records]);
   const cal = calibrations(s);
   const current = useMemo(
-    () => assess(ws.items, { company: ws.company, materialityHuf: ws.materialityHuf, adjustments: adjustmentsFor(ws.kind), pillarWeights: ENGAGEMENT_KINDS[ws.kind].weights }),
+    () =>
+      assess(ws.items, {
+        company: ws.company,
+        materialityHuf: ws.materialityHuf,
+        adjustments: adjustmentsFor(ws.kind),
+        pillarWeights: ENGAGEMENT_KINDS[ws.kind].weights,
+      }),
     [ws],
   );
-  const missing = commonButMissing(s, current.risks.map((r) => r.code));
+  const missing = commonButMissing(
+    s,
+    current.risks.map((r) => r.code),
+  );
 
   const record = () => {
     const rec = anonymize(current, { ref: ws.projectId, kind: ws.kind, sectors, revenueHuf: ws.company.revenueHuf });
     const list = upsertRecord(own, rec);
     setOwn(list);
     saveBenchmark(list);
-    setNote(`Felvéve anonimizálva: ${ENGAGEMENT_KINDS[ws.kind].label}, ${sectors.map((x) => SECTOR_LABEL[x]).join(', ') || 'ágazat nélkül'}, ${REVENUE_BAND_LABEL[revenueBand(ws.company.revenueHuf)]}, ${rec.items.length} tétel.`);
+    setNote(
+      `Felvéve anonimizálva: ${ENGAGEMENT_KINDS[ws.kind].label}, ${sectors.map((x) => SECTOR_LABEL[x]).join(', ') || 'ágazat nélkül'}, ${REVENUE_BAND_LABEL[revenueBand(ws.company.revenueHuf)]}, ${rec.items.length} tétel.`,
+    );
   };
   const remove = (id: string) => {
     const list = own.filter((r) => r.id !== id);
@@ -323,7 +369,10 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
         <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
           <BookOpen className="h-4 w-4" /> Tudástár – tapasztalatok a lezárt projektekből
         </h2>
-        <button onClick={record} className="ml-auto inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
+        <button
+          onClick={record}
+          className="ml-auto inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+        >
           <Plus className="h-3.5 w-3.5" /> Aktuális projekt felvétele (anonimizálva)
         </button>
       </div>
@@ -334,17 +383,44 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
       {note && <p className="mt-2 rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-800">{note}</p>}
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-        <select value={kind} onChange={(e) => setKind(e.target.value as EngagementKind | '')} aria-label="Típus" className="rounded border border-slate-200 px-2 py-1">
+        <select
+          value={kind}
+          onChange={(e) => setKind(e.target.value as EngagementKind | '')}
+          aria-label="Típus"
+          className="rounded border border-slate-200 px-2 py-1"
+        >
           <option value="">Minden típus</option>
-          {ENGAGEMENT_KIND_LIST.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+          {ENGAGEMENT_KIND_LIST.map((k) => (
+            <option key={k.kind} value={k.kind}>
+              {k.label}
+            </option>
+          ))}
         </select>
-        <select value={sector} onChange={(e) => setSector(e.target.value as Sector | '')} aria-label="Ágazat" className="rounded border border-slate-200 px-2 py-1">
+        <select
+          value={sector}
+          onChange={(e) => setSector(e.target.value as Sector | '')}
+          aria-label="Ágazat"
+          className="rounded border border-slate-200 px-2 py-1"
+        >
           <option value="">Minden ágazat</option>
-          {(Object.keys(SECTOR_LABEL) as Sector[]).map((x) => <option key={x} value={x}>{SECTOR_LABEL[x]}</option>)}
+          {(Object.keys(SECTOR_LABEL) as Sector[]).map((x) => (
+            <option key={x} value={x}>
+              {SECTOR_LABEL[x]}
+            </option>
+          ))}
         </select>
-        <select value={band} onChange={(e) => setBand(e.target.value as RevenueBand | '')} aria-label="Árbevétel" className="rounded border border-slate-200 px-2 py-1">
+        <select
+          value={band}
+          onChange={(e) => setBand(e.target.value as RevenueBand | '')}
+          aria-label="Árbevétel"
+          className="rounded border border-slate-200 px-2 py-1"
+        >
           <option value="">Minden méret</option>
-          {(Object.keys(REVENUE_BAND_LABEL) as RevenueBand[]).map((b) => <option key={b} value={b}>{REVENUE_BAND_LABEL[b]}</option>)}
+          {(Object.keys(REVENUE_BAND_LABEL) as RevenueBand[]).map((b) => (
+            <option key={b} value={b}>
+              {REVENUE_BAND_LABEL[b]}
+            </option>
+          ))}
         </select>
         <label className="inline-flex items-center gap-1 text-slate-600">
           <input type="checkbox" checked={withDemo} onChange={(e) => setWithDemo(e.target.checked)} /> bemutató (kitalált) rekordokkal
@@ -412,7 +488,8 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
                 <ul className="mt-2 space-y-1 text-xs">
                   {cal.map((c) => (
                     <li key={c.code} className="rounded bg-slate-50 px-2 py-1">
-                      <b>{c.code}</b> {c.title}: katalógus V{c.catalogLikelihood}×H{c.catalogImpact}, a tapasztalat ({c.n} projekt) V{fmt(c.observedLikelihood)}×H
+                      <b>{c.code}</b> {c.title}: katalógus V{c.catalogLikelihood}×H{c.catalogImpact}, a tapasztalat ({c.n} projekt) V{fmt(c.observedLikelihood)}
+                      ×H
                       {fmt(c.observedImpact)}.
                     </li>
                   ))}
@@ -432,7 +509,8 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
               <li key={r.id} className="flex items-center gap-2 py-1">
                 <span className="tabular-nums text-slate-500">{r.closedAt}</span>
                 <span className="flex-1">
-                  {ENGAGEMENT_KINDS[r.kind].label} · {r.sectors.map((x) => SECTOR_LABEL[x]).join(', ') || '—'} · {REVENUE_BAND_LABEL[r.revenueBand]} · Health Score {r.healthScore}
+                  {ENGAGEMENT_KINDS[r.kind].label} · {r.sectors.map((x) => SECTOR_LABEL[x]).join(', ') || '—'} · {REVENUE_BAND_LABEL[r.revenueBand]} · Health
+                  Score {r.healthScore}
                 </span>
                 <button onClick={() => remove(r.id)} aria-label="Rekord törlése" className="text-slate-500 hover:text-red-600">
                   <Trash2 className="h-3.5 w-3.5" />

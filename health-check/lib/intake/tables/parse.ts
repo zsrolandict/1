@@ -37,15 +37,21 @@ export function parseCsv(text: string): Grid {
     const ch = text[i];
     if (quoted) {
       if (ch === '"') {
-        if (text[i + 1] === '"') { field += '"'; i++; } else quoted = false;
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else quoted = false;
       } else field += ch;
       continue;
     }
     if (ch === '"' && field === '') quoted = true;
-    else if (ch === delim) { row.push(field); field = ''; }
-    else if (ch === '\n' || ch === '\r') {
+    else if (ch === delim) {
+      row.push(field);
+      field = '';
+    } else if (ch === '\n' || ch === '\r') {
       if (ch === '\r' && text[i + 1] === '\n') i++;
-      row.push(field); field = '';
+      row.push(field);
+      field = '';
       if (row.some((c) => String(c).trim())) rows.push(row);
       row = [];
     } else field += ch;
@@ -83,9 +89,7 @@ export function parseXlsx(bytes: Uint8Array): Grid {
     if (e instanceof ZipTooLargeError) throw e;
     throw new Error('A fájl nem érvényes XLSX.');
   }
-  const shared = files['xl/sharedStrings.xml']
-    ? [...strFromU8(files['xl/sharedStrings.xml']).matchAll(/<si>([\s\S]*?)<\/si>/g)].map((m) => textOf(m[1]))
-    : [];
+  const shared = files['xl/sharedStrings.xml'] ? [...strFromU8(files['xl/sharedStrings.xml']).matchAll(/<si>([\s\S]*?)<\/si>/g)].map((m) => textOf(m[1])) : [];
   const sheetName = Object.keys(files)
     .filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n))
     .sort((a, b) => Number(/\d+/.exec(a)![0]) - Number(/\d+/.exec(b)![0]))[0];
@@ -129,10 +133,19 @@ export function parseTableFile(name: string, bytes: Uint8Array): Grid {
 export function parseNumber(cell: Cell): number | null {
   if (cell == null) return null;
   if (typeof cell === 'number') return Number.isFinite(cell) ? cell : null;
-  let s = cell.replace(/[\s  ]/g, '').replace(/(HUF|Ft|%)$/i, '').replace(/^(HUF|Ft)/i, '');
+  let s = cell
+    .replace(/[\s  ]/g, '')
+    .replace(/(HUF|Ft|%)$/i, '')
+    .replace(/^(HUF|Ft)/i, '');
   let neg = false;
-  if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
-  if (s.startsWith('-')) { neg = !neg; s = s.slice(1); }
+  if (/^\(.*\)$/.test(s)) {
+    neg = true;
+    s = s.slice(1, -1);
+  }
+  if (s.startsWith('-')) {
+    neg = !neg;
+    s = s.slice(1);
+  }
   if (!/^[\d.,]+$/.test(s) || !/\d/.test(s)) return null;
   const hasComma = s.includes(',');
   const hasDot = s.includes('.');

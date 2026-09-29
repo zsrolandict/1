@@ -61,9 +61,7 @@ const QuestionsSchema = z.object({
 });
 
 // Stabil (cache-elhető) rendszerprompt: a katalógus nem változik kérésenként.
-const CATALOG_TEXT = DEFAULT_CATALOG.map(
-  (r) => `${r.code} [${PILLAR_LABEL[r.pillar]}] ${r.title} – ${r.description}`,
-).join('\n');
+const CATALOG_TEXT = DEFAULT_CATALOG.map((r) => `${r.code} [${PILLAR_LABEL[r.pillar]}] ${r.title} – ${r.description}`).join('\n');
 
 const SYSTEM = `Az ICT Európa tanácsadó cégcsoport átvilágítási (due diligence / health check) szakértői asszisztense vagy.
 Magyar KKV-k (1–5 Mrd Ft árbevétel) átvilágításán dolgozol négy pilléren: Pénzügy/Adó, Jog, Operáció, HR.
@@ -90,12 +88,15 @@ function factsText(facts: KnownFact[]): string {
   return facts.map((f) => `- id=${f.id} [${PILLAR_LABEL[f.pillar]}] ${f.statement} (forrás: ${f.source})`).join('\n');
 }
 
-export async function runInterviewAnalysis(call: StructuredCall, input: {
-  transcript: Transcript;
-  role: IntervieweeRole;
-  kind: EngagementKind;
-  facts: KnownFact[];
-}): Promise<InterviewAnalysis> {
+export async function runInterviewAnalysis(
+  call: StructuredCall,
+  input: {
+    transcript: Transcript;
+    role: IntervieweeRole;
+    kind: EngagementKind;
+    facts: KnownFact[];
+  },
+): Promise<InterviewAnalysis> {
   const user = `${kindContext(input.kind)}
 Interjúalany szerepköre: ${ROLE_LABEL[input.role]}.
 

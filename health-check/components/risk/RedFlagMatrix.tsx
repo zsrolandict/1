@@ -162,10 +162,7 @@ export default function RedFlagMatrix({
   const profile = ENGAGEMENT_KINDS[kind];
   const focusCodes = useMemo(() => new Set(profile.focusRiskCodes), [profile]);
   const adjustments = adjustmentsFor(kind);
-  const engineOpts = useMemo(
-    () => ({ materialityHuf, company, pillarWeights: profile.weights, adjustments }),
-    [materialityHuf, company, profile, adjustments],
-  );
+  const engineOpts = useMemo(() => ({ materialityHuf, company, pillarWeights: profile.weights, adjustments }), [materialityHuf, company, profile, adjustments]);
   const result = useMemo(() => assess(items, engineOpts), [items, engineOpts]);
   // Minden sorra (a nem bejelöltekre is) a korrigált értékelés – így látszik, mit kapna.
   const effById = useMemo(() => new Map(items.map((r) => [r.id, scoreRisk(r, engineOpts)])), [items, engineOpts]);
@@ -183,24 +180,24 @@ export default function RedFlagMatrix({
   };
   const scoredById = useMemo(() => new Map(result.risks.map((r) => [r.id, r])), [result]);
 
-  const visible = items.filter((r) => {
-    if (pillarFilter !== 'ALL' && r.pillar !== pillarFilter) return false;
-    if (onlyIdentified && !r.identified) return false;
-    const eff = effById.get(r.id);
-    if (cell && (eff?.likelihood !== cell.l || eff?.impact !== cell.i || !r.identified)) return false;
-    if (query) {
-      const q = query.toLowerCase();
-      if (!`${r.code} ${r.title} ${r.description}`.toLowerCase().includes(q)) return false;
-    }
-    return true;
-  })
+  const visible = items
+    .filter((r) => {
+      if (pillarFilter !== 'ALL' && r.pillar !== pillarFilter) return false;
+      if (onlyIdentified && !r.identified) return false;
+      const eff = effById.get(r.id);
+      if (cell && (eff?.likelihood !== cell.l || eff?.impact !== cell.i || !r.identified)) return false;
+      if (query) {
+        const q = query.toLowerCase();
+        if (!`${r.code} ${r.title} ${r.description}`.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    })
     // A típus fókusztételei elöl (stabil rendezés, egyébként a lista sorrendje marad).
     .map((r, i) => ({ r, i, f: focusCodes.has(r.code) ? 0 : 1 }))
     .sort((a, b) => a.f - b.f || a.i - b.i)
     .map((x) => x.r);
 
-  const update = (id: string, patch: Partial<RiskItem>) =>
-    setItems((xs) => xs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  const update = (id: string, patch: Partial<RiskItem>) => setItems((xs) => xs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
   const addCustom = () => {
     const pillar: Pillar = pillarFilter === 'ALL' ? 'FINANCE' : pillarFilter;
@@ -208,10 +205,20 @@ export default function RedFlagMatrix({
     const id = `CUS-${String(n).padStart(2, '0')}-${Date.now().toString(36)}`;
     setItems((xs) => [
       {
-        id, code: `CUS-${String(n).padStart(2, '0')}`, pillar,
-        title: 'Egyedi kockázat', description: '',
-        identified: true, likelihood: 3, impact: 3, exposureHuf: 0, remediationDays: 5,
-        remediation: '', division: 'ADVISORY', serviceFeeHuf: 0, reasoning: '',
+        id,
+        code: `CUS-${String(n).padStart(2, '0')}`,
+        pillar,
+        title: 'Egyedi kockázat',
+        description: '',
+        identified: true,
+        likelihood: 3,
+        impact: 3,
+        exposureHuf: 0,
+        remediationDays: 5,
+        remediation: '',
+        division: 'ADVISORY',
+        serviceFeeHuf: 0,
+        reasoning: '',
       },
       ...xs,
     ]);
@@ -311,10 +318,18 @@ export default function RedFlagMatrix({
             aria-label="Átvilágítás típusa"
             className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700"
           >
-            {ENGAGEMENT_KIND_LIST.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+            {ENGAGEMENT_KIND_LIST.map((k) => (
+              <option key={k.kind} value={k.kind}>
+                {k.label}
+              </option>
+            ))}
           </select>
-          <ToolbarButton onClick={reset} icon={<RotateCcw className="h-4 w-4" />}>Alaphelyzet</ToolbarButton>
-          <ToolbarButton onClick={exportExcel} icon={<FileSpreadsheet className="h-4 w-4" />}>Excel</ToolbarButton>
+          <ToolbarButton onClick={reset} icon={<RotateCcw className="h-4 w-4" />}>
+            Alaphelyzet
+          </ToolbarButton>
+          <ToolbarButton onClick={exportExcel} icon={<FileSpreadsheet className="h-4 w-4" />}>
+            Excel
+          </ToolbarButton>
           {showPrint && (
             <ToolbarButton onClick={() => window.print()} icon={<Printer className="h-4 w-4" />}>
               Nyomtatás
@@ -344,7 +359,9 @@ export default function RedFlagMatrix({
                 <Download className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
                 <span>
                   <span className="block text-slate-800">Adatmentés (fejlesztőknek)</span>
-                  <span className="block text-xs text-slate-500">Gépi formátum (JSON) archiváláshoz, más rendszerbe töltéshez. Olvasásra az Excel vagy a PDF való.</span>
+                  <span className="block text-xs text-slate-500">
+                    Gépi formátum (JSON) archiváláshoz, más rendszerbe töltéshez. Olvasásra az Excel vagy a PDF való.
+                  </span>
                 </span>
               </button>
             </div>
@@ -365,8 +382,8 @@ export default function RedFlagMatrix({
         }}
       >
         Biztosan? A mátrixban végzett módosítások (pipálások, pontszámok, egyedi tételek, cégadatok) elvesznek.
-        {isDemoScenario(scenarioId) ? ' A bemutató minta kiinduló állapota tér vissza.' : ' A projekt üres katalógussal indul újra.'} Az
-        adatgyűjtés, az interjúk és az időkeret megmarad.
+        {isDemoScenario(scenarioId) ? ' A bemutató minta kiinduló állapota tér vissza.' : ' A projekt üres katalógussal indul újra.'} Az adatgyűjtés, az
+        interjúk és az időkeret megmarad.
       </ConfirmDialog>
 
       {confirmDialog}
@@ -377,13 +394,15 @@ export default function RedFlagMatrix({
           <ClipboardList className="mx-auto h-8 w-8 text-slate-500" aria-hidden />
           <h2 className="mt-2 text-lg font-semibold text-slate-900">Még nincs értékelés</h2>
           <p className="mx-auto mt-1 max-w-xl text-sm text-slate-600">
-            Egyetlen kockázat sincs bepipálva, ezért itt még nincs eredmény (se státusz, se Health Score). Kezdd az adatgyűjtéssel: a kérdőív, a
-            táblázatok és a dokumentumok javaslatokat adnak, amiket elfogadva a tételek ide kerülnek. Vagy pipáld be lent közvetlenül a talált
-            kockázatokat.
+            Egyetlen kockázat sincs bepipálva, ezért itt még nincs eredmény (se státusz, se Health Score). Kezdd az adatgyűjtéssel: a kérdőív, a táblázatok és a
+            dokumentumok javaslatokat adnak, amiket elfogadva a tételek ide kerülnek. Vagy pipáld be lent közvetlenül a talált kockázatokat.
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             {nav && (
-              <button onClick={() => nav.go('adatok')} className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
+              <button
+                onClick={() => nav.go('adatok')}
+                className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+              >
                 Adatgyűjtés indítása <ArrowRight className="h-4 w-4" />
               </button>
             )}
@@ -397,76 +416,84 @@ export default function RedFlagMatrix({
         </section>
       ) : (
         <>
-      {/* ── KPI sáv ─────────────────────────────────────────────── */}
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <Kpi label="Összesített státusz" term="status" icon={<ShieldAlert className="h-4 w-4" />}>
-          <span className="flex items-center gap-2">
-            <span className={`h-3 w-3 rounded-full ${RAG_STYLE[totals.rag].dot}`} aria-hidden />
-            {RAG_LABEL[totals.rag]}
-          </span>
-        </Kpi>
-        <Kpi label="Health Score" term="healthScore" icon={<Gauge className="h-4 w-4" />}>
-          {totals.healthScore}
-          <span className="text-base font-normal text-slate-500"> / 100</span>
-        </Kpi>
-        <Kpi label="Bruttó kitettség" term="grossExposure" icon={<Banknote className="h-4 w-4" />} hint={formatHuf(totals.grossExposureHuf)}>
-          {formatHufShort(totals.grossExposureHuf)}
-        </Kpi>
-        <Kpi label="Várható veszteség" term="expectedLoss" icon={<TrendingDown className="h-4 w-4" />}>
-          {formatHufShort(totals.expectedLossHuf)}
-        </Kpi>
-        <Kpi label="Azonosított tételek" icon={<Filter className="h-4 w-4" />} className="col-span-2 lg:col-span-1">
-          <span className="flex items-baseline gap-3">
-            {totals.identified}
-            <span className="flex gap-2 text-sm font-medium">
-              <span className="text-red-700">{totals.red} piros</span>
-              <span className="text-amber-700">{totals.amber} sárga</span>
-              <span className="text-emerald-700">{totals.green} zöld</span>
-            </span>
-          </span>
-        </Kpi>
-      </section>
+          {/* ── KPI sáv ─────────────────────────────────────────────── */}
+          <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <Kpi label="Összesített státusz" term="status" icon={<ShieldAlert className="h-4 w-4" />}>
+              <span className="flex items-center gap-2">
+                <span className={`h-3 w-3 rounded-full ${RAG_STYLE[totals.rag].dot}`} aria-hidden />
+                {RAG_LABEL[totals.rag]}
+              </span>
+            </Kpi>
+            <Kpi label="Health Score" term="healthScore" icon={<Gauge className="h-4 w-4" />}>
+              {totals.healthScore}
+              <span className="text-base font-normal text-slate-500"> / 100</span>
+            </Kpi>
+            <Kpi label="Bruttó kitettség" term="grossExposure" icon={<Banknote className="h-4 w-4" />} hint={formatHuf(totals.grossExposureHuf)}>
+              {formatHufShort(totals.grossExposureHuf)}
+            </Kpi>
+            <Kpi label="Várható veszteség" term="expectedLoss" icon={<TrendingDown className="h-4 w-4" />}>
+              {formatHufShort(totals.expectedLossHuf)}
+            </Kpi>
+            <Kpi label="Azonosított tételek" icon={<Filter className="h-4 w-4" />} className="col-span-2 lg:col-span-1">
+              <span className="flex items-baseline gap-3">
+                {totals.identified}
+                <span className="flex gap-2 text-sm font-medium">
+                  <span className="text-red-700">{totals.red} piros</span>
+                  <span className="text-amber-700">{totals.amber} sárga</span>
+                  <span className="text-emerald-700">{totals.green} zöld</span>
+                </span>
+              </span>
+            </Kpi>
+          </section>
 
-      {/* ── Pillérek + hőtérkép ─────────────────────────────────── */}
-      <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
-        <div className="grid grid-cols-2 content-start gap-3 md:grid-cols-4">
-          {PILLARS.map((p) => {
-            const s = pillars[p];
-            const active = pillarFilter === p;
-            return (
-              <button
-                key={p}
-                onClick={() => setPillarFilter(active ? 'ALL' : p)}
-                className={`rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-slate-300 ${
-                  active ? `ring-2 ${RAG_STYLE[s.rag].ring} border-transparent` : 'border-slate-200'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-600">
-                    {PILLAR_LABEL[p]}{' '}
-                    <span className="text-xs font-normal text-slate-500">· súly {Math.round(profile.weights[p] * 100)}%</span>
-                  </span>
-                  <span className="flex items-center gap-1 text-xs text-slate-600">
-                    <span className={`h-2.5 w-2.5 rounded-full ${RAG_STYLE[s.rag].dot}`} aria-hidden />
-                    {RAG_LABEL[s.rag]}
-                  </span>
-                </div>
-                <div className="mt-3 text-3xl font-semibold tabular-nums text-slate-900">{s.healthScore}</div>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                  <div className={`h-full ${RAG_STYLE[s.rag].dot}`} style={{ width: `${s.healthScore}%` }} />
-                </div>
-                <dl className="mt-3 space-y-1 text-xs text-slate-500">
-                  <div className="flex justify-between"><dt>Tételek</dt><dd className="tabular-nums text-slate-700">{s.identified}</dd></div>
-                  <div className="flex justify-between"><dt>Kitettség</dt><dd className="tabular-nums text-slate-700">{formatHufShort(s.grossExposureHuf)}</dd></div>
-                  <div className="flex justify-between"><dt>Várható</dt><dd className="tabular-nums text-slate-700">{formatHufShort(s.expectedLossHuf)}</dd></div>
-                </dl>
-              </button>
-            );
-          })}
-        </div>
+          {/* ── Pillérek + hőtérkép ─────────────────────────────────── */}
+          <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
+            <div className="grid grid-cols-2 content-start gap-3 md:grid-cols-4">
+              {PILLARS.map((p) => {
+                const s = pillars[p];
+                const active = pillarFilter === p;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setPillarFilter(active ? 'ALL' : p)}
+                    className={`rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-slate-300 ${
+                      active ? `ring-2 ${RAG_STYLE[s.rag].ring} border-transparent` : 'border-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-600">
+                        {PILLAR_LABEL[p]} <span className="text-xs font-normal text-slate-500">· súly {Math.round(profile.weights[p] * 100)}%</span>
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-slate-600">
+                        <span className={`h-2.5 w-2.5 rounded-full ${RAG_STYLE[s.rag].dot}`} aria-hidden />
+                        {RAG_LABEL[s.rag]}
+                      </span>
+                    </div>
+                    <div className="mt-3 text-3xl font-semibold tabular-nums text-slate-900">{s.healthScore}</div>
+                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div className={`h-full ${RAG_STYLE[s.rag].dot}`} style={{ width: `${s.healthScore}%` }} />
+                    </div>
+                    <dl className="mt-3 space-y-1 text-xs text-slate-500">
+                      <div className="flex justify-between">
+                        <dt>Tételek</dt>
+                        <dd className="tabular-nums text-slate-700">{s.identified}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt>Kitettség</dt>
+                        <dd className="tabular-nums text-slate-700">{formatHufShort(s.grossExposureHuf)}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt>Várható</dt>
+                        <dd className="tabular-nums text-slate-700">{formatHufShort(s.expectedLossHuf)}</dd>
+                      </div>
+                    </dl>
+                  </button>
+                );
+              })}
+            </div>
 
-        <HeatMap risks={result.risks} selected={cell} onSelect={setCell} />
-      </section>
+            <HeatMap risks={result.risks} selected={cell} onSelect={setCell} />
+          </section>
         </>
       )}
 
@@ -474,42 +501,42 @@ export default function RedFlagMatrix({
       {(kindExtras.length > 0 || sectorExtras.length > 0) && (
         <section aria-label="Javasolt további tételek" className="rounded-lg border border-indigo-100 bg-indigo-50/40 px-4 py-3 shadow-sm print:hidden">
           <p className="mb-2 text-xs text-slate-600">Egy kattintással a listába kerülnek (pipálatlanul); utána döntöd el, fennáll-e.</p>
-        {kindExtras.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 text-xs [&+&]:mt-2 [&+&]:border-t [&+&]:border-slate-100 [&+&]:pt-2">
-            <span className="font-medium text-slate-700">Ehhez az átvilágítás-típushoz érdemes megvizsgálni:</span>
-            {kindExtras.map((k) => (
+          {kindExtras.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 text-xs [&+&]:mt-2 [&+&]:border-t [&+&]:border-slate-100 [&+&]:pt-2">
+              <span className="font-medium text-slate-700">Ehhez az átvilágítás-típushoz érdemes megvizsgálni:</span>
+              {kindExtras.map((k) => (
+                <button
+                  key={k.code}
+                  onClick={() => addKindRisk(k.code)}
+                  title={k.description}
+                  className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-indigo-800 hover:bg-indigo-100"
+                >
+                  <Plus className="h-3 w-3" /> {k.title}
+                </button>
+              ))}
+            </div>
+          )}
+          {sectorExtras.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 text-xs [&+&]:mt-2 [&+&]:border-t [&+&]:border-slate-100 [&+&]:pt-2">
+              <span className="font-medium text-slate-700">Az ágazatban ({sectors.map((x) => SECTOR_LABEL[x]).join(', ')}) gyakori kockázatok:</span>
               <button
-                key={k.code}
-                onClick={() => addKindRisk(k.code)}
-                title={k.description}
-                className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-indigo-800 hover:bg-indigo-100"
+                onClick={() => setItems((xs) => [...xs, ...sectorExtras])}
+                className="rounded-full bg-indigo-700 px-2.5 py-0.5 font-medium text-white hover:bg-indigo-800"
               >
-                <Plus className="h-3 w-3" /> {k.title}
+                Mind a {sectorExtras.length} felvétele
               </button>
-            ))}
-          </div>
-        )}
-        {sectorExtras.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 text-xs [&+&]:mt-2 [&+&]:border-t [&+&]:border-slate-100 [&+&]:pt-2">
-            <span className="font-medium text-slate-700">Az ágazatban ({sectors.map((x) => SECTOR_LABEL[x]).join(', ')}) gyakori kockázatok:</span>
-            <button
-              onClick={() => setItems((xs) => [...xs, ...sectorExtras])}
-              className="rounded-full bg-indigo-700 px-2.5 py-0.5 font-medium text-white hover:bg-indigo-800"
-            >
-              Mind a {sectorExtras.length} felvétele
-            </button>
-            {sectorExtras.map((k) => (
-              <button
-                key={k.code}
-                onClick={() => setItems((xs) => [...xs, k])}
-                title={k.description}
-                className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-indigo-800 hover:bg-indigo-100"
-              >
-                <Plus className="h-3 w-3" /> {k.title}
-              </button>
-            ))}
-          </div>
-        )}
+              {sectorExtras.map((k) => (
+                <button
+                  key={k.code}
+                  onClick={() => setItems((xs) => [...xs, k])}
+                  title={k.description}
+                  className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-indigo-800 hover:bg-indigo-100"
+                >
+                  <Plus className="h-3 w-3" /> {k.title}
+                </button>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -529,59 +556,70 @@ export default function RedFlagMatrix({
             </span>
           ) : (
             <span className="text-xs text-slate-600">
-              Árbevétel {formatHufShort(company.revenueHuf)} · fedezet {Math.round(company.grossMarginPct * 100)}% · küszöb{' '}
-              {formatHufShort(materialityHuf)} · {profile.label}, {profile.hourBudget} óra
+              Árbevétel {formatHufShort(company.revenueHuf)} · fedezet {Math.round(company.grossMarginPct * 100)}% · küszöb {formatHufShort(materialityHuf)} ·{' '}
+              {profile.label}, {profile.hourBudget} óra
             </span>
           )}
           <ChevronDown className={`ml-auto h-4 w-4 text-slate-500 transition ${settingsOpen ? 'rotate-180' : ''}`} aria-hidden />
         </summary>
         <div className="space-y-3 border-t border-slate-200/70 px-4 pb-4 pt-3">
           <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
-        <Field label="Éves árbevétel (Ft)" term="revenue">
-          <HufInput value={company.revenueHuf} placeholder="pl. 800 000 000" onChange={(v) => setCompany((c) => ({ ...c, revenueHuf: v }))} className="w-40 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
-        </Field>
-        <Field label="Fedezeti hányad (%)" term="grossMargin">
-          <PercentInput value={company.grossMarginPct} onChange={(v) => setCompany((c) => ({ ...c, grossMarginPct: v }))} />
-        </Field>
-        <Field label="Fizetési idő: tényleges / iparági (nap)" term="dso">
-          <span className="flex items-center gap-1">
-            <NumberInput value={company.actualDsoDays} onChange={(v) => setCompany((c) => ({ ...c, actualDsoDays: v }))} />
-            <span className="text-slate-500">/</span>
-            <NumberInput value={company.industryDsoDays} onChange={(v) => setCompany((c) => ({ ...c, industryDsoDays: v }))} />
-          </span>
-        </Field>
-        <Field label="Lényegességi küszöb (Ft)" term="materiality">
-          <HufInput value={materialityHuf} onChange={setMaterialityHuf} className="w-36 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
-        </Field>
-        <p className="ml-auto max-w-xs self-center text-xs text-slate-600">A képletek kiinduló becslést adnak; tételenként felülírhatók.</p>
+            <Field label="Éves árbevétel (Ft)" term="revenue">
+              <HufInput
+                value={company.revenueHuf}
+                placeholder="pl. 800 000 000"
+                onChange={(v) => setCompany((c) => ({ ...c, revenueHuf: v }))}
+                className="w-40 rounded border border-slate-200 px-2 py-1 text-right tabular-nums"
+              />
+            </Field>
+            <Field label="Fedezeti hányad (%)" term="grossMargin">
+              <PercentInput value={company.grossMarginPct} onChange={(v) => setCompany((c) => ({ ...c, grossMarginPct: v }))} />
+            </Field>
+            <Field label="Fizetési idő: tényleges / iparági (nap)" term="dso">
+              <span className="flex items-center gap-1">
+                <NumberInput value={company.actualDsoDays} onChange={(v) => setCompany((c) => ({ ...c, actualDsoDays: v }))} />
+                <span className="text-slate-500">/</span>
+                <NumberInput value={company.industryDsoDays} onChange={(v) => setCompany((c) => ({ ...c, industryDsoDays: v }))} />
+              </span>
+            </Field>
+            <Field label="Lényegességi küszöb (Ft)" term="materiality">
+              <HufInput
+                value={materialityHuf}
+                onChange={setMaterialityHuf}
+                className="w-36 rounded border border-slate-200 px-2 py-1 text-right tabular-nums"
+              />
+            </Field>
+            <p className="ml-auto max-w-xs self-center text-xs text-slate-600">A képletek kiinduló becslést adnak; tételenként felülírhatók.</p>
           </div>
           <div className="rounded-md bg-white/70 text-sm">
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <span className="font-semibold text-slate-900">{profile.label}</span>
-          <span className="text-slate-500">Címzett: {profile.audience}</span>
-          <span className="text-slate-500">{profile.purpose}</span>
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-slate-500">Keret: <b className="text-slate-800">{profile.hourBudget} óra</b></span>
-          {hourSplit(kind).map((h) => (
-            <span key={h.pillar} className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">
-              {PILLAR_LABEL[h.pillar]} {h.hours} óra · súly {Math.round(profile.weights[h.pillar] * 100)}%
-            </span>
-          ))}
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">Projektvezetés {PM_HOURS} óra</span>
-          <InfoTip term="weight" label="súly" />
-        </div>
-        <p className="mt-2 text-xs text-slate-600">
-          <span className="font-medium text-slate-700">Kiemelt tételek</span> <InfoTip term="focus" label="kiemelt tételek" />:{' '}
-          {profile.focusRiskCodes.map((c) => templateFor(c)?.title ?? c).join(' · ')}
-        </p>
-        <p className="mt-1 text-xs text-violet-800">
-          {adjustedCount > 0
-            ? `Az átvilágítás célja miatt ${adjustedCount} bepipált tétel súlyosabbnak vagy enyhébbnek számít`
-            : 'Az átvilágítás célja most egyik bepipált tétel súlyát sem módosítja'}
-          {!KIND_ADJUSTMENTS_STATUS.approved && ' (kezdő javaslat, szakértői jóváhagyásra vár)'}.{' '}
-          <InfoTip term="kindAdjustment" label="típusfüggő korrekció" />
-        </p>
+            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <span className="font-semibold text-slate-900">{profile.label}</span>
+              <span className="text-slate-500">Címzett: {profile.audience}</span>
+              <span className="text-slate-500">{profile.purpose}</span>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-slate-500">
+                Keret: <b className="text-slate-800">{profile.hourBudget} óra</b>
+              </span>
+              {hourSplit(kind).map((h) => (
+                <span key={h.pillar} className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">
+                  {PILLAR_LABEL[h.pillar]} {h.hours} óra · súly {Math.round(profile.weights[h.pillar] * 100)}%
+                </span>
+              ))}
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">Projektvezetés {PM_HOURS} óra</span>
+              <InfoTip term="weight" label="súly" />
+            </div>
+            <p className="mt-2 text-xs text-slate-600">
+              <span className="font-medium text-slate-700">Kiemelt tételek</span> <InfoTip term="focus" label="kiemelt tételek" />:{' '}
+              {profile.focusRiskCodes.map((c) => templateFor(c)?.title ?? c).join(' · ')}
+            </p>
+            <p className="mt-1 text-xs text-violet-800">
+              {adjustedCount > 0
+                ? `Az átvilágítás célja miatt ${adjustedCount} bepipált tétel súlyosabbnak vagy enyhébbnek számít`
+                : 'Az átvilágítás célja most egyik bepipált tétel súlyát sem módosítja'}
+              {!KIND_ADJUSTMENTS_STATUS.approved && ' (kezdő javaslat, szakértői jóváhagyásra vár)'}.{' '}
+              <InfoTip term="kindAdjustment" label="típusfüggő korrekció" />
+            </p>
           </div>
         </div>
       </details>
@@ -632,8 +670,12 @@ export default function RedFlagMatrix({
               <tr>
                 <th className="w-16 px-3 py-2" />
                 <th className="px-3 py-2">Kockázat</th>
-                <th className="px-2 py-2 text-center" title="Valószínűség 1–5">Valósz.</th>
-                <th className="px-2 py-2 text-center" title="Hatás 1–5">Hatás</th>
+                <th className="px-2 py-2 text-center" title="Valószínűség 1–5">
+                  Valósz.
+                </th>
+                <th className="px-2 py-2 text-center" title="Hatás 1–5">
+                  Hatás
+                </th>
                 <th className="px-2 py-2 text-center">
                   Pont <InfoTip term="score" label="pontszám" />
                 </th>
@@ -673,7 +715,9 @@ export default function RedFlagMatrix({
               ))}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-10 text-center text-slate-500">Nincs a szűrésnek megfelelő tétel.</td>
+                  <td colSpan={10} className="px-3 py-10 text-center text-slate-500">
+                    Nincs a szűrésnek megfelelő tétel.
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -726,7 +770,9 @@ export default function RedFlagMatrix({
       {modules.isOn('WHATIF') && <WhatIfPanel key={projectId} items={items} opts={engineOpts} result={result} />}
 
       {/* ── Várható vevői kérdések ───────────────────────────────── */}
-      {modules.isOn('BUYER_QUESTIONS') && <BuyerQuestionsPanel companyName={companyName} result={result} highlighted={kind === 'VENDOR_DD' || kind === 'BUY_SIDE_DD'} />}
+      {modules.isOn('BUYER_QUESTIONS') && (
+        <BuyerQuestionsPanel companyName={companyName} result={result} highlighted={kind === 'VENDOR_DD' || kind === 'BUY_SIDE_DD'} />
+      )}
 
       {/* ── Utókövetés ─────────────────────────────────────────── */}
       {modules.isOn('FOLLOWUP') && (
@@ -765,9 +811,18 @@ export default function RedFlagMatrix({
         <div className="rounded-lg border border-slate-200 bg-slate-900 p-4 text-white shadow-sm">
           <h3 className="text-sm font-medium text-slate-300">Beszámítási egyenleg</h3>
           <dl className="mt-3 space-y-2 text-sm">
-            <div className="flex justify-between"><dt className="text-slate-500">Javasolt remediáció</dt><dd className="tabular-nums">{formatHuf(pipeline.totalFeeHuf)}</dd></div>
-            <div className="flex justify-between"><dt className="text-slate-500">Audit díj kredit (100%)</dt><dd className="tabular-nums text-emerald-400">− {formatHuf(pipeline.creditHuf)}</dd></div>
-            <div className="flex justify-between border-t border-slate-700 pt-2 text-base font-semibold"><dt>Nettó ügyfélnek</dt><dd className="tabular-nums">{formatHuf(pipeline.netAfterCreditHuf)}</dd></div>
+            <div className="flex justify-between">
+              <dt className="text-slate-500">Javasolt remediáció</dt>
+              <dd className="tabular-nums">{formatHuf(pipeline.totalFeeHuf)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-slate-500">Audit díj kredit (100%)</dt>
+              <dd className="tabular-nums text-emerald-400">− {formatHuf(pipeline.creditHuf)}</dd>
+            </div>
+            <div className="flex justify-between border-t border-slate-700 pt-2 text-base font-semibold">
+              <dt>Nettó ügyfélnek</dt>
+              <dd className="tabular-nums">{formatHuf(pipeline.netAfterCreditHuf)}</dd>
+            </div>
           </dl>
           <p className="mt-3 text-xs text-slate-500">
             Csak sárga és piros tételekből képződik lead. A kredit a befizetett {formatHufShort(AUDIT_FEE_HUF)} audit díjig számolható el.
@@ -806,185 +861,196 @@ function RiskRow({
   const score = eff.score;
   const exposure = resolveExposure(r, company);
   const hasFormula = Boolean(r.valuation && r.valuation.formula.type !== 'MANUAL');
-  const setExposure = (v: number) =>
-    hasFormula ? onChange({ valuation: { ...r.valuation!, overrideHuf: v } }) : onChange({ exposureHuf: v });
+  const setExposure = (v: number) => (hasFormula ? onChange({ valuation: { ...r.valuation!, overrideHuf: v } }) : onChange({ exposureHuf: v }));
   // A nem azonosított sorokon is mutatjuk, milyen besorolást kapna – halványan.
   const rag: Rag = eff.rag;
   const isCustom = r.id.startsWith('CUS-');
 
   return (
     <Fragment>
-    <tr className={r.identified ? 'bg-white' : 'bg-white text-slate-500'}>
-      <td className="px-3 py-2 align-top">
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onToggleExpand}
-            aria-label={expanded ? 'Részletek bezárása' : 'Indoklás és képlet'}
-            aria-expanded={expanded}
-            className="mt-0.5 text-slate-500 hover:text-slate-900"
-          >
-            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          <button
-            onClick={() => onChange({ identified: !r.identified })}
-            aria-label={r.identified ? 'Kockázat kivétele' : 'Kockázat azonosítva'}
-            className="mt-0.5 text-slate-700 hover:text-slate-900"
-          >
-            {r.identified ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5 text-slate-300" />}
-          </button>
-        </div>
-      </td>
-      <td className="max-w-[420px] px-3 py-2 align-top">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-slate-500">{r.code}</span>
-          {isCustom ? (
-            <select
-              value={r.pillar}
-              onChange={(e) => onChange({ pillar: e.target.value as Pillar })}
-              className="rounded border border-slate-200 bg-transparent text-xs"
-            >
-              {PILLARS.map((p) => <option key={p} value={p}>{PILLAR_LABEL[p]}</option>)}
-            </select>
-          ) : (
-            <span className="text-xs text-slate-500">{PILLAR_LABEL[r.pillar]}</span>
-          )}
-          {focus && (
-            <span className="rounded bg-slate-900 px-1.5 text-xs font-medium text-white" title="Ennél az átvilágítás-típusnál mindig érdemes megvizsgálni">
-              Kiemelt
-            </span>
-          )}
-          {r.source && SOURCE_LABEL[r.source] && (
-            <span
-              className="rounded bg-indigo-50 px-1.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/20"
-              title={r.evidence}
-            >
-              {SOURCE_LABEL[r.source]}
-            </span>
-          )}
-        </div>
-        {isCustom ? (
-          <>
-            <input value={r.title} onChange={(e) => onChange({ title: e.target.value })} className="mt-0.5 w-full rounded border border-slate-200 px-1.5 py-0.5 font-medium text-slate-900" />
-            <input value={r.remediation} onChange={(e) => onChange({ remediation: e.target.value })} placeholder="Javasolt intézkedés…" className="mt-1 w-full rounded border border-slate-200 px-1.5 py-0.5 text-xs" />
-            {r.evidence && <p className="mt-1 text-xs italic text-slate-500">{r.evidence}</p>}
-          </>
-        ) : (
-          <>
-            <p className={`font-medium ${r.identified ? 'text-slate-900' : ''}`}>{r.title}</p>
-            <p className="text-xs text-slate-500">{r.description}</p>
-            {r.evidence && <p className="mt-1 text-xs italic text-indigo-700">{r.evidence}</p>}
-          </>
-        )}
-      </td>
-      <td className="px-2 py-2 text-center align-top">
-        <ScaleSelect value={r.likelihood} onChange={(v) => onChange({ likelihood: v })} />
-      </td>
-      <td className="px-2 py-2 text-center align-top">
-        <ScaleSelect value={r.impact} onChange={(v) => onChange({ impact: v })} />
-      </td>
-      <td className="px-2 py-2 text-center align-top">
-        <span
-          className={`inline-flex min-w-[64px] items-center justify-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
-            r.identified ? RAG_STYLE[rag].badge : 'bg-slate-50 text-slate-500 ring-slate-200'
-          }`}
-          title={eff.materialityOverride ? 'A várható veszteség eléri a lényegességi küszöböt' : undefined}
-        >
-          {score} · {RAG_LABEL[rag]}
-        </span>
-        {eff.adjustment && (
-          <button
-            onClick={onToggleExpand}
-            title={`Típus-korrekció: ${eff.adjustment.reason}`}
-            className="mt-1 block w-full text-xs font-medium text-violet-700 hover:underline"
-          >
-            a cél miatt {describeAdjustment(eff.adjustment)} → {eff.likelihood} × {eff.impact}
-          </button>
-        )}
-      </td>
-      <td className="px-2 py-2 text-right align-top">
-        <HufInput value={exposure.valueHuf} onChange={setExposure} className="w-36 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
-        <div className="mt-0.5 flex justify-end gap-1 text-xs" title={exposure.explanation}>
-          {exposure.source === 'FORMULA' && (
-            <button onClick={onToggleExpand} className="inline-flex items-center gap-0.5 text-sky-700 hover:underline">
-              <Calculator className="h-3 w-3" /> képlet{exposure.unapprovedParameter && ' · jóváhagyandó'}
-            </button>
-          )}
-          {exposure.source === 'OVERRIDE' && (
+      <tr className={r.identified ? 'bg-white' : 'bg-white text-slate-500'}>
+        <td className="px-3 py-2 align-top">
+          <div className="flex items-center gap-1">
             <button
-              onClick={() => onChange({ valuation: { ...r.valuation!, overrideHuf: null } })}
-              className="inline-flex items-center gap-0.5 text-amber-700 hover:underline"
-              title={`${exposure.explanation} – kattintásra vissza a képletre`}
+              onClick={onToggleExpand}
+              aria-label={expanded ? 'Részletek bezárása' : 'Indoklás és képlet'}
+              aria-expanded={expanded}
+              className="mt-0.5 text-slate-500 hover:text-slate-900"
             >
-              <Pencil className="h-3 w-3" /> felülírva · visszaállít
+              {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+            <button
+              onClick={() => onChange({ identified: !r.identified })}
+              aria-label={r.identified ? 'Kockázat kivétele' : 'Kockázat azonosítva'}
+              className="mt-0.5 text-slate-700 hover:text-slate-900"
+            >
+              {r.identified ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5 text-slate-300" />}
+            </button>
+          </div>
+        </td>
+        <td className="max-w-[420px] px-3 py-2 align-top">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs text-slate-500">{r.code}</span>
+            {isCustom ? (
+              <select
+                value={r.pillar}
+                onChange={(e) => onChange({ pillar: e.target.value as Pillar })}
+                className="rounded border border-slate-200 bg-transparent text-xs"
+              >
+                {PILLARS.map((p) => (
+                  <option key={p} value={p}>
+                    {PILLAR_LABEL[p]}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="text-xs text-slate-500">{PILLAR_LABEL[r.pillar]}</span>
+            )}
+            {focus && (
+              <span className="rounded bg-slate-900 px-1.5 text-xs font-medium text-white" title="Ennél az átvilágítás-típusnál mindig érdemes megvizsgálni">
+                Kiemelt
+              </span>
+            )}
+            {r.source && SOURCE_LABEL[r.source] && (
+              <span className="rounded bg-indigo-50 px-1.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/20" title={r.evidence}>
+                {SOURCE_LABEL[r.source]}
+              </span>
+            )}
+          </div>
+          {isCustom ? (
+            <>
+              <input
+                value={r.title}
+                onChange={(e) => onChange({ title: e.target.value })}
+                className="mt-0.5 w-full rounded border border-slate-200 px-1.5 py-0.5 font-medium text-slate-900"
+              />
+              <input
+                value={r.remediation}
+                onChange={(e) => onChange({ remediation: e.target.value })}
+                placeholder="Javasolt intézkedés…"
+                className="mt-1 w-full rounded border border-slate-200 px-1.5 py-0.5 text-xs"
+              />
+              {r.evidence && <p className="mt-1 text-xs italic text-slate-500">{r.evidence}</p>}
+            </>
+          ) : (
+            <>
+              <p className={`font-medium ${r.identified ? 'text-slate-900' : ''}`}>{r.title}</p>
+              <p className="text-xs text-slate-500">{r.description}</p>
+              {r.evidence && <p className="mt-1 text-xs italic text-indigo-700">{r.evidence}</p>}
+            </>
+          )}
+        </td>
+        <td className="px-2 py-2 text-center align-top">
+          <ScaleSelect value={r.likelihood} onChange={(v) => onChange({ likelihood: v })} />
+        </td>
+        <td className="px-2 py-2 text-center align-top">
+          <ScaleSelect value={r.impact} onChange={(v) => onChange({ impact: v })} />
+        </td>
+        <td className="px-2 py-2 text-center align-top">
+          <span
+            className={`inline-flex min-w-[64px] items-center justify-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
+              r.identified ? RAG_STYLE[rag].badge : 'bg-slate-50 text-slate-500 ring-slate-200'
+            }`}
+            title={eff.materialityOverride ? 'A várható veszteség eléri a lényegességi küszöböt' : undefined}
+          >
+            {score} · {RAG_LABEL[rag]}
+          </span>
+          {eff.adjustment && (
+            <button
+              onClick={onToggleExpand}
+              title={`Típus-korrekció: ${eff.adjustment.reason}`}
+              className="mt-1 block w-full text-xs font-medium text-violet-700 hover:underline"
+            >
+              a cél miatt {describeAdjustment(eff.adjustment)} → {eff.likelihood} × {eff.impact}
             </button>
           )}
-        </div>
-      </td>
-      <td className="px-2 py-2 text-right align-top tabular-nums">{scored ? formatHufShort(scored.expectedLossHuf) : '—'}</td>
-      <td className="px-2 py-2 text-center align-top">
-        <input
-          type="number"
-          min={0}
-          value={r.remediationDays}
-          onChange={(e) => onChange({ remediationDays: Math.max(0, Number(e.target.value) || 0) })}
-          className="w-16 rounded border border-slate-200 px-1.5 py-1 text-center tabular-nums"
-        />
-        {scored?.quickWin && <Zap className="mx-auto mt-1 h-3.5 w-3.5 text-indigo-600" aria-label="Quick win" />}
-      </td>
-      <td className="px-2 py-2 align-top">
-        <select
-          value={r.division}
-          onChange={(e) => onChange({ division: e.target.value as Division })}
-          className="w-full rounded border border-slate-200 bg-white px-1.5 py-1 text-xs"
-        >
-          {DIVISIONS.map((d) => <option key={d} value={d}>{DIVISION_LABEL[d]}</option>)}
-        </select>
-        <HufInput value={r.serviceFeeHuf} onChange={(v) => onChange({ serviceFeeHuf: v })} className="mt-1 w-full rounded border border-slate-200 px-1.5 py-0.5 text-right text-xs tabular-nums" />
-      </td>
-      <td className="px-2 py-2 align-top">
-        {onDelete && (
-          <button onClick={onDelete} aria-label="Törlés" className="text-slate-300 hover:text-red-600">
-            <Trash2 className="h-4 w-4" />
-          </button>
-        )}
-      </td>
-    </tr>
-    {expanded && (
-      <tr className="bg-slate-50/70">
-        <td />
-        <td colSpan={9} className="px-3 pb-4 pt-1">
-          {kindAdjustment && (
-            <label className="mb-3 flex items-start gap-2 rounded-md bg-violet-50 p-2 text-xs text-violet-900">
-              <input
-                type="checkbox"
-                checked={!r.ignoreKindAdjustment}
-                onChange={(e) => onChange({ ignoreKindAdjustment: !e.target.checked })}
-                className="mt-0.5 accent-violet-700"
-              />
-              <span>
-                <b>Típus-korrekció ({formatAdjustment(kindAdjustment)}):</b> {kindAdjustment.reason}{' '}
-                <span className="text-violet-700">A megadott értékek: V{r.likelihood} × H{r.impact}.</span>
-              </span>
-            </label>
+        </td>
+        <td className="px-2 py-2 text-right align-top">
+          <HufInput value={exposure.valueHuf} onChange={setExposure} className="w-36 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
+          <div className="mt-0.5 flex justify-end gap-1 text-xs" title={exposure.explanation}>
+            {exposure.source === 'FORMULA' && (
+              <button onClick={onToggleExpand} className="inline-flex items-center gap-0.5 text-sky-700 hover:underline">
+                <Calculator className="h-3 w-3" /> képlet{exposure.unapprovedParameter && ' · jóváhagyandó'}
+              </button>
+            )}
+            {exposure.source === 'OVERRIDE' && (
+              <button
+                onClick={() => onChange({ valuation: { ...r.valuation!, overrideHuf: null } })}
+                className="inline-flex items-center gap-0.5 text-amber-700 hover:underline"
+                title={`${exposure.explanation} – kattintásra vissza a képletre`}
+              >
+                <Pencil className="h-3 w-3" /> felülírva · visszaállít
+              </button>
+            )}
+          </div>
+        </td>
+        <td className="px-2 py-2 text-right align-top tabular-nums">{scored ? formatHufShort(scored.expectedLossHuf) : '—'}</td>
+        <td className="px-2 py-2 text-center align-top">
+          <input
+            type="number"
+            min={0}
+            value={r.remediationDays}
+            onChange={(e) => onChange({ remediationDays: Math.max(0, Number(e.target.value) || 0) })}
+            className="w-16 rounded border border-slate-200 px-1.5 py-1 text-center tabular-nums"
+          />
+          {scored?.quickWin && <Zap className="mx-auto mt-1 h-3.5 w-3.5 text-indigo-600" aria-label="Quick win" />}
+        </td>
+        <td className="px-2 py-2 align-top">
+          <select
+            value={r.division}
+            onChange={(e) => onChange({ division: e.target.value as Division })}
+            className="w-full rounded border border-slate-200 bg-white px-1.5 py-1 text-xs"
+          >
+            {DIVISIONS.map((d) => (
+              <option key={d} value={d}>
+                {DIVISION_LABEL[d]}
+              </option>
+            ))}
+          </select>
+          <HufInput
+            value={r.serviceFeeHuf}
+            onChange={(v) => onChange({ serviceFeeHuf: v })}
+            className="mt-1 w-full rounded border border-slate-200 px-1.5 py-0.5 text-right text-xs tabular-nums"
+          />
+        </td>
+        <td className="px-2 py-2 align-top">
+          {onDelete && (
+            <button onClick={onDelete} aria-label="Törlés" className="text-slate-300 hover:text-red-600">
+              <Trash2 className="h-4 w-4" />
+            </button>
           )}
-          <RiskDetails risk={r} company={company} onChange={onChange} />
         </td>
       </tr>
-    )}
+      {expanded && (
+        <tr className="bg-slate-50/70">
+          <td />
+          <td colSpan={9} className="px-3 pb-4 pt-1">
+            {kindAdjustment && (
+              <label className="mb-3 flex items-start gap-2 rounded-md bg-violet-50 p-2 text-xs text-violet-900">
+                <input
+                  type="checkbox"
+                  checked={!r.ignoreKindAdjustment}
+                  onChange={(e) => onChange({ ignoreKindAdjustment: !e.target.checked })}
+                  className="mt-0.5 accent-violet-700"
+                />
+                <span>
+                  <b>Típus-korrekció ({formatAdjustment(kindAdjustment)}):</b> {kindAdjustment.reason}{' '}
+                  <span className="text-violet-700">
+                    A megadott értékek: V{r.likelihood} × H{r.impact}.
+                  </span>
+                </span>
+              </label>
+            )}
+            <RiskDetails risk={r} company={company} onChange={onChange} />
+          </td>
+        </tr>
+      )}
     </Fragment>
   );
 }
 
 /** Lenyitott sor: indoklás (előtöltve), forintosító képlet paraméterei, javaslat. */
-function RiskDetails({
-  risk: r,
-  company,
-  onChange,
-}: {
-  risk: RiskItem;
-  company: CompanyProfile;
-  onChange: (patch: Partial<RiskItem>) => void;
-}) {
+function RiskDetails({ risk: r, company, onChange }: { risk: RiskItem; company: CompanyProfile; onChange: (patch: Partial<RiskItem>) => void }) {
   const def = catalogDefault(r.code);
   const formula = r.valuation?.formula;
   const setFormula = (f: Formula) => onChange({ valuation: { formula: f, overrideHuf: r.valuation?.overrideHuf ?? null } });
@@ -1044,7 +1110,12 @@ function RiskDetails({
               <PercentInput value={formula.share} onChange={(v) => setFormula({ ...formula, share: v })} />
             </Field>
             <label className="flex items-center gap-2 text-xs text-slate-600">
-              <input type="checkbox" checked={formula.marginBased} onChange={(e) => setFormula({ ...formula, marginBased: e.target.checked })} className="accent-slate-900" />
+              <input
+                type="checkbox"
+                checked={formula.marginBased}
+                onChange={(e) => setFormula({ ...formula, marginBased: e.target.checked })}
+                className="accent-slate-900"
+              />
               Veszteség = elmaradó fedezet (nem a teljes árbevétel)
             </label>
           </div>
@@ -1055,16 +1126,16 @@ function RiskDetails({
               <NumberInput value={formula.count} onChange={(v) => setFormula({ ...formula, count: v })} />
             </Field>
             <Field label="Tételösszeg (Ft)">
-              <HufInput value={formula.unitAmountHuf} onChange={(v) => setFormula({ ...formula, unitAmountHuf: v })} className="w-32 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
+              <HufInput
+                value={formula.unitAmountHuf}
+                onChange={(v) => setFormula({ ...formula, unitAmountHuf: v })}
+                className="w-32 rounded border border-slate-200 px-2 py-1 text-right tabular-nums"
+              />
             </Field>
           </div>
         )}
-        {formula?.type === 'DSO_GAP' && (
-          <p className="text-xs text-slate-500">A cégadatok DSO-értékeiből számol (fent).</p>
-        )}
-        {(!formula || formula.type === 'MANUAL') && (
-          <p className="text-xs text-slate-500">A kitettség a táblázatban kézzel adható meg.</p>
-        )}
+        {formula?.type === 'DSO_GAP' && <p className="text-xs text-slate-500">A cégadatok DSO-értékeiből számol (fent).</p>}
+        {(!formula || formula.type === 'MANUAL') && <p className="text-xs text-slate-500">A kitettség a táblázatban kézzel adható meg.</p>}
 
         {computed && computed.valueHuf != null && (
           <div className="mt-3 rounded bg-slate-50 p-2 text-xs text-slate-600">
@@ -1072,13 +1143,10 @@ function RiskDetails({
             <div className="mt-0.5">{computed.explanation}</div>
             {computed.unapprovedParameter && formula?.type === 'PER_ITEM' && formula.paramKey && (
               <div className="mt-1 text-amber-700">
-                ⚠ Nem jóváhagyott paraméter ({EXPERT_PARAMETERS[formula.paramKey].owner}):{' '}
-                {EXPERT_PARAMETERS[formula.paramKey].note}
+                ⚠ Nem jóváhagyott paraméter ({EXPERT_PARAMETERS[formula.paramKey].owner}): {EXPERT_PARAMETERS[formula.paramKey].note}
               </div>
             )}
-            {r.valuation?.overrideHuf != null && (
-              <div className="mt-1 text-amber-700">Felülírva: {formatHuf(r.valuation.overrideHuf)}</div>
-            )}
+            {r.valuation?.overrideHuf != null && <div className="mt-1 text-amber-700">Felülírva: {formatHuf(r.valuation.overrideHuf)}</div>}
           </div>
         )}
       </div>
@@ -1163,7 +1231,9 @@ function HeatMap({
         <span className="rotate-180 self-center text-xs text-slate-500 [writing-mode:vertical-rl]">Valószínűség →</span>
         <div className="grid grid-rows-5 gap-1 pb-9 text-xs text-slate-500">
           {[...SCALE].reverse().map((l) => (
-            <span key={l} className="flex items-center">{l}</span>
+            <span key={l} className="flex items-center">
+              {l}
+            </span>
           ))}
         </div>
         <div className="flex-1">
@@ -1190,7 +1260,9 @@ function HeatMap({
             )}
           </div>
           <div className="mt-1 grid grid-cols-5 text-center text-xs text-slate-500">
-            {SCALE.map((i) => <span key={i}>{i}</span>)}
+            {SCALE.map((i) => (
+              <span key={i}>{i}</span>
+            ))}
           </div>
           <p className="text-center text-xs text-slate-500">Hatás →</p>
         </div>
@@ -1206,13 +1278,27 @@ function ScaleSelect({ value, onChange }: { value: Scale5; onChange: (v: Scale5)
       onChange={(e) => onChange(Number(e.target.value) as Scale5)}
       className="rounded border border-slate-200 bg-white px-1.5 py-1 tabular-nums"
     >
-      {SCALE.map((n) => <option key={n} value={n}>{n}</option>)}
+      {SCALE.map((n) => (
+        <option key={n} value={n}>
+          {n}
+        </option>
+      ))}
     </select>
   );
 }
 
 /** Forint mező: fókuszban nyers szám, egyébként ezres tagolással. */
-function HufInput({ value, onChange, className = '', placeholder }: { value: number; onChange: (v: number) => void; className?: string; placeholder?: string }) {
+function HufInput({
+  value,
+  onChange,
+  className = '',
+  placeholder,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  className?: string;
+  placeholder?: string;
+}) {
   const [draft, setDraft] = useState<string | null>(null);
   return (
     <input
@@ -1258,17 +1344,7 @@ function Kpi({
   );
 }
 
-function ToolbarButton({
-  onClick,
-  icon,
-  primary,
-  children,
-}: {
-  onClick: () => void;
-  icon: ReactNode;
-  primary?: boolean;
-  children: ReactNode;
-}) {
+function ToolbarButton({ onClick, icon, primary, children }: { onClick: () => void; icon: ReactNode; primary?: boolean; children: ReactNode }) {
   return (
     <button
       onClick={onClick}

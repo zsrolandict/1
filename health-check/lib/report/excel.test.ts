@@ -15,7 +15,14 @@ const assessment = assess(sc.items, {
   adjustments: adjustmentsFor(sc.kind),
   pillarWeights: ENGAGEMENT_KINDS[sc.kind].weights,
 });
-const input = { companyName: sc.companyName, kind: sc.kind, company: sc.company, materialityHuf: sc.materialityHuf, assessment, generatedAt: '2026-09-28T10:00:00Z' };
+const input = {
+  companyName: sc.companyName,
+  kind: sc.kind,
+  company: sc.company,
+  materialityHuf: sc.materialityHuf,
+  assessment,
+  generatedAt: '2026-09-28T10:00:00Z',
+};
 
 /** Az n. munkalap beolvasása a saját XLSX-olvasóval (az csak az elsőt olvassa, ezért átcsomagoljuk). */
 function readSheet(bytes: Uint8Array, n: number) {
@@ -55,7 +62,9 @@ describe('Excel-export', () => {
   });
 
   it('különleges karakterek és hosszú munkalapnév biztonságosan', () => {
-    const bytes = writeXlsx([{ name: 'Nagyon hosszú munkalapnév: [próba] / 2026 szeptember', columns: [{ header: 'A&B <x>' }], rows: [['„idézet” & <tag> \u0007']] }]);
+    const bytes = writeXlsx([
+      { name: 'Nagyon hosszú munkalapnév: [próba] / 2026 szeptember', columns: [{ header: 'A&B <x>' }], rows: [['„idézet” & <tag> \u0007']] },
+    ]);
     const files = unzipSync(bytes);
     expect(strFromU8(files['xl/workbook.xml'])).toMatch(/name="[^"]{1,31}"/);
     expect(readSheet(bytes, 1)).toEqual([['A&B <x>'], ['„idézet” & <tag> ']]);

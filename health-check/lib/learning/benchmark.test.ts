@@ -11,7 +11,14 @@ const opts = { company: sc.company, materialityHuf: sc.materialityHuf, adjustmen
 describe('tudástár', () => {
   it('az anonim rekordban nincs cégnév, bizonyíték, összeg, egyedi tételcím', () => {
     const items = [
-      { ...sc.items[0], id: 'CUS-01-x', code: 'CUS-01', title: 'Példa Erzsébet kulcsszerepe', identified: true, evidence: 'Példa Könyvelő Iroda Kft. szerződés' },
+      {
+        ...sc.items[0],
+        id: 'CUS-01-x',
+        code: 'CUS-01',
+        title: 'Példa Erzsébet kulcsszerepe',
+        identified: true,
+        evidence: 'Példa Könyvelő Iroda Kft. szerződés',
+      },
       ...sc.items,
     ];
     const rec = anonymize(assess(items, opts), { ref: 'p1', kind: sc.kind, sectors: ['ACCOUNTING'], revenueHuf: sc.company.revenueHuf });
@@ -45,7 +52,16 @@ describe('tudástár', () => {
 
   it('kalibrálási javaslat, ha a tapasztalt átlag legalább 1 ponttal eltér', () => {
     const mk = (id: string, L: number): BenchmarkRecord => ({
-      id, ref: id, closedAt: '2026-01-01', kind: 'HEALTH_CHECK', sectors: [], revenueBand: 'S', healthScore: 70, red: 1, amber: 0, source: 'PROJECT',
+      id,
+      ref: id,
+      closedAt: '2026-01-01',
+      kind: 'HEALTH_CHECK',
+      sectors: [],
+      revenueBand: 'S',
+      healthScore: 70,
+      red: 1,
+      amber: 0,
+      source: 'PROJECT',
       items: [{ code: 'FIN-01', pillar: 'FINANCE', title: 'x', likelihood: L, impact: 1, rag: 'RED' }],
     });
     const s = stats([mk('a', 1), mk('b', 1), mk('c', 1)]);

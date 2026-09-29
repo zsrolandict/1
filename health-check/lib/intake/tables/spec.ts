@@ -25,7 +25,9 @@ export interface TableSpec {
 }
 
 const PARTNER = (extra: string[]): ColumnSpec => ({
-  key: 'partner', label: 'Partner neve', required: true,
+  key: 'partner',
+  label: 'Partner neve',
+  required: true,
   synonyms: [...extra, 'partner', 'nev', 'megnevezes'],
 });
 

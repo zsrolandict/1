@@ -4,9 +4,19 @@ import { DEFAULT_CATALOG } from './catalog';
 import type { RiskItem } from './types';
 
 const base: RiskItem = {
-  id: 'T-1', code: 'T-1', pillar: 'LEGAL', title: 't', description: '',
-  identified: true, likelihood: 3, impact: 3, exposureHuf: 1_000_000, remediationDays: 10,
-  remediation: '', division: 'LEGAL', serviceFeeHuf: 500_000,
+  id: 'T-1',
+  code: 'T-1',
+  pillar: 'LEGAL',
+  title: 't',
+  description: '',
+  identified: true,
+  likelihood: 3,
+  impact: 3,
+  exposureHuf: 1_000_000,
+  remediationDays: 10,
+  remediation: '',
+  division: 'LEGAL',
+  serviceFeeHuf: 500_000,
 };
 
 describe('ragFromScore', () => {

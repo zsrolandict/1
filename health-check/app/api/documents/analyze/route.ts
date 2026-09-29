@@ -35,9 +35,7 @@ export async function POST(req: Request) {
   }
   try {
     const extracted = await extractDocument(file.name, new Uint8Array(await file.arrayBuffer()));
-    return NextResponse.json(
-      await analyzeExtracted(parseStructured, extracted, kind.data, { maxChars: MAX_DOCUMENT_CHARS, maxPages: MAX_PAGES }),
-    );
+    return NextResponse.json(await analyzeExtracted(parseStructured, extracted, kind.data, { maxChars: MAX_DOCUMENT_CHARS, maxPages: MAX_PAGES }));
   } catch (err) {
     return errorResponse(err);
   }

@@ -34,10 +34,7 @@ export class AiServiceError extends Error {
 
 export class GeminiBlockedError extends Error {}
 
-export type GeminiPart =
-  | { text: string }
-  | { inline_data: { mime_type: string; data: string } }
-  | { file_data: { mime_type: string; file_uri: string } };
+export type GeminiPart = { text: string } | { inline_data: { mime_type: string; data: string } } | { file_data: { mime_type: string; file_uri: string } };
 
 interface GeminiResponse {
   candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] }; finishReason?: string }[];
@@ -65,12 +62,7 @@ export const toGeminiSchema = toJsonSchema;
  * Strukturált (JSON) válasz kérése. Elutasítás / tiltás esetén
  * GeminiBlockedError; csonka válasznál hiba.
  */
-export async function geminiJson(opts: {
-  system: string;
-  parts: GeminiPart[];
-  schema: z.ZodType;
-  maxTokens: number;
-}): Promise<unknown> {
+export async function geminiJson(opts: { system: string; parts: GeminiPart[]; schema: z.ZodType; maxTokens: number }): Promise<unknown> {
   const body = {
     system_instruction: { parts: [{ text: opts.system }] },
     contents: [{ role: 'user', parts: opts.parts }],
@@ -92,7 +84,10 @@ export async function geminiJson(opts: {
     throw new GeminiBlockedError(reason);
   }
   if (reason === 'MAX_TOKENS') throw new UserFacingError('Az AI-válasz hiányos (túl hosszú bemenet?). Bontsa részekre.');
-  const text = (cand?.content?.parts ?? []).filter((p) => !p.thought && p.text).map((p) => p.text).join('');
+  const text = (cand?.content?.parts ?? [])
+    .filter((p) => !p.thought && p.text)
+    .map((p) => p.text)
+    .join('');
   try {
     return JSON.parse(text);
   } catch {

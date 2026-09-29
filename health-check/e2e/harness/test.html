@@ -1,21 +1,61 @@
 <!doctype html>
 <!-- E2E-tesztkörnyezet: a claude.ai `sample` és `downloads` képesség kitalált, előre megírt válaszokkal (e2e/harness/fx.js). -->
-<html><head><meta charset="utf-8"><link rel="stylesheet" href="app.css"></head><body>
-<div id="root"></div>
-<script src="fx.js"></script>
-<script>
-window.__prompts = [];
-const fake = async () => { throw { code: 'invalid_request', message: 'no text' } };
-fake.json = async (prompt) => {
-  window.__prompts.push(prompt);
-  await new Promise(r => setTimeout(r, 300));
-  if (prompt.includes('<forras')) return { risks: [{ title: 'Az iroda ingatlanhasználata nincs szerződésben rendezve', templateCode: null, pillar: 'LEGAL', rationale: 'A tényállás szerint családi ingatlanban működnek, a kapcsolt ügyletek között nem szerepel bérleti díj.', likelihood: 3, impact: 3, confidence: 0.8, evidence: [{ sourceId: 'T1', quote: 'családi tulajdonú ingatlanban működik' }] }] };
-  if (prompt.includes('<tenyallas>')) return { sector: 'ACCOUNTING', headcount: 30, flags: [{ flag: 'PERSONAL_DATA', quote: 'személyes adatát kezelik' }], documents: [{ title: 'Ügyfélportfólió-átadási terv', pillar: 'OPERATIONS', why: 'Az alapítóhoz kötődő ügyfelek átadása.', quote: 'személyesen az alapítóhoz kötődnek' }] };
-  return prompt.includes('<dokumentum') ? window.__fx.doc : window.__fx.interview;
-};
-window.__saved = [];
-const dl = { save: async ({ filename, data }) => { window.__saved.push([filename, data.size, data.type]); return { status: 'saved' }; } };
-window.claude = { use: async (n) => n === 'sample' ? fake : n === 'downloads' ? dl : null };
-</script>
-<script type="module" src="app.js"></script>
-</body></html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="fx.js"></script>
+    <script>
+      window.__prompts = [];
+      const fake = async () => {
+        throw { code: 'invalid_request', message: 'no text' };
+      };
+      fake.json = async (prompt) => {
+        window.__prompts.push(prompt);
+        await new Promise((r) => setTimeout(r, 300));
+        if (prompt.includes('<forras'))
+          return {
+            risks: [
+              {
+                title: 'Az iroda ingatlanhasználata nincs szerződésben rendezve',
+                templateCode: null,
+                pillar: 'LEGAL',
+                rationale: 'A tényállás szerint családi ingatlanban működnek, a kapcsolt ügyletek között nem szerepel bérleti díj.',
+                likelihood: 3,
+                impact: 3,
+                confidence: 0.8,
+                evidence: [{ sourceId: 'T1', quote: 'családi tulajdonú ingatlanban működik' }],
+              },
+            ],
+          };
+        if (prompt.includes('<tenyallas>'))
+          return {
+            sector: 'ACCOUNTING',
+            headcount: 30,
+            flags: [{ flag: 'PERSONAL_DATA', quote: 'személyes adatát kezelik' }],
+            documents: [
+              {
+                title: 'Ügyfélportfólió-átadási terv',
+                pillar: 'OPERATIONS',
+                why: 'Az alapítóhoz kötődő ügyfelek átadása.',
+                quote: 'személyesen az alapítóhoz kötődnek',
+              },
+            ],
+          };
+        return prompt.includes('<dokumentum') ? window.__fx.doc : window.__fx.interview;
+      };
+      window.__saved = [];
+      const dl = {
+        save: async ({ filename, data }) => {
+          window.__saved.push([filename, data.size, data.type]);
+          return { status: 'saved' };
+        },
+      };
+      window.claude = { use: async (n) => (n === 'sample' ? fake : n === 'downloads' ? dl : null) };
+    </script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

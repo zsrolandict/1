@@ -17,16 +17,10 @@ describe('computeFormula', () => {
   });
 
   it('darabszám × tételösszeg, nem jóváhagyott paraméter jelzése', () => {
-    const r = computeFormula(
-      { type: 'PER_ITEM', count: 4, unitAmountHuf: 2_000_000, paramKey: 'TP_EXPOSURE_PER_RECORD', label: 'nyilvántartás' },
-      company,
-    );
+    const r = computeFormula({ type: 'PER_ITEM', count: 4, unitAmountHuf: 2_000_000, paramKey: 'TP_EXPOSURE_PER_RECORD', label: 'nyilvántartás' }, company);
     expect(r.valueHuf).toBe(8_000_000);
     expect(r.unapprovedParameter).toBe(true);
-    const custom = computeFormula(
-      { type: 'PER_ITEM', count: 4, unitAmountHuf: 1_500_000, paramKey: 'TP_EXPOSURE_PER_RECORD', label: 'x' },
-      company,
-    );
+    const custom = computeFormula({ type: 'PER_ITEM', count: 4, unitAmountHuf: 1_500_000, paramKey: 'TP_EXPOSURE_PER_RECORD', label: 'x' }, company);
     expect(custom.unapprovedParameter).toBe(false); // a szakértő saját összeget adott meg
   });
 
@@ -76,15 +70,33 @@ describe('régi mentések (hydrateItem)', () => {
 
 describe('applySuggestion kitettség', () => {
   const s = {
-    templateCode: 'LEG-01', pillar: 'LEGAL' as const, title: 't', rationale: 'r', quote: 'q',
-    startMs: null, likelihood: 3 as const, impact: 5 as const, exposureHufEstimate: 0, confidence: 0.9,
+    templateCode: 'LEG-01',
+    pillar: 'LEGAL' as const,
+    title: 't',
+    rationale: 'r',
+    quote: 'q',
+    startMs: null,
+    likelihood: 3 as const,
+    impact: 5 as const,
+    exposureHufEstimate: 0,
+    confidence: 0.9,
   };
   it('kisebb interjús becslés nem csökkenti a képlet szerinti kitettséget', () => {
     const items = applySuggestion(DEFAULT_CATALOG, { ...s, exposureHufEstimate: 10_000_000 }, 'e', company);
-    expect(resolveExposure(items.find((r) => r.code === 'LEG-01')!, company).valueHuf).toBe(228_000_000);
+    expect(
+      resolveExposure(
+        items.find((r) => r.code === 'LEG-01')!,
+        company,
+      ).valueHuf,
+    ).toBe(228_000_000);
   });
   it('nagyobb becslés felülírásként érvényesül', () => {
     const items = applySuggestion(DEFAULT_CATALOG, { ...s, exposureHufEstimate: 500_000_000 }, 'e', company);
-    expect(resolveExposure(items.find((r) => r.code === 'LEG-01')!, company)).toMatchObject({ source: 'OVERRIDE', valueHuf: 500_000_000 });
+    expect(
+      resolveExposure(
+        items.find((r) => r.code === 'LEG-01')!,
+        company,
+      ),
+    ).toMatchObject({ source: 'OVERRIDE', valueHuf: 500_000_000 });
   });
 });

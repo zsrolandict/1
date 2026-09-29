@@ -20,16 +20,18 @@ const RequestSchema = z.object({
     flags: z.array(z.enum(Object.keys(FLAG_LABEL) as [CaseFlag, ...CaseFlag[]])).max(20),
     narrative: z.string().min(20).max(20_000),
   }),
-  current: z.array(
-    z.object({
-      id: z.string().max(40),
-      title: z.string().max(300),
-      pillar: Pillar,
-      why: z.array(z.string().max(500)).max(10),
-      source: z.enum(['BASE', 'KIND', 'SECTOR', 'SIZE', 'FLAG', 'AI', 'MANUAL']),
-      priority: z.enum(['REQUIRED', 'RECOMMENDED']),
-    }),
-  ).max(200),
+  current: z
+    .array(
+      z.object({
+        id: z.string().max(40),
+        title: z.string().max(300),
+        pillar: Pillar,
+        why: z.array(z.string().max(500)).max(10),
+        source: z.enum(['BASE', 'KIND', 'SECTOR', 'SIZE', 'FLAG', 'AI', 'MANUAL']),
+        priority: z.enum(['REQUIRED', 'RECOMMENDED']),
+      }),
+    )
+    .max(200),
 });
 
 /** Szöveges tényállás → javasolt jellemzők és extra iratok (idézet-ellenőrzéssel). */

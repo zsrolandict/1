@@ -42,12 +42,7 @@ export class AiRefusalError extends Error {}
  * Strukturált (JSON-sémás) válasz kérése. A rendszerprompt cache-elt,
  * mert kérésenként nem változik.
  */
-export async function parseStructured<T extends z.ZodType>(
-  schema: T,
-  system: string,
-  user: string,
-  maxTokens: number,
-): Promise<z.infer<T>> {
+export async function parseStructured<T extends z.ZodType>(schema: T, system: string, user: string, maxTokens: number): Promise<z.infer<T>> {
   if (aiProvider() === 'gemini') {
     let json: unknown;
     try {

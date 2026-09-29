@@ -135,7 +135,9 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
     },
   };
   const synthesize = async () => {
-    const pending = [baseResults.checklist, baseResults.tables, baseResults.documents].flatMap((r) => r.suggestions.filter((x) => !accepted.has(x.key)).map((x) => x.title));
+    const pending = [baseResults.checklist, baseResults.tables, baseResults.documents].flatMap((r) =>
+      r.suggestions.filter((x) => !accepted.has(x.key)).map((x) => x.title),
+    );
     const synthesis = await backend.synthesize({ kind: ws.kind, companyName: ws.companyName, sources, existing: ws.items, pending });
     updateIntake({ synthesis });
   };
@@ -247,7 +249,10 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">{ENGAGEMENT_KINDS[ws.kind].label} · Adatgyűjtés</p>
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">Adatgyűjtés és előjelölés</h1>
-          <p className="mt-1 text-sm text-slate-500">{ws.companyName || 'Névtelen projekt'}{scenario.situation ? ` · ${scenario.situation}` : ''}</p>
+          <p className="mt-1 text-sm text-slate-500">
+            {ws.companyName || 'Névtelen projekt'}
+            {scenario.situation ? ` · ${scenario.situation}` : ''}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
@@ -256,22 +261,29 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
             aria-label="Átvilágítás típusa"
             className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm"
           >
-            {ENGAGEMENT_KIND_LIST.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+            {ENGAGEMENT_KIND_LIST.map((k) => (
+              <option key={k.kind} value={k.kind}>
+                {k.label}
+              </option>
+            ))}
           </select>
         </div>
       </header>
 
       <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 text-sm shadow-sm md:grid-cols-[1fr_auto] md:items-center">
         <p className="text-slate-600">
-          A kérdőív, a táblázatok és a dokumentumok <b>javaslatokat</b> adnak. A Red Flag mátrixba csak az kerül, amit elfogad.
-          Már azonosított tételnél a súlyosság nem csökken; a képlet paraméterét (arány, darabszám) a tényadat pontosítja.
+          A kérdőív, a táblázatok és a dokumentumok <b>javaslatokat</b> adnak. A Red Flag mátrixba csak az kerül, amit elfogad. Már azonosított tételnél a
+          súlyosság nem csökken; a képlet paraméterét (arány, darabszám) a tényadat pontosítja.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
             {pendingCount} döntésre vár · {intake.accepted.length} átvéve
           </span>
           {onOpenMatrix && (
-            <button onClick={onOpenMatrix} className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
+            <button
+              onClick={onOpenMatrix}
+              className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+            >
               Red Flag mátrix <ArrowRight className="h-3.5 w-3.5" />
             </button>
           )}
@@ -279,21 +291,34 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
       </div>
 
       <nav className="flex gap-1 overflow-x-auto border-b border-slate-200">
-        {isOn('CASE') && <TabButton active={activeTab === 'case'} onClick={() => setTab('case')} icon={<FolderInput className="h-4 w-4" />}>
-          0. Tényállás, iratbekérés <Count>{requestList(intake, ws.kind).length}</Count>
-        </TabButton>}
-        {isOn('CHECKLIST') && <TabButton active={activeTab === 'checklist'} onClick={() => setTab('checklist')} icon={<ClipboardList className="h-4 w-4" />}>
-          1. Kérdőív <Count>{progress.answered}/{progress.total}</Count>
-        </TabButton>}
-        {isOn('TABLES') && <TabButton active={activeTab === 'tables'} onClick={() => setTab('tables')} icon={<Table2 className="h-4 w-4" />}>
-          2. Adattáblák <Count>{tableCount}/4</Count>
-        </TabButton>}
-        {isOn('DOCUMENTS') && <TabButton active={activeTab === 'documents'} onClick={() => setTab('documents')} icon={<FileText className="h-4 w-4" />}>
-          3. Dokumentumok <Count>{intake.documents.length}</Count>
-        </TabButton>}
-        {isOn('OVERVIEW') && <TabButton active={activeTab === 'overview'} onClick={() => setTab('overview')} icon={<Sparkles className="h-4 w-4" />}>
-          4. Összkép <Count>{cross.conflicts.length} ellentmondás</Count>
-        </TabButton>}
+        {isOn('CASE') && (
+          <TabButton active={activeTab === 'case'} onClick={() => setTab('case')} icon={<FolderInput className="h-4 w-4" />}>
+            0. Tényállás, iratbekérés <Count>{requestList(intake, ws.kind).length}</Count>
+          </TabButton>
+        )}
+        {isOn('CHECKLIST') && (
+          <TabButton active={activeTab === 'checklist'} onClick={() => setTab('checklist')} icon={<ClipboardList className="h-4 w-4" />}>
+            1. Kérdőív{' '}
+            <Count>
+              {progress.answered}/{progress.total}
+            </Count>
+          </TabButton>
+        )}
+        {isOn('TABLES') && (
+          <TabButton active={activeTab === 'tables'} onClick={() => setTab('tables')} icon={<Table2 className="h-4 w-4" />}>
+            2. Adattáblák <Count>{tableCount}/4</Count>
+          </TabButton>
+        )}
+        {isOn('DOCUMENTS') && (
+          <TabButton active={activeTab === 'documents'} onClick={() => setTab('documents')} icon={<FileText className="h-4 w-4" />}>
+            3. Dokumentumok <Count>{intake.documents.length}</Count>
+          </TabButton>
+        )}
+        {isOn('OVERVIEW') && (
+          <TabButton active={activeTab === 'overview'} onClick={() => setTab('overview')} icon={<Sparkles className="h-4 w-4" />}>
+            4. Összkép <Count>{cross.conflicts.length} ellentmondás</Count>
+          </TabButton>
+        )}
       </nav>
 
       {!activeTab && <ModuleOff ids={INTAKE_MODULES} />}
@@ -301,7 +326,9 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
       {error && (
         <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
-          <button onClick={() => setError(null)} className="ml-auto" aria-label="Bezárás"><X className="h-4 w-4" /></button>
+          <button onClick={() => setError(null)} className="ml-auto" aria-label="Bezárás">
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
 
@@ -322,82 +349,82 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
       )}
 
       {activeTab && activeTab !== 'case' && (
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="min-w-0">
-          {activeTab === 'checklist' && (
-            <ChecklistTab
-              answers={intake.answers}
-              sectors={intake.profile.sectors}
-              onAnswer={(id, a) => {
-                const answers = { ...intake.answers };
-                if (a === undefined) delete answers[id];
-                else answers[id] = a;
-                updateIntake({ answers });
-              }}
-              onSample={SAMPLE_ANSWERS[ws.scenarioId] ? () => updateIntake({ answers: SAMPLE_ANSWERS[ws.scenarioId] }) : undefined}
-              onClear={() => updateIntake({ answers: {} })}
-              flagged={new Set(results.checklist.suggestions.flatMap((s) => s.evidence.match(/Q\d\d/g) ?? []))}
-            />
-          )}
-          {activeTab === 'tables' && (
-            <TablesTab
-              tables={intake.tables}
-              raw={raw}
-              canSample={hasSampleTables(ws.scenarioId)}
-              onUpload={uploadTable}
-              onSample={loadSampleTable}
-              onRemove={removeTable}
-              onChangeRaw={setTable}
-            />
-          )}
-          {activeTab === 'overview' && (
-            <OverviewTab
-              conflicts={cross.conflicts}
-              crossCount={cross.suggestions.length}
-              synthesis={intake.synthesis}
-              sourceCount={sources.length}
-              aiReady={aiReady}
-              onSynthesize={synthesize}
-            />
-          )}
-          {activeTab === 'documents' && (
-            <DocumentsTab
-              documents={intake.documents}
-              kind={ws.kind}
-              aiReady={aiReady}
-              busy={busy}
-              samples={SAMPLE_DOCUMENTS[ws.scenarioId] ?? []}
-              onUpload={uploadDocument}
-              onSample={(i) => addDocument(sampleDocumentRecord(SAMPLE_DOCUMENTS[ws.scenarioId][i], `S${ws.scenarioId}-${i}`))}
-              onRemove={(id) => updateIntake({ documents: intake.documents.filter((d) => d.id !== id) })}
-            />
-          )}
-        </div>
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
+          <div className="min-w-0">
+            {activeTab === 'checklist' && (
+              <ChecklistTab
+                answers={intake.answers}
+                sectors={intake.profile.sectors}
+                onAnswer={(id, a) => {
+                  const answers = { ...intake.answers };
+                  if (a === undefined) delete answers[id];
+                  else answers[id] = a;
+                  updateIntake({ answers });
+                }}
+                onSample={SAMPLE_ANSWERS[ws.scenarioId] ? () => updateIntake({ answers: SAMPLE_ANSWERS[ws.scenarioId] }) : undefined}
+                onClear={() => updateIntake({ answers: {} })}
+                flagged={new Set(results.checklist.suggestions.flatMap((s) => s.evidence.match(/Q\d\d/g) ?? []))}
+              />
+            )}
+            {activeTab === 'tables' && (
+              <TablesTab
+                tables={intake.tables}
+                raw={raw}
+                canSample={hasSampleTables(ws.scenarioId)}
+                onUpload={uploadTable}
+                onSample={loadSampleTable}
+                onRemove={removeTable}
+                onChangeRaw={setTable}
+              />
+            )}
+            {activeTab === 'overview' && (
+              <OverviewTab
+                conflicts={cross.conflicts}
+                crossCount={cross.suggestions.length}
+                synthesis={intake.synthesis}
+                sourceCount={sources.length}
+                aiReady={aiReady}
+                onSynthesize={synthesize}
+              />
+            )}
+            {activeTab === 'documents' && (
+              <DocumentsTab
+                documents={intake.documents}
+                kind={ws.kind}
+                aiReady={aiReady}
+                busy={busy}
+                samples={SAMPLE_DOCUMENTS[ws.scenarioId] ?? []}
+                onUpload={uploadDocument}
+                onSample={(i) => addDocument(sampleDocumentRecord(SAMPLE_DOCUMENTS[ws.scenarioId][i], `S${ws.scenarioId}-${i}`))}
+                onRemove={(id) => updateIntake({ documents: intake.documents.filter((d) => d.id !== id) })}
+              />
+            )}
+          </div>
 
-        <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
-          <SuggestionPanel
-            result={results[activeTab as SourceTab]}
-            ws={ws}
-            accepted={accepted}
-            dismissed={dismissed}
-            onAccept={accept}
-            onAcceptAll={() => acceptMany(results[activeTab as SourceTab].suggestions)}
-            onDismiss={dismiss}
-            onUndismiss={undismiss}
-            onAcceptCompany={acceptCompany}
-            empty={
-              activeTab === 'checklist'
-                ? 'Válaszoljon a kérdésekre – a jelző válaszokból itt jelennek meg a javaslatok.'
-                : activeTab === 'tables'
-                  ? 'Töltsön be egy táblát – a küszöb feletti mutatókból itt lesznek javaslatok.'
-                  : activeTab === 'overview'
-                    ? 'Készítsen összképet, vagy töltsön be több táblát – a források összevetéséből itt lesznek javaslatok.'
-                    : 'Elemezzen egy dokumentumot – az ellenőrzött idézetű találatok itt jelennek meg.'
-            }
-          />
-          <FactsNote result={results[activeTab as SourceTab]} />
-        </aside>
-      </div>
+          <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+            <SuggestionPanel
+              result={results[activeTab as SourceTab]}
+              ws={ws}
+              accepted={accepted}
+              dismissed={dismissed}
+              onAccept={accept}
+              onAcceptAll={() => acceptMany(results[activeTab as SourceTab].suggestions)}
+              onDismiss={dismiss}
+              onUndismiss={undismiss}
+              onAcceptCompany={acceptCompany}
+              empty={
+                activeTab === 'checklist'
+                  ? 'Válaszoljon a kérdésekre – a jelző válaszokból itt jelennek meg a javaslatok.'
+                  : activeTab === 'tables'
+                    ? 'Töltsön be egy táblát – a küszöb feletti mutatókból itt lesznek javaslatok.'
+                    : activeTab === 'overview'
+                      ? 'Készítsen összképet, vagy töltsön be több táblát – a források összevetéséből itt lesznek javaslatok.'
+                      : 'Elemezzen egy dokumentumot – az ellenőrzött idézetű találatok itt jelennek meg.'
+              }
+            />
+            <FactsNote result={results[activeTab as SourceTab]} />
+          </aside>
+        </div>
       )}
     </div>
   );
@@ -424,16 +451,22 @@ function ChecklistTab({
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-slate-600">
-          Az ügyfél tölti ki az ügyfélportálon (~20 perc), vagy a tanácsadó az első megbeszélésen. Ugyanarra a válaszra mindig ugyanaz a javaslat
-          (rögzített szabályok, AI nélkül).
+          Az ügyfél tölti ki az ügyfélportálon (~20 perc), vagy a tanácsadó az első megbeszélésen. Ugyanarra a válaszra mindig ugyanaz a javaslat (rögzített
+          szabályok, AI nélkül).
         </p>
         <div className="flex gap-2">
           {onSample && (
-            <button onClick={onSample} className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100">
+            <button
+              onClick={onSample}
+              className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+            >
               Minta-válaszok betöltése
             </button>
           )}
-          <button onClick={onClear} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50">
+          <button
+            onClick={onClear}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+          >
             <RotateCcw className="h-3.5 w-3.5" /> Törlés
           </button>
         </div>
@@ -450,7 +483,10 @@ function ChecklistTab({
                       <span className="mr-1.5 font-mono text-xs text-slate-500">{q.id}</span>
                       {q.sectors && (
                         <span className="mr-1.5 rounded bg-indigo-50 px-1.5 text-xs font-medium text-indigo-700">
-                          {q.sectors.filter((x) => sectors.includes(x)).map((x) => SECTOR_LABEL[x]).join(', ')}
+                          {q.sectors
+                            .filter((x) => sectors.includes(x))
+                            .map((x) => SECTOR_LABEL[x])
+                            .join(', ')}
                         </span>
                       )}
                       {q.text}
@@ -460,7 +496,10 @@ function ChecklistTab({
                   </div>
                   <div className="flex items-center gap-2">
                     <AnswerInput q={q} value={answers[q.id]} onChange={(a) => onAnswer(q.id, a)} />
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${flagged.has(q.id) ? 'bg-red-500' : 'bg-transparent'}`} title={flagged.has(q.id) ? 'A válasz kockázatot jelez' : undefined} />
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${flagged.has(q.id) ? 'bg-red-500' : 'bg-transparent'}`}
+                      title={flagged.has(q.id) ? 'A válasz kockázatot jelez' : undefined}
+                    />
                   </div>
                 </div>
               </li>
@@ -492,7 +531,12 @@ function AnswerInput({ q, value, onChange }: { q: ChecklistQuestion; value: Answ
     return (
       <div className="inline-flex flex-wrap" role="group" aria-label={q.id}>
         {q.choices!.map((c) => (
-          <button key={c.value} onClick={() => onChange(value === c.value ? undefined : c.value)} className={seg(value === c.value)} aria-pressed={value === c.value}>
+          <button
+            key={c.value}
+            onClick={() => onChange(value === c.value ? undefined : c.value)}
+            className={seg(value === c.value)}
+            aria-pressed={value === c.value}
+          >
             {c.label}
           </button>
         ))}
@@ -537,9 +581,9 @@ function TablesTab({
   return (
     <section className="space-y-4">
       <p className="flex items-start gap-2 text-sm text-slate-600">
-        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-        A táblák a böngészőben dolgozódnak fel, a fájl nem kerül fel a szerverre. CSV (magyar Excel-mentés is) és XLSX; a fejlécet és az
-        oszlopokat a program felismeri, szükség esetén átállíthatók. Minden szám a sorokból számolódik, AI nélkül.
+        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />A táblák a böngészőben dolgozódnak fel, a fájl nem kerül fel a szerverre. CSV
+        (magyar Excel-mentés is) és XLSX; a fejlécet és az oszlopokat a program felismeri, szükség esetén átállíthatók. Minden szám a sorokból számolódik, AI
+        nélkül.
       </p>
       {TABLE_KINDS.map((kind) => {
         const spec = TABLE_SPECS[kind];
@@ -569,12 +613,19 @@ function TablesTab({
                   />
                 </label>
                 {canSample && (
-                  <button onClick={() => onSample(kind)} className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100">
+                  <button
+                    onClick={() => onSample(kind)}
+                    className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                  >
                     Mintatábla
                   </button>
                 )}
                 {(t || r) && (
-                  <button onClick={() => onRemove(kind)} aria-label="Tábla eltávolítása" className="rounded-md border border-slate-200 px-2 text-slate-500 hover:text-red-600">
+                  <button
+                    onClick={() => onRemove(kind)}
+                    aria-label="Tábla eltávolítása"
+                    className="rounded-md border border-slate-200 px-2 text-slate-500 hover:text-red-600"
+                  >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 )}
@@ -601,7 +652,11 @@ function TablesTab({
                         className="max-w-[160px] rounded border border-slate-200 bg-white px-1 py-0.5"
                       >
                         <option value="">—</option>
-                        {r.grid[r.headerRow]?.map((h, i) => <option key={i} value={i}>{String(h ?? `${i + 1}. oszlop`)}</option>)}
+                        {r.grid[r.headerRow]?.map((h, i) => (
+                          <option key={i} value={i}>
+                            {String(h ?? `${i + 1}. oszlop`)}
+                          </option>
+                        ))}
                       </select>
                     </label>
                   ))}
@@ -630,8 +685,14 @@ function TablesTab({
                       <dd className={`text-right font-medium tabular-nums ${m.alert ? 'text-red-700' : 'text-slate-900'}`}>{m.value}</dd>
                     </div>
                   ))}
-                  <div className="pt-1 text-xs text-slate-500">{t.rows} sor feldolgozva{t.skipped ? `, ${t.skipped} kihagyva (összesítő / üres / nem szám)` : ''} · {t.fileName}</div>
-                  {t.warnings.map((w) => <p key={w} className="text-xs text-amber-700">⚠ {w}</p>)}
+                  <div className="pt-1 text-xs text-slate-500">
+                    {t.rows} sor feldolgozva{t.skipped ? `, ${t.skipped} kihagyva (összesítő / üres / nem szám)` : ''} · {t.fileName}
+                  </div>
+                  {t.warnings.map((w) => (
+                    <p key={w} className="text-xs text-amber-700">
+                      ⚠ {w}
+                    </p>
+                  ))}
                 </dl>
                 {t.topPartners.length > 0 && (
                   <div className="text-xs">
@@ -639,8 +700,13 @@ function TablesTab({
                     <ul className="space-y-1">
                       {t.topPartners.map((p) => (
                         <li key={p.name}>
-                          <div className="flex justify-between gap-2"><span className="truncate text-slate-700">{p.name}</span><span className="tabular-nums text-slate-500">{formatHufShort(p.amountHuf)}</span></div>
-                          <div className="mt-0.5 h-1.5 rounded bg-slate-100"><div className="h-1.5 rounded bg-slate-500" style={{ width: `${Math.min(100, p.share * 100)}%` }} /></div>
+                          <div className="flex justify-between gap-2">
+                            <span className="truncate text-slate-700">{p.name}</span>
+                            <span className="tabular-nums text-slate-500">{formatHufShort(p.amountHuf)}</span>
+                          </div>
+                          <div className="mt-0.5 h-1.5 rounded bg-slate-100">
+                            <div className="h-1.5 rounded bg-slate-500" style={{ width: `${Math.min(100, p.share * 100)}%` }} />
+                          </div>
                         </li>
                       ))}
                     </ul>
@@ -682,13 +748,13 @@ function DocumentsTab({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1 basis-72 text-sm text-slate-600">
             <p>
-              Szerződés, szabályzat, létesítő okirat (PDF, DOCX, TXT). Az AI tételenként javasol, <b>szó szerinti idézettel és oldalszámmal</b>; amit nem
-              talál meg a szövegben, azt a rendszer eldobja.
+              Szerződés, szabályzat, létesítő okirat (PDF, DOCX, TXT). Az AI tételenként javasol, <b>szó szerinti idézettel és oldalszámmal</b>; amit nem talál
+              meg a szövegben, azt a rendszer eldobja.
             </p>
             <p className="mt-2 flex items-start gap-2 text-xs text-slate-500">
               <EyeOff className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              Feldolgozás előtt maszkoljuk az e-mail-címet, telefonszámot, bankszámlát, adóazonosító jelet, TAJ- és igazolványszámot. A fájlt nem
-              tároljuk, csak az ellenőrzött eredményt. Szkennelt PDF-hez OCR kell.
+              Feldolgozás előtt maszkoljuk az e-mail-címet, telefonszámot, bankszámlát, adóazonosító jelet, TAJ- és igazolványszámot. A fájlt nem tároljuk, csak
+              az ellenőrzött eredményt. Szkennelt PDF-hez OCR kell.
             </p>
           </div>
           <label
@@ -716,7 +782,11 @@ function DocumentsTab({
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs">
             <span className="text-slate-500">Kitalált mintadokumentum:</span>
             {samples.map((s, i) => (
-              <button key={s.fileName} onClick={() => onSample(i)} className="rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 font-medium text-indigo-700 hover:bg-indigo-100">
+              <button
+                key={s.fileName}
+                onClick={() => onSample(i)}
+                className="rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 font-medium text-indigo-700 hover:bg-indigo-100"
+              >
                 {s.fileName}
               </button>
             ))}
@@ -725,13 +795,29 @@ function DocumentsTab({
       </div>
 
       {documents.map((d) => (
-        <DocumentCard key={d.id} d={d} kind={kind} sample={d.isSample ? samples.find((s) => s.fileName === d.fileName) : undefined} onRemove={() => onRemove(d.id)} />
+        <DocumentCard
+          key={d.id}
+          d={d}
+          kind={kind}
+          sample={d.isSample ? samples.find((s) => s.fileName === d.fileName) : undefined}
+          onRemove={() => onRemove(d.id)}
+        />
       ))}
     </section>
   );
 }
 
-function DocumentCard({ d, kind, sample, onRemove }: { d: DocumentRecord; kind: EngagementKind; sample?: (typeof SAMPLE_DOCUMENTS)[string][number]; onRemove: () => void }) {
+function DocumentCard({
+  d,
+  kind,
+  sample,
+  onRemove,
+}: {
+  d: DocumentRecord;
+  kind: EngagementKind;
+  sample?: (typeof SAMPLE_DOCUMENTS)[string][number];
+  onRemove: () => void;
+}) {
   const [showText, setShowText] = useState(false);
   const a = d.analysis;
   const redacted = Object.entries(d.redactions);
@@ -747,21 +833,25 @@ function DocumentCard({ d, kind, sample, onRemove }: { d: DocumentRecord; kind: 
           <h3 className="mt-0.5 truncate font-medium text-slate-900">{d.fileName}</h3>
           <p className="text-xs text-slate-500">{a.documentType}</p>
         </div>
-        <button onClick={onRemove} aria-label="Dokumentum eltávolítása" className="text-slate-500 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+        <button onClick={onRemove} aria-label="Dokumentum eltávolítása" className="text-slate-500 hover:text-red-600">
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
       {d.kind && d.kind !== kind && (
         <p className="mt-2 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
-            <b>Más célra készült:</b> {ENGAGEMENT_KINDS[d.kind].label} (most: {ENGAGEMENT_KINDS[kind].label}). A súlyosságot az AI a célhoz
-            méri; az új célhoz töltsd fel újra a dokumentumot (a fájlt nem tároljuk, ezért újra kell választani).
+            <b>Más célra készült:</b> {ENGAGEMENT_KINDS[d.kind].label} (most: {ENGAGEMENT_KINDS[kind].label}). A súlyosságot az AI a célhoz méri; az új célhoz
+            töltsd fel újra a dokumentumot (a fájlt nem tároljuk, ezért újra kell választani).
           </span>
         </p>
       )}
       <p className="mt-2 text-sm leading-relaxed text-slate-700">{a.summary}</p>
 
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-        <span className="inline-flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> minden tétel mögött ellenőrzött idézet</span>
+        <span className="inline-flex items-center gap-1">
+          <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> minden tétel mögött ellenőrzött idézet
+        </span>
         {a.discardedUnverified > 0 && <span className="text-amber-700">{a.discardedUnverified} nem igazolható tételt kiszűrt</span>}
         <span>maszkolva: {redacted.length ? redacted.map(([k, n]) => `${n} ${k}`).join(', ') : 'nem volt azonosító'}</span>
       </div>
@@ -771,7 +861,9 @@ function DocumentCard({ d, kind, sample, onRemove }: { d: DocumentRecord; kind: 
           <p className="text-xs font-medium text-slate-500">Tények (az interjúkon ellenőrizzük)</p>
           <ul className="mt-1 space-y-1 text-sm">
             {a.facts.map((f, i) => (
-              <li key={i} className="text-slate-700">• {f.statement} <span className="text-xs text-slate-500">({where(f.pageIndex)})</span></li>
+              <li key={i} className="text-slate-700">
+                • {f.statement} <span className="text-xs text-slate-500">({where(f.pageIndex)})</span>
+              </li>
             ))}
           </ul>
         </div>
@@ -845,7 +937,9 @@ function SuggestionPanel({
             const done = accepted.has(c.key) || isCompanySuggestionApplied(ws.company, c);
             return (
               <li key={c.key} className="rounded-md bg-sky-50 p-2.5 text-xs">
-                <p className="flex items-center gap-1.5 font-medium text-sky-900"><Building2 className="h-3.5 w-3.5" /> Cégadat: {c.label}</p>
+                <p className="flex items-center gap-1.5 font-medium text-sky-900">
+                  <Building2 className="h-3.5 w-3.5" /> Cégadat: {c.label}
+                </p>
                 <p className="mt-0.5 text-sky-800/80">{c.evidence}</p>
                 <button
                   onClick={() => onAcceptCompany(c)}
@@ -918,7 +1012,9 @@ function SuggestionRow({
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
         <span className="font-mono text-slate-500">{s.code ?? 'Új'}</span>
         <span className="text-slate-500">{PILLAR_LABEL[s.pillar]}</span>
-        <span className={`rounded px-1.5 font-medium ring-1 ring-inset ${RAG_BADGE[rag]}`}>V{s.likelihood}×H{s.impact} = {score}</span>
+        <span className={`rounded px-1.5 font-medium ring-1 ring-inset ${RAG_BADGE[rag]}`}>
+          V{s.likelihood}×H{s.impact} = {score}
+        </span>
         {s.confidence != null && <span className="text-slate-500">biztosság {Math.round(s.confidence * 100)}%</span>}
         <span className="ml-auto rounded bg-indigo-50 px-1.5 font-medium text-indigo-700">{ORIGIN_LABEL[s.origin]}</span>
       </div>
@@ -929,13 +1025,21 @@ function SuggestionRow({
       <p className="mt-1 text-xs text-slate-500">{status}</p>
       <div className="mt-2 flex gap-2">
         {state === 'accepted' ? (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700"><Check className="h-3.5 w-3.5" /> Átvéve a mátrixba</span>
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+            <Check className="h-3.5 w-3.5" /> Átvéve a mátrixba
+          </span>
         ) : state === 'dismissed' ? (
-          <button onClick={onUndismiss} className="inline-flex items-center gap-1 text-xs text-slate-600 hover:underline"><Undo2 className="h-3.5 w-3.5" /> Elvetve · visszaállít</button>
+          <button onClick={onUndismiss} className="inline-flex items-center gap-1 text-xs text-slate-600 hover:underline">
+            <Undo2 className="h-3.5 w-3.5" /> Elvetve · visszaállít
+          </button>
         ) : (
           <>
-            <button onClick={onAccept} className="rounded-md bg-slate-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-slate-800">Elfogad</button>
-            <button onClick={onDismiss} className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-50">Elvet</button>
+            <button onClick={onAccept} className="rounded-md bg-slate-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-slate-800">
+              Elfogad
+            </button>
+            <button onClick={onDismiss} className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-50">
+              Elvet
+            </button>
           </>
         )}
       </div>
@@ -973,4 +1077,3 @@ function TabButton({ active, onClick, icon, children }: { active: boolean; onCli
 function Count({ children }: { children: ReactNode }) {
   return <span className="rounded-full bg-slate-100 px-1.5 text-xs font-medium text-slate-600">{children}</span>;
 }
-

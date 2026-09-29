@@ -95,11 +95,27 @@ export function compare(snapshot: Snapshot, items: RiskItem[], opts: Partial<Eng
     else if (n.score < b.score) change = 'IMPROVED';
     else if (n.score > b.score) change = 'WORSENED';
     else change = 'UNCHANGED';
-    changes.push({ id: b.id, code: b.code, title: b.title, before: b, after: n ? { rag: n.rag, score: n.score, expectedLossHuf: n.expectedLossHuf } : null, change, status });
+    changes.push({
+      id: b.id,
+      code: b.code,
+      title: b.title,
+      before: b,
+      after: n ? { rag: n.rag, score: n.score, expectedLossHuf: n.expectedLossHuf } : null,
+      change,
+      status,
+    });
   }
   for (const n of nowAssessment.risks) {
     if (seen.has(n.id)) continue;
-    changes.push({ id: n.id, code: n.code, title: n.title, before: null, after: { rag: n.rag, score: n.score, expectedLossHuf: n.expectedLossHuf }, change: 'NEW', status: itemById.get(n.id)?.remediationStatus ?? 'OPEN' });
+    changes.push({
+      id: n.id,
+      code: n.code,
+      title: n.title,
+      before: null,
+      after: { rag: n.rag, score: n.score, expectedLossHuf: n.expectedLossHuf },
+      change: 'NEW',
+      status: itemById.get(n.id)?.remediationStatus ?? 'OPEN',
+    });
   }
   const order: Record<ChangeKind, number> = { WORSENED: 0, NEW: 1, UNCHANGED: 2, ACCEPTED: 3, IMPROVED: 4, RESOLVED: 5 };
   changes.sort((x, y) => order[x.change] - order[y.change]);

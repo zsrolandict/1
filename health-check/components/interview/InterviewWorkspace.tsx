@@ -29,15 +29,7 @@ import { buildInterviewPlan } from '@/lib/interview/plan';
 import { emptyRecord, isAnalysisStale, loadRecords, saveRecords, type InterviewRecord, type InterviewRecords } from '@/lib/interview/records';
 import InterviewPlanPanel from './InterviewPlanPanel';
 import { formatMs, notesToTranscript, verifyAnalysis } from '@/lib/interview/transcript';
-import type {
-  InterviewAnalysis,
-  InterviewQuestion,
-  IntervieweeRole,
-  KnownFact,
-  QuestionSource,
-  SuggestedRedFlag,
-  Transcript,
-} from '@/lib/interview/types';
+import type { InterviewAnalysis, InterviewQuestion, IntervieweeRole, KnownFact, QuestionSource, SuggestedRedFlag, Transcript } from '@/lib/interview/types';
 import { PILLAR_LABEL } from '@/lib/risk/catalog';
 import type { AiStatus } from '@/lib/ai/backend';
 import { useAiBackend } from '@/components/AiBackendContext';
@@ -66,12 +58,18 @@ const PRIORITY_LABEL = { 1: 'Kötelező', 2: 'Ha van idő', 3: 'Opcionális' } a
 
 function sourceBadge(s: QuestionSource): { label: string; cls: string } {
   switch (s.type) {
-    case 'RED_FLAG': return { label: `Red Flag · ${s.code}`, cls: 'bg-red-50 text-red-700 ring-red-600/20' };
-    case 'MISSING_DOCUMENT': return { label: 'Hiányzó dokumentum', cls: 'bg-amber-50 text-amber-800 ring-amber-600/20' };
-    case 'DOCUMENT_FINDING': return { label: 'Dokumentum-tény ellenőrzése', cls: 'bg-sky-50 text-sky-700 ring-sky-600/20' };
-    case 'KIND': return { label: ENGAGEMENT_KINDS[s.kind].label, cls: 'bg-slate-100 text-slate-700 ring-slate-500/20' };
-    case 'AI': return { label: 'AI-javaslat', cls: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20' };
-    default: return { label: 'Alapkérdés', cls: 'bg-slate-50 text-slate-600 ring-slate-400/20' };
+    case 'RED_FLAG':
+      return { label: `Red Flag · ${s.code}`, cls: 'bg-red-50 text-red-700 ring-red-600/20' };
+    case 'MISSING_DOCUMENT':
+      return { label: 'Hiányzó dokumentum', cls: 'bg-amber-50 text-amber-800 ring-amber-600/20' };
+    case 'DOCUMENT_FINDING':
+      return { label: 'Dokumentum-tény ellenőrzése', cls: 'bg-sky-50 text-sky-700 ring-sky-600/20' };
+    case 'KIND':
+      return { label: ENGAGEMENT_KINDS[s.kind].label, cls: 'bg-slate-100 text-slate-700 ring-slate-500/20' };
+    case 'AI':
+      return { label: 'AI-javaslat', cls: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20' };
+    default:
+      return { label: 'Alapkérdés', cls: 'bg-slate-50 text-slate-600 ring-slate-400/20' };
   }
 }
 
@@ -90,10 +88,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   const [facts, setFacts] = useState<KnownFact[]>(getScenario(DEFAULT_WORKSPACE.scenarioId).facts);
   const scenario = getScenario(ws.scenarioId);
   const sample = scenario.interview ?? null;
-  const missingDocuments = useMemo(
-    () => (hydrated ? missingFor(ws, ws.kind) : scenario.missingDocuments),
-    [hydrated, ws, scenario],
-  );
+  const missingDocuments = useMemo(() => (hydrated ? missingFor(ws, ws.kind) : scenario.missingDocuments), [hydrated, ws, scenario]);
   const [aiQuestions, setAiQuestions] = useState<InterviewQuestion[]>([]);
   const [consent, setConsent] = useState(false);
   const [speakers, setSpeakers] = useState(2);
@@ -129,15 +124,9 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
     saveWorkspace(next);
   };
 
-  const context = useMemo(
-    () => ({ kind: ws.kind, role, risks: ws.items, missingDocuments, facts }),
-    [ws.kind, ws.items, role, facts, missingDocuments],
-  );
+  const context = useMemo(() => ({ kind: ws.kind, role, risks: ws.items, missingDocuments, facts }), [ws.kind, ws.items, role, facts, missingDocuments]);
   const questions = useMemo(() => [...buildInterviewGuide(context), ...aiQuestions], [context, aiQuestions]);
-  const plan = useMemo(
-    () => buildInterviewPlan({ kind: ws.kind, risks: ws.items, missingDocuments, facts }),
-    [ws.kind, ws.items, missingDocuments, facts],
-  );
+  const plan = useMemo(() => buildInterviewPlan({ kind: ws.kind, risks: ws.items, missingDocuments, facts }), [ws.kind, ws.items, missingDocuments, facts]);
   const planItem = plan.find((p) => p.role === role);
   const staleRoles = ROLES.filter((r) => isAnalysisStale(records[r], ws.kind));
   const roleLabel = planItem?.label ?? ROLE_LABEL[role];
@@ -242,11 +231,12 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
     <div className="mx-auto max-w-[1200px] space-y-5 px-4 py-6 sm:px-6 lg:px-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-            {ENGAGEMENT_KINDS[ws.kind].label} · Interjúk
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">{ENGAGEMENT_KINDS[ws.kind].label} · Interjúk</p>
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">Interjú-előkészítés és elemzés</h1>
-          <p className="mt-1 text-sm text-slate-500">{ws.companyName || 'Névtelen projekt'}{scenario.situation ? ` · ${scenario.situation}` : ''}</p>
+          <p className="mt-1 text-sm text-slate-500">
+            {ws.companyName || 'Névtelen projekt'}
+            {scenario.situation ? ` · ${scenario.situation}` : ''}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
           <select
@@ -255,7 +245,11 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
             aria-label="Átvilágítás típusa"
             className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm"
           >
-            {ENGAGEMENT_KIND_LIST.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+            {ENGAGEMENT_KIND_LIST.map((k) => (
+              <option key={k.kind} value={k.kind}>
+                {k.label}
+              </option>
+            ))}
           </select>
           <select
             value={role}
@@ -300,9 +294,12 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
         <div role="status" className="flex flex-wrap items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 print:hidden">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="min-w-0 flex-1">
-            <b>A cél megváltozott ({ENGAGEMENT_KINDS[ws.kind].label}).</b> {staleRoles.length} interjú elemzése más célra készült, ezért
-            a javaslatai és a súlyosság-becslései a régi célhoz igazodnak: {staleRoles.map((r) => `${plan.find((p) => p.role === r)?.label ?? ROLE_LABEL[r]} (${ENGAGEMENT_KINDS[records[r]!.analysisKind!].label})`).join(', ')}.
-            A Red Flag mátrixba már átvett tételek pontszáma a típusfüggő korrekcióval automatikusan az új célhoz igazodik; az interjú-elemzést futtasd újra.
+            <b>A cél megváltozott ({ENGAGEMENT_KINDS[ws.kind].label}).</b> {staleRoles.length} interjú elemzése más célra készült, ezért a javaslatai és a
+            súlyosság-becslései a régi célhoz igazodnak:{' '}
+            {staleRoles
+              .map((r) => `${plan.find((p) => p.role === r)?.label ?? ROLE_LABEL[r]} (${ENGAGEMENT_KINDS[records[r]!.analysisKind!].label})`)
+              .join(', ')}
+            . A Red Flag mátrixba már átvett tételek pontszáma a típusfüggő korrekcióval automatikusan az új célhoz igazodik; az interjú-elemzést futtasd újra.
           </div>
           <div className="flex flex-wrap gap-2">
             {staleRoles.map((r) => (
@@ -323,7 +320,9 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
           <span className="text-slate-500">Interjú:</span>
           <b className="text-slate-900">{roleLabel}</b>
           {planItem ? (
-            <span className="text-slate-500">· a terv {planItem.order}. interjúja · ~{planItem.minutes} perc</span>
+            <span className="text-slate-500">
+              · a terv {planItem.order}. interjúja · ~{planItem.minutes} perc
+            </span>
           ) : (
             <span className="text-amber-700">· nincs az interjútervben</span>
           )}
@@ -348,15 +347,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
         </div>
       )}
 
-      {tab === 'plan' && (
-        <InterviewPlanPanel
-          plan={plan}
-          records={records}
-          kind={ws.kind}
-          sampleRole={sample?.role ?? null}
-          onOpen={openFromPlan}
-        />
-      )}
+      {tab === 'plan' && <InterviewPlanPanel plan={plan} records={records} kind={ws.kind} sampleRole={sample?.role ?? null} onOpen={openFromPlan} />}
 
       {tab === 'guide' && (
         <GuideTab
@@ -383,14 +374,15 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
               <label className="flex items-start gap-2 rounded-md bg-amber-50 p-2.5 text-sm text-amber-900">
                 <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 accent-slate-900" />
                 <span>
-                  Az interjúalany <b>tájékoztatást kapott</b> az adatkezelésről, és <b>hozzájárult</b> a felvételhez és annak
-                  AI-alapú feldolgozásához.
+                  Az interjúalany <b>tájékoztatást kapott</b> az adatkezelésről, és <b>hozzájárult</b> a felvételhez és annak AI-alapú feldolgozásához.
                 </span>
               </label>
               <label className="mt-3 flex items-center justify-between text-sm text-slate-600">
                 Beszélők száma
                 <select value={speakers} onChange={(e) => setSpeakers(Number(e.target.value))} className="rounded border border-slate-200 px-2 py-1">
-                  {[2, 3, 4, 5, 6].map((n) => <option key={n}>{n}</option>)}
+                  {[2, 3, 4, 5, 6].map((n) => (
+                    <option key={n}>{n}</option>
+                  ))}
                 </select>
               </label>
               <label
@@ -409,13 +401,18 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
                   accept={status?.transcriptionAccept ?? 'audio/*'}
                   className="hidden"
                   disabled={!consent || !status?.transcription || busy !== null}
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) transcribe(f); e.target.value = ''; }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) transcribe(f);
+                    e.target.value = '';
+                  }}
                 />
               </label>
               <p className="mt-2 text-xs text-slate-500">
                 {status?.transcription
                   ? `A felvételt nem tároljuk: a leirat elkészülte után csak a szöveg marad meg.${status.transcriptionProvider === 'gemini' ? ' Leirat: Google Gemini.' : ''}`
-                  : (status?.transcriptionNote ?? 'A leiratkészítő szolgáltatás nincs beállítva a szerveren (GEMINI_API_KEY vagy Azure Speech kulcs a .env.local fájlban). Addig használja a jegyzet-beillesztést.')}
+                  : (status?.transcriptionNote ??
+                    'A leiratkészítő szolgáltatás nincs beállítva a szerveren (GEMINI_API_KEY vagy Azure Speech kulcs a .env.local fájlban). Addig használja a jegyzet-beillesztést.')}
               </p>
             </Card>
 
@@ -470,7 +467,9 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
                   {namedTranscript!.segments.map((s, i) => (
                     <li key={i} className="grid grid-cols-[56px_1fr] gap-2">
                       <span className="pt-0.5 font-mono text-xs text-slate-500">{transcript.timed ? formatMs(s.startMs) : ''}</span>
-                      <p><b className="font-medium text-slate-900">{s.speaker}:</b> <span className="text-slate-700">{s.text}</span></p>
+                      <p>
+                        <b className="font-medium text-slate-900">{s.speaker}:</b> <span className="text-slate-700">{s.text}</span>
+                      </p>
                     </li>
                   ))}
                 </ol>
@@ -538,8 +537,12 @@ function GuideTab(props: {
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-sm">
           <span className="font-medium text-slate-900">{props.roleLabel}</span>
-          <span className="text-slate-500">{questions.length} kérdés · {mandatory} kötelező</span>
-          <span className="inline-flex items-center gap-1 text-slate-500"><Clock className="h-4 w-4" /> ~{estimateMinutes(questions)} perc</span>
+          <span className="text-slate-500">
+            {questions.length} kérdés · {mandatory} kötelező
+          </span>
+          <span className="inline-flex items-center gap-1 text-slate-500">
+            <Clock className="h-4 w-4" /> ~{estimateMinutes(questions)} perc
+          </span>
           <span className="text-slate-500">Elhangzott: {questions.filter((q) => asked.has(q.id)).length}</span>
           <div className="ml-auto flex gap-2 print:hidden">
             <button
@@ -551,7 +554,10 @@ function GuideTab(props: {
               {props.aiBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} AI-bővítés
             </button>
             {props.showPrint && (
-              <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-slate-700 hover:bg-slate-50">
+              <button
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+              >
                 <Printer className="h-4 w-4" /> Nyomtatás
               </button>
             )}
@@ -576,10 +582,16 @@ function GuideTab(props: {
                       {q.priority === 1 && <span className="rounded bg-slate-900 px-1.5 font-medium text-white">{PRIORITY_LABEL[1]}</span>}
                     </div>
                     <p className={`mt-1 ${done ? 'text-slate-500' : 'text-slate-900'}`}>{q.text}</p>
-                    {q.listenFor && <p className="mt-1 text-xs text-slate-500"><b>Figyelj:</b> {q.listenFor}</p>}
+                    {q.listenFor && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        <b>Figyelj:</b> {q.listenFor}
+                      </p>
+                    )}
                     {q.followUps.length > 0 && (
                       <ul className="mt-1 list-inside list-disc text-xs text-slate-500">
-                        {q.followUps.map((f) => <li key={f}>{f}</li>)}
+                        {q.followUps.map((f) => (
+                          <li key={f}>{f}</li>
+                        ))}
                       </ul>
                     )}
                   </div>
@@ -619,16 +631,22 @@ function FactsEditor({ facts, onChange }: { facts: KnownFact[]; onChange: (f: Kn
         Ezekkel veti össze az elemzés az interjúban elhangzottakat. Az Adatgyűjtés oldalról (kérdőív, táblák, dokumentumok) automatikusan bekerülnek.
       </p>
       <ul className="space-y-2 text-xs">
-        {facts.filter((f) => f.askInInterview !== false).map((f) => (
-          <li key={f.id} className="rounded border border-slate-100 bg-slate-50 p-2">
-            <div className="flex justify-between gap-2">
-              <span className="font-medium text-slate-500">{f.id} · {PILLAR_LABEL[f.pillar]}</span>
-              <button onClick={() => onChange(facts.filter((x) => x.id !== f.id))} className="text-slate-500 hover:text-red-600" aria-label="Törlés">✕</button>
-            </div>
-            <p className="mt-0.5 text-slate-700">{f.statement}</p>
-            <p className="mt-0.5 text-slate-500">{f.source}</p>
-          </li>
-        ))}
+        {facts
+          .filter((f) => f.askInInterview !== false)
+          .map((f) => (
+            <li key={f.id} className="rounded border border-slate-100 bg-slate-50 p-2">
+              <div className="flex justify-between gap-2">
+                <span className="font-medium text-slate-500">
+                  {f.id} · {PILLAR_LABEL[f.pillar]}
+                </span>
+                <button onClick={() => onChange(facts.filter((x) => x.id !== f.id))} className="text-slate-500 hover:text-red-600" aria-label="Törlés">
+                  ✕
+                </button>
+              </div>
+              <p className="mt-0.5 text-slate-700">{f.statement}</p>
+              <p className="mt-0.5 text-slate-500">{f.source}</p>
+            </li>
+          ))}
       </ul>
       {facts.some((f) => f.askInInterview === false) && (
         <p className="mt-2 text-xs text-slate-500">
@@ -637,10 +655,21 @@ function FactsEditor({ facts, onChange }: { facts: KnownFact[]; onChange: (f: Kn
       )}
       <div className="mt-2 flex gap-1">
         <select value={pillar} onChange={(e) => setPillar(e.target.value as Pillar)} className="rounded border border-slate-200 text-xs">
-          {PILLARS.map((p) => <option key={p} value={p}>{PILLAR_LABEL[p]}</option>)}
+          {PILLARS.map((p) => (
+            <option key={p} value={p}>
+              {PILLAR_LABEL[p]}
+            </option>
+          ))}
         </select>
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Új tény…" className="min-w-0 flex-1 rounded border border-slate-200 px-2 py-1 text-xs" />
-        <button onClick={add} aria-label="Hozzáadás" className="rounded bg-slate-900 px-2 text-white"><Plus className="h-3.5 w-3.5" /></button>
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Új tény…"
+          className="min-w-0 flex-1 rounded border border-slate-200 px-2 py-1 text-xs"
+        />
+        <button onClick={add} aria-label="Hozzáadás" className="rounded bg-slate-900 px-2 text-white">
+          <Plus className="h-3.5 w-3.5" />
+        </button>
       </div>
     </Card>
   );
@@ -678,8 +707,8 @@ function AnalysisTab({
         <div className="flex flex-wrap items-center gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <p className="min-w-0 flex-1">
-            <b>Ez az elemzés más célra készült:</b> {staleFrom}. A mostani cél: {currentKind}. Az AI a súlyosságot és a kiemeléseket a
-            célhoz méri, ezért az új célhoz futtasd újra.
+            <b>Ez az elemzés más célra készült:</b> {staleFrom}. A mostani cél: {currentKind}. Az AI a súlyosságot és a kiemeléseket a célhoz méri, ezért az új
+            célhoz futtasd újra.
           </p>
           <button
             onClick={onReanalyze}
@@ -692,8 +721,8 @@ function AnalysisTab({
       )}
       {isSample && (
         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          <b>Minta-elemzés:</b> előre elkészített eredmény a kitalált mintainterjúhoz, nem élő AI-hívás. Így néz ki a kimenet, ha
-          az AI-kulcs be van állítva. Az idézet-ellenőrzés ezen is lefutott.
+          <b>Minta-elemzés:</b> előre elkészített eredmény a kitalált mintainterjúhoz, nem élő AI-hívás. Így néz ki a kimenet, ha az AI-kulcs be van állítva. Az
+          idézet-ellenőrzés ezen is lefutott.
         </div>
       )}
 
@@ -711,15 +740,22 @@ function AnalysisTab({
           {analysis.contradictions.length === 0 && <p className="text-sm text-slate-500">Nincs talált ellentmondás.</p>}
           <ul className="space-y-3">
             {analysis.contradictions.map((c, i) => (
-              <li key={i} className={`rounded-md border p-3 text-sm ${c.severity === 'HIGH' ? 'border-red-200 bg-red-50/60' : c.severity === 'MEDIUM' ? 'border-amber-200 bg-amber-50/60' : 'border-slate-200'}`}>
+              <li
+                key={i}
+                className={`rounded-md border p-3 text-sm ${c.severity === 'HIGH' ? 'border-red-200 bg-red-50/60' : c.severity === 'MEDIUM' ? 'border-amber-200 bg-amber-50/60' : 'border-slate-200'}`}
+              >
                 <div className="flex items-center justify-between text-xs font-medium">
                   <span className="text-slate-500">{PILLAR_LABEL[c.pillar]}</span>
                   <span className={c.severity === 'HIGH' ? 'text-red-700' : c.severity === 'MEDIUM' ? 'text-amber-800' : 'text-slate-500'}>
                     {{ HIGH: 'Súlyos', MEDIUM: 'Közepes', LOW: 'Enyhe' }[c.severity]}
                   </span>
                 </div>
-                <p className="mt-1 text-slate-900"><b>Elhangzott:</b> „{c.quote}” {c.startMs != null && <span className="font-mono text-xs text-slate-500">[{formatMs(c.startMs)}]</span>}</p>
-                <p className="mt-1 text-slate-700"><b>Dokumentum:</b> {factById.get(c.conflictingFactId)?.statement ?? c.conflictingFactId}</p>
+                <p className="mt-1 text-slate-900">
+                  <b>Elhangzott:</b> „{c.quote}” {c.startMs != null && <span className="font-mono text-xs text-slate-500">[{formatMs(c.startMs)}]</span>}
+                </p>
+                <p className="mt-1 text-slate-700">
+                  <b>Dokumentum:</b> {factById.get(c.conflictingFactId)?.statement ?? c.conflictingFactId}
+                </p>
                 <p className="mt-0.5 text-xs text-slate-500">{c.conflictingSource}</p>
                 <p className="mt-2 text-slate-700">{c.explanation}</p>
               </li>
@@ -753,7 +789,13 @@ function AnalysisTab({
                       done ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-900 text-white hover:bg-slate-800'
                     }`}
                   >
-                    {done ? <><Check className="h-3.5 w-3.5" /> Átvéve a Red Flag mátrixba</> : 'Elfogadás → Red Flag mátrix'}
+                    {done ? (
+                      <>
+                        <Check className="h-3.5 w-3.5" /> Átvéve a Red Flag mátrixba
+                      </>
+                    ) : (
+                      'Elfogadás → Red Flag mátrix'
+                    )}
                   </button>
                 </li>
               );
@@ -767,7 +809,9 @@ function AnalysisTab({
           <ul className="space-y-2 text-sm">
             {analysis.statements.map((s, i) => (
               <li key={i}>
-                <span className="text-xs text-slate-500">{PILLAR_LABEL[s.pillar]} · {s.speaker} {s.startMs != null && `· ${formatMs(s.startMs)}`}</span>
+                <span className="text-xs text-slate-500">
+                  {PILLAR_LABEL[s.pillar]} · {s.speaker} {s.startMs != null && `· ${formatMs(s.startMs)}`}
+                </span>
                 <p className="text-slate-800">{s.summary}</p>
               </li>
             ))}
@@ -775,7 +819,9 @@ function AnalysisTab({
         </Card>
         <Card title="Tisztázandó a következő körben" icon={<ListChecks className="h-4 w-4" />}>
           <ul className="list-inside list-disc space-y-1 text-sm text-slate-700">
-            {analysis.followUpQuestions.map((q) => <li key={q}>{q}</li>)}
+            {analysis.followUpQuestions.map((q) => (
+              <li key={q}>{q}</li>
+            ))}
           </ul>
         </Card>
       </div>
@@ -788,13 +834,28 @@ function AnalysisTab({
 function Card({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">{icon}{title}</h2>
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
+        {icon}
+        {title}
+      </h2>
       {children}
     </div>
   );
 }
 
-function TabButton({ active, onClick, icon, disabled, children }: { active: boolean; onClick: () => void; icon: ReactNode; disabled?: boolean; children: ReactNode }) {
+function TabButton({
+  active,
+  onClick,
+  icon,
+  disabled,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: ReactNode;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
   return (
     <button
       onClick={onClick}

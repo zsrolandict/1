@@ -78,23 +78,27 @@ export function buildSources(state: IntakeState, records: InterviewRecords, fact
 }
 
 const SynthesisSchema = z.object({
-  risks: z.array(
-    z.object({
-      title: z.string().describe('Rövid, konkrét kockázatcím magyarul.'),
-      templateCode: z.string().nullable().describe('Katalóguskód, ha egy még NEM azonosított katalógustétel illik rá; különben null.'),
-      pillar: z.enum(['FINANCE', 'LEGAL', 'OPERATIONS', 'HR']),
-      rationale: z.string().describe('2–3 mondat: mi a kockázat, és hogyan következik a forrásokból (melyik forrás mit mond).'),
-      likelihood: z.number().int().describe('1 és 5 közötti egész'),
-      impact: z.number().int().describe('1 és 5 közötti egész'),
-      evidence: z.array(
-        z.object({
-          sourceId: z.string().describe('A forrás azonosítója (pl. T1, K1, A2, D1, I1).'),
-          quote: z.string().describe('SZÓ SZERINTI részlet az adott forrásból (legalább 4 szó).'),
-        }),
-      ).describe('Legalább egy, lehetőleg két különböző forrásból.'),
-      confidence: z.number().describe('0 és 1 között'),
-    }),
-  ).describe('Legfeljebb 8 kockázat.'),
+  risks: z
+    .array(
+      z.object({
+        title: z.string().describe('Rövid, konkrét kockázatcím magyarul.'),
+        templateCode: z.string().nullable().describe('Katalóguskód, ha egy még NEM azonosított katalógustétel illik rá; különben null.'),
+        pillar: z.enum(['FINANCE', 'LEGAL', 'OPERATIONS', 'HR']),
+        rationale: z.string().describe('2–3 mondat: mi a kockázat, és hogyan következik a forrásokból (melyik forrás mit mond).'),
+        likelihood: z.number().int().describe('1 és 5 közötti egész'),
+        impact: z.number().int().describe('1 és 5 közötti egész'),
+        evidence: z
+          .array(
+            z.object({
+              sourceId: z.string().describe('A forrás azonosítója (pl. T1, K1, A2, D1, I1).'),
+              quote: z.string().describe('SZÓ SZERINTI részlet az adott forrásból (legalább 4 szó).'),
+            }),
+          )
+          .describe('Legalább egy, lehetőleg két különböző forrásból.'),
+        confidence: z.number().describe('0 és 1 között'),
+      }),
+    )
+    .describe('Legfeljebb 8 kockázat.'),
 });
 
 const SYSTEM = `Az ICT Európa tanácsadó cégcsoport átvilágítási szakértői asszisztense vagy.
@@ -127,7 +131,10 @@ Már javaslatként szereplő tételek (ezeket se):
 ${input.pending.map((p) => `- ${p}`).join('\n') || '(nincs)'}
 
 Nem azonosított katalógustételek (templateCode-ként használhatók):
-${input.existing.filter((r) => !r.identified).map((r) => `- ${r.code} [${PILLAR_LABEL[r.pillar]}] ${r.title}`).join('\n')}
+${input.existing
+  .filter((r) => !r.identified)
+  .map((r) => `- ${r.code} [${PILLAR_LABEL[r.pillar]}] ${r.title}`)
+  .join('\n')}
 
 Források:
 ${input.sources.map((s) => `<forras id="${s.id}" tipus="${s.kind}" nev="${s.label.replace(/"/g, "'")}">\n${s.text}\n</forras>`).join('\n')}`;

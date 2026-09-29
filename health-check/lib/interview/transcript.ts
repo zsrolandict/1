@@ -1,12 +1,4 @@
-import type {
-  Contradiction,
-  InterviewAnalysis,
-  InterviewStatement,
-  KnownFact,
-  SuggestedRedFlag,
-  Transcript,
-  TranscriptSegment,
-} from './types';
+import type { Contradiction, InterviewAnalysis, InterviewStatement, KnownFact, SuggestedRedFlag, Transcript, TranscriptSegment } from './types';
 
 /** Összehasonlításhoz: kisbetű, ékezet- és írásjel-független, egyszeres szóköz. */
 export function normalize(text: string): string {
@@ -53,25 +45,27 @@ export function findQuote(transcript: Transcript, quote: string): QuoteMatch | n
  *  - az időbélyeget és a beszélőt a leiratból vesszük, nem a modelltől,
  *  - ellentmondás csak létező ismert tényre hivatkozhat.
  */
-export function verifyAnalysis(
-  raw: Omit<InterviewAnalysis, 'discardedUnverified'>,
-  transcript: Transcript,
-  facts: KnownFact[],
-): InterviewAnalysis {
+export function verifyAnalysis(raw: Omit<InterviewAnalysis, 'discardedUnverified'>, transcript: Transcript, facts: KnownFact[]): InterviewAnalysis {
   let discarded = 0;
   const factById = new Map(facts.map((f) => [f.id, f]));
 
   const statements: InterviewStatement[] = [];
   for (const s of raw.statements) {
     const m = findQuote(transcript, s.quote);
-    if (!m) { discarded++; continue; }
+    if (!m) {
+      discarded++;
+      continue;
+    }
     statements.push({ ...s, speaker: m.segment.speaker, startMs: m.startMs });
   }
 
   const suggestedRedFlags: SuggestedRedFlag[] = [];
   for (const f of raw.suggestedRedFlags) {
     const m = findQuote(transcript, f.quote);
-    if (!m) { discarded++; continue; }
+    if (!m) {
+      discarded++;
+      continue;
+    }
     suggestedRedFlags.push({
       ...f,
       startMs: m.startMs,
@@ -83,7 +77,10 @@ export function verifyAnalysis(
   for (const c of raw.contradictions) {
     const m = findQuote(transcript, c.quote);
     const fact = factById.get(c.conflictingFactId);
-    if (!m || !fact) { discarded++; continue; }
+    if (!m || !fact) {
+      discarded++;
+      continue;
+    }
     contradictions.push({ ...c, startMs: m.startMs, conflictingSource: fact.source });
   }
 
@@ -167,7 +164,5 @@ export function formatMs(ms: number | null): string {
 
 /** Leirat → tömör szöveg a modellnek (beszélő + időbélyeg soronként). */
 export function transcriptToPrompt(t: Transcript): string {
-  return t.segments
-    .map((s) => `${t.timed ? `[${formatMs(s.startMs)}] ` : ''}${s.speaker}: ${s.text}`)
-    .join('\n');
+  return t.segments.map((s) => `${t.timed ? `[${formatMs(s.startMs)}] ` : ''}${s.speaker}: ${s.text}`).join('\n');
 }

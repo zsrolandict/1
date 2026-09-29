@@ -4,16 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Camera, History, Trash2 } from 'lucide-react';
 import { RAG_LABEL } from '@/lib/risk/catalog';
 import { formatHufShort, type EngineOptions } from '@/lib/risk/engine';
-import {
-  CHANGE_LABEL,
-  compare,
-  loadSnapshots,
-  REMEDIATION_LABEL,
-  saveSnapshots,
-  takeSnapshot,
-  type ChangeKind,
-  type Snapshot,
-} from '@/lib/risk/followup';
+import { CHANGE_LABEL, compare, loadSnapshots, REMEDIATION_LABEL, saveSnapshots, takeSnapshot, type ChangeKind, type Snapshot } from '@/lib/risk/followup';
 import type { RemediationStatus, RiskAssessment, RiskItem } from '@/lib/risk/types';
 
 const STATUSES: RemediationStatus[] = ['OPEN', 'IN_PROGRESS', 'DONE', 'ACCEPTED_RISK'];
@@ -79,9 +70,7 @@ export default function FollowUpPanel({
         <span className="flex items-center gap-2 text-sm font-semibold text-slate-900">
           <History className="h-4 w-4" /> Utókövetés – javítások állapota és összevetés
         </span>
-        <span className="text-xs text-slate-500">
-          {open ? 'Bezár' : statusCount.map(([s, n]) => `${REMEDIATION_LABEL[s]}: ${n}`).join(' · ')}
-        </span>
+        <span className="text-xs text-slate-500">{open ? 'Bezár' : statusCount.map(([s, n]) => `${REMEDIATION_LABEL[s]}: ${n}`).join(' · ')}</span>
       </button>
       {open && (
         <div className="grid gap-4 border-t border-slate-100 p-4 lg:grid-cols-2">
@@ -98,7 +87,11 @@ export default function FollowUpPanel({
                     aria-label={`Javítás állapota: ${r.title}`}
                     className="rounded border border-slate-200 bg-white px-1 py-0.5 text-xs"
                   >
-                    {STATUSES.map((s) => <option key={s} value={s}>{REMEDIATION_LABEL[s]}</option>)}
+                    {STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {REMEDIATION_LABEL[s]}
+                      </option>
+                    ))}
                   </select>
                 </li>
               ))}
@@ -110,12 +103,24 @@ export default function FollowUpPanel({
 
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <button onClick={save} className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
+              <button
+                onClick={save}
+                className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+              >
                 <Camera className="h-3.5 w-3.5" /> Pillanatkép a mostani állapotról
               </button>
               {snapshots.length > 0 && (
-                <select value={selected ?? ''} onChange={(e) => setSelected(e.target.value)} aria-label="Összevetés ezzel" className="rounded-md border border-slate-200 px-2 py-1 text-xs">
-                  {snapshots.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                <select
+                  value={selected ?? ''}
+                  onChange={(e) => setSelected(e.target.value)}
+                  aria-label="Összevetés ezzel"
+                  className="rounded-md border border-slate-200 px-2 py-1 text-xs"
+                >
+                  {snapshots.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
                 </select>
               )}
               {snap && (
@@ -126,8 +131,8 @@ export default function FollowUpPanel({
             </div>
             {!cmp && (
               <p className="mt-3 text-sm text-slate-500">
-                Az átvilágítás zárásakor ments pillanatképet. A visszanéző Health Checknél (3–6 hónap múlva) ehhez méri a program, mi oldódott meg, mi
-                romlott és mi új.
+                Az átvilágítás zárásakor ments pillanatképet. A visszanéző Health Checknél (3–6 hónap múlva) ehhez méri a program, mi oldódott meg, mi romlott
+                és mi új.
               </p>
             )}
             {cmp && (
@@ -138,15 +143,21 @@ export default function FollowUpPanel({
                   <Kpi label="Várható veszteség" before={cmp.snapshot.totals.expectedLossHuf} after={cmp.now.expectedLossHuf} lowerIsBetter money />
                 </dl>
                 <p className="mt-2 text-xs text-slate-500">
-                  {(Object.keys(CHANGE_LABEL) as ChangeKind[]).filter((k) => cmp.counts[k]).map((k) => `${CHANGE_LABEL[k]}: ${cmp.counts[k]}`).join(' · ')}
+                  {(Object.keys(CHANGE_LABEL) as ChangeKind[])
+                    .filter((k) => cmp.counts[k])
+                    .map((k) => `${CHANGE_LABEL[k]}: ${cmp.counts[k]}`)
+                    .join(' · ')}
                 </p>
                 <ul className="mt-2 max-h-72 divide-y divide-slate-100 overflow-auto rounded-md border border-slate-100 text-sm">
                   {cmp.changes.map((c) => (
                     <li key={c.id} className="flex items-center gap-2 px-3 py-1.5">
                       <span className={`w-28 shrink-0 rounded px-1.5 text-center text-xs font-medium ${CHANGE_STYLE[c.change]}`}>{CHANGE_LABEL[c.change]}</span>
-                      <span className="min-w-0 flex-1 truncate text-slate-800">{c.code} {c.title}</span>
+                      <span className="min-w-0 flex-1 truncate text-slate-800">
+                        {c.code} {c.title}
+                      </span>
                       <span className="text-xs tabular-nums text-slate-500">
-                        {c.before ? `${RAG_LABEL[c.before.rag]} ${c.before.score}` : '—'} → {c.after ? `${RAG_LABEL[c.after.rag]} ${c.after.score}` : 'megoldva'}
+                        {c.before ? `${RAG_LABEL[c.before.rag]} ${c.before.score}` : '—'} →{' '}
+                        {c.after ? `${RAG_LABEL[c.after.rag]} ${c.after.score}` : 'megoldva'}
                       </span>
                     </li>
                   ))}

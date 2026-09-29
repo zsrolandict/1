@@ -17,11 +17,18 @@ beforeAll(async () => {
     req.on('end', () => {
       lastBody = JSON.parse(data);
       res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({
-        id: 'msg_test', type: 'message', role: 'assistant', model: 'claude-opus-5',
-        content: [{ type: 'text', text: nextText }], stop_reason: 'end_turn', stop_sequence: null,
-        usage: { input_tokens: 10, output_tokens: 10 },
-      }));
+      res.end(
+        JSON.stringify({
+          id: 'msg_test',
+          type: 'message',
+          role: 'assistant',
+          model: 'claude-opus-5',
+          content: [{ type: 'text', text: nextText }],
+          stop_reason: 'end_turn',
+          stop_sequence: null,
+          usage: { input_tokens: 10, output_tokens: 10 },
+        }),
+      );
     });
   });
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));

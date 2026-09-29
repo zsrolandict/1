@@ -76,8 +76,7 @@ export default function CaseTab({
     const added = onSectorsChange(sectors);
     setSectorNote(added > 0 ? `${added} ágazati kockázati tétel került a Red Flag mátrixba (pipálatlanul).` : null);
   };
-  const toggleFlag = (f: CaseFlag) =>
-    setProfile({ flags: profile.flags.includes(f) ? profile.flags.filter((x) => x !== f) : [...profile.flags, f] });
+  const toggleFlag = (f: CaseFlag) => setProfile({ flags: profile.flags.includes(f) ? profile.flags.filter((x) => x !== f) : [...profile.flags, f] });
   const setStatus = (id: string, s: RequestStatus) => update({ requestStatus: { ...intake.requestStatus, [id]: s } });
   const addExtra = (d: Omit<DocRequest, 'id'>) =>
     update({ extraRequests: [...intake.extraRequests, { ...d, id: `X${Date.now().toString(36)}${intake.extraRequests.length}` }] });
@@ -126,8 +125,8 @@ export default function CaseTab({
             )}
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            Az első egyeztetés után rögzítsd. Ebből áll össze az iratlista: az alap iratkör mindig benne van, a többit a cél, az ágazat, a
-            létszám és a jellemzők adják.
+            Az első egyeztetés után rögzítsd. Ebből áll össze az iratlista: az alap iratkör mindig benne van, a többit a cél, az ágazat, a létszám és a
+            jellemzők adják.
           </p>
           <p className="mt-3 text-xs font-medium text-slate-600">Ágazat (több is lehet)</p>
           <div className="mt-1 flex flex-wrap gap-1.5">
@@ -268,9 +267,7 @@ export default function CaseTab({
                 })}
               </ul>
             )}
-            {!suggestion.flags.length && !suggestion.documents.length && (
-              <p className="mt-2 text-xs text-indigo-900/70">Nincs további javaslat.</p>
-            )}
+            {!suggestion.flags.length && !suggestion.documents.length && <p className="mt-2 text-xs text-indigo-900/70">Nincs további javaslat.</p>}
           </div>
         )}
       </div>
@@ -280,12 +277,13 @@ export default function CaseTab({
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
           <div className="text-sm">
             <b className="text-slate-900">Iratbekérési lista: {list.length} tétel</b>
-            <span className="ml-2 text-xs text-slate-500">
-              {counts.map(([s, n]) => `${STATUS_LABEL[s]}: ${n}`).join(' · ')}
-            </span>
+            <span className="ml-2 text-xs text-slate-500">{counts.map(([s, n]) => `${STATUS_LABEL[s]}: ${n}`).join(' · ')}</span>
           </div>
           <div className="flex gap-2">
-            <button onClick={copy} className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
+            <button
+              onClick={copy}
+              className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+            >
               <ClipboardCopy className="h-3.5 w-3.5" /> {copied ? 'Másolva' : 'Lista az ügyfélnek (másolás)'}
             </button>
             <button onClick={() => setShowText((v) => !v)} className="rounded-md border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50">
@@ -293,7 +291,13 @@ export default function CaseTab({
             </button>
           </div>
           {showText && (
-            <textarea readOnly value={text} rows={12} onFocus={(e) => e.target.select()} className="w-full rounded-md border border-slate-200 p-2 font-mono text-xs" />
+            <textarea
+              readOnly
+              value={text}
+              rows={12}
+              onFocus={(e) => e.target.select()}
+              className="w-full rounded-md border border-slate-200 p-2 font-mono text-xs"
+            />
           )}
         </div>
 
@@ -359,7 +363,11 @@ export default function CaseTab({
             className="min-w-0 flex-1 rounded-md border border-slate-200 px-2 py-1 text-sm"
           />
           <select value={newPillar} onChange={(e) => setNewPillar(e.target.value as Pillar)} className="rounded-md border border-slate-200 px-2 text-sm">
-            {PILLARS.map((p) => <option key={p} value={p}>{PILLAR_LABEL[p]}</option>)}
+            {PILLARS.map((p) => (
+              <option key={p} value={p}>
+                {PILLAR_LABEL[p]}
+              </option>
+            ))}
           </select>
           <button
             onClick={() => {
@@ -373,8 +381,8 @@ export default function CaseTab({
           </button>
         </div>
         <p className="text-xs text-slate-500">
-          A „Hiányzik” állapotú iratokra az interjúkon a program külön rákérdez. A beérkezett szerződéseket a Dokumentumok fülön
-          elemezheted, a táblázatokat az Adattábláknál.
+          A „Hiányzik” állapotú iratokra az interjúkon a program külön rákérdez. A beérkezett szerződéseket a Dokumentumok fülön elemezheted, a táblázatokat az
+          Adattábláknál.
         </p>
       </div>
     </section>

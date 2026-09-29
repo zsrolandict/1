@@ -1,1 +1,126 @@
-window.__fx={"interview":{"summary":"A legnagyobb ügyfél a forgalom több mint felét adja; az ügyvezető szerint a szerződés nem mondható fel, holott tulajdonosváltáskor azonnali felmondást enged, ami befektetőbevonásnál a legkritikusabb pont. A forráskód jogát a GitLab-birtoklásra alapozza, de 9 fejlesztő szerződéséből hiányzik a jogátruházás. A licencpolitikáról tett állítás ellentmond a szkennelési riportnak. A CTO-függőség és a számlás fejlesztők munkaviszony jellegű foglalkoztatása további jelentős kockázat.","statements":[{"pillar":"OPERATIONS","summary":"A legnagyobb ügyfél a forgalom több mint felét adja.","quote":"Ők a forgalom kicsit több mint felét adják","speaker":""},{"pillar":"HR","summary":"Az architektúrát csak a CTO látja át.","quote":"az architektúrát csak ő látja át teljesen","speaker":""},{"pillar":"HR","summary":"A számlás fejlesztők alkalmazotti rendben dolgoznak.","quote":"Ugyanúgy bejárnak, mint az alkalmazottak","speaker":""}],"suggestedRedFlags":[{"templateCode":"HR-01","pillar":"HR","title":"Kulcsember-függőség (HR 361)","rationale":"A rendszer architektúrája egyetlen ember fejében van.","quote":"az architektúrát csak ő látja át teljesen","likelihood":4,"impact":5,"exposureHufEstimate":null,"confidence":0.9},{"templateCode":"HR-02","pillar":"HR","title":"Színlelt vállalkozói jogviszonyok","rationale":"Kötött munkarend, céges eszköz, integrált csapatmunka.","quote":"a céges laptopon dolgoznak és a sprintekhez igazodnak","likelihood":4,"impact":4,"exposureHufEstimate":null,"confidence":0.85},{"templateCode":"ITF-01","pillar":"LEGAL","title":"Copyleft licencű komponensek az értékesített termékben","rationale":"A vezetés szerint nincs copyleft komponens, a riport szerint van.","quote":"Csak MIT és Apache licencűeket","likelihood":3,"impact":4,"exposureHufEstimate":null,"confidence":0.8}],"contradictions":[{"pillar":"LEGAL","claim":"A forráskód egyértelműen a cégé.","quote":"a kód a mi GitLabunkon van, tehát egyértelműen a miénk","conflictingFactId":"F2","explanation":"A kód fizikai birtoklása nem ruházza át a szerzői vagyoni jogokat; 9 fejlesztő szerződéséből ez hiányzik. Befektetői átvilágításon ez a fő eszköz jogcímét érinti.","severity":"HIGH"},{"pillar":"LEGAL","claim":"Csak megengedő licencű komponenseket használnak.","quote":"Csak MIT és Apache licencűeket","conflictingFactId":"F3","explanation":"A szkenner 3 GPL komponenst talált az értékesített termékben; a licencpolitika a gyakorlatban nem érvényesül.","severity":"HIGH"},{"pillar":"LEGAL","claim":"A legnagyobb ügyfél nem tud kilépni.","quote":"nem tudnak csak úgy kilépni","conflictingFactId":"F1","explanation":"A keretszerződés tulajdonosváltáskor azonnali felmondást enged: befektető belépése a bevétel több mint felét kockáztatja.","severity":"HIGH"}],"followUpQuestions":["Hajlandók-e a számlás fejlesztők utólagos jogátruházási nyilatkozatot aláírni, és milyen feltétellel?","Melyik termékmodulban vannak a GPL komponensek, és kiváltható-e mindhárom?","Tárgyaltak-e már a legnagyobb ügyféllel a tulajdonosváltási záradékról?"]},"doc":{"documentType":"Szoftverfejlesztési és támogatási keretszerződés","summary":"Keretszerződés a legnagyobb ügyféllel egy ügyfélportál fejlesztésére és 7×24 órás támogatására. Szigorú, 99,9%-os rendelkezésre állást és óránként 5%-os kötbért rögzít, a szállító felelőssége korlátlan. Irányításváltozáskor az ügyfél azonnali hatállyal felmondhat.","findings":[{"templateCode":"LEG-01","pillar":"LEGAL","title":"Change of Control záradék kulcsszerződésben","rationale":"A befektető belépése irányításváltozásnak minősülhet, és a bevétel felét adó ügyfél azonnal kiléphet. Ez ellentmond annak, hogy a szerződésből „nem tudnak csak úgy kilépni”.","quote":"jogosult a szerződést azonnali hatállyal felmondani, ha a Szállító feletti irányítás megváltozik","likelihood":4,"impact":5,"exposureHufEstimate":null,"confidence":0.95},{"templateCode":"ITF-02","pillar":"LEGAL","title":"Korlátlan felelősség és SLA-kötbér az ügyfélszerződésekben","rationale":"Korlátlan kártérítési felelősség egy bankügyfél felé, óránként 5%-os SLA-kötbérrel: egy nagyobb kiesés a havi díj többszörösét viheti el.","quote":"a szerződésszegéssel okozott kárért a Polgári Törvénykönyv szabályai szerint, korlátozás nélkül felel","likelihood":3,"impact":5,"exposureHufEstimate":null,"confidence":0.88}],"facts":[{"pillar":"LEGAL","statement":"A legnagyobb ügyfél irányításváltozáskor azonnali hatállyal felmondhat (15.4 pont).","quote":"ha a Szállító feletti irányítás megváltozik, vagy a Szállító tulajdonosi körébe a Megrendelő versenytársa lép be"},{"pillar":"OPERATIONS","statement":"Az SLA 99,9%-os havi rendelkezésre állást ír elő, óránként a havi díj 5%-ának megfelelő kötbérrel.","quote":"Minden megkezdett óra kiesés után a Szállító a havi szolgáltatási díj 5%-ának megfelelő kötbért fizet"}],"missingProvisions":["Felelősségkorlátozás","Kötbérplafon az SLA-ban"]}};
+window.__fx = {
+  interview: {
+    summary:
+      'A legnagyobb ügyfél a forgalom több mint felét adja; az ügyvezető szerint a szerződés nem mondható fel, holott tulajdonosváltáskor azonnali felmondást enged, ami befektetőbevonásnál a legkritikusabb pont. A forráskód jogát a GitLab-birtoklásra alapozza, de 9 fejlesztő szerződéséből hiányzik a jogátruházás. A licencpolitikáról tett állítás ellentmond a szkennelési riportnak. A CTO-függőség és a számlás fejlesztők munkaviszony jellegű foglalkoztatása további jelentős kockázat.',
+    statements: [
+      {
+        pillar: 'OPERATIONS',
+        summary: 'A legnagyobb ügyfél a forgalom több mint felét adja.',
+        quote: 'Ők a forgalom kicsit több mint felét adják',
+        speaker: '',
+      },
+      { pillar: 'HR', summary: 'Az architektúrát csak a CTO látja át.', quote: 'az architektúrát csak ő látja át teljesen', speaker: '' },
+      { pillar: 'HR', summary: 'A számlás fejlesztők alkalmazotti rendben dolgoznak.', quote: 'Ugyanúgy bejárnak, mint az alkalmazottak', speaker: '' },
+    ],
+    suggestedRedFlags: [
+      {
+        templateCode: 'HR-01',
+        pillar: 'HR',
+        title: 'Kulcsember-függőség (HR 361)',
+        rationale: 'A rendszer architektúrája egyetlen ember fejében van.',
+        quote: 'az architektúrát csak ő látja át teljesen',
+        likelihood: 4,
+        impact: 5,
+        exposureHufEstimate: null,
+        confidence: 0.9,
+      },
+      {
+        templateCode: 'HR-02',
+        pillar: 'HR',
+        title: 'Színlelt vállalkozói jogviszonyok',
+        rationale: 'Kötött munkarend, céges eszköz, integrált csapatmunka.',
+        quote: 'a céges laptopon dolgoznak és a sprintekhez igazodnak',
+        likelihood: 4,
+        impact: 4,
+        exposureHufEstimate: null,
+        confidence: 0.85,
+      },
+      {
+        templateCode: 'ITF-01',
+        pillar: 'LEGAL',
+        title: 'Copyleft licencű komponensek az értékesített termékben',
+        rationale: 'A vezetés szerint nincs copyleft komponens, a riport szerint van.',
+        quote: 'Csak MIT és Apache licencűeket',
+        likelihood: 3,
+        impact: 4,
+        exposureHufEstimate: null,
+        confidence: 0.8,
+      },
+    ],
+    contradictions: [
+      {
+        pillar: 'LEGAL',
+        claim: 'A forráskód egyértelműen a cégé.',
+        quote: 'a kód a mi GitLabunkon van, tehát egyértelműen a miénk',
+        conflictingFactId: 'F2',
+        explanation:
+          'A kód fizikai birtoklása nem ruházza át a szerzői vagyoni jogokat; 9 fejlesztő szerződéséből ez hiányzik. Befektetői átvilágításon ez a fő eszköz jogcímét érinti.',
+        severity: 'HIGH',
+      },
+      {
+        pillar: 'LEGAL',
+        claim: 'Csak megengedő licencű komponenseket használnak.',
+        quote: 'Csak MIT és Apache licencűeket',
+        conflictingFactId: 'F3',
+        explanation: 'A szkenner 3 GPL komponenst talált az értékesített termékben; a licencpolitika a gyakorlatban nem érvényesül.',
+        severity: 'HIGH',
+      },
+      {
+        pillar: 'LEGAL',
+        claim: 'A legnagyobb ügyfél nem tud kilépni.',
+        quote: 'nem tudnak csak úgy kilépni',
+        conflictingFactId: 'F1',
+        explanation: 'A keretszerződés tulajdonosváltáskor azonnali felmondást enged: befektető belépése a bevétel több mint felét kockáztatja.',
+        severity: 'HIGH',
+      },
+    ],
+    followUpQuestions: [
+      'Hajlandók-e a számlás fejlesztők utólagos jogátruházási nyilatkozatot aláírni, és milyen feltétellel?',
+      'Melyik termékmodulban vannak a GPL komponensek, és kiváltható-e mindhárom?',
+      'Tárgyaltak-e már a legnagyobb ügyféllel a tulajdonosváltási záradékról?',
+    ],
+  },
+  doc: {
+    documentType: 'Szoftverfejlesztési és támogatási keretszerződés',
+    summary:
+      'Keretszerződés a legnagyobb ügyféllel egy ügyfélportál fejlesztésére és 7×24 órás támogatására. Szigorú, 99,9%-os rendelkezésre állást és óránként 5%-os kötbért rögzít, a szállító felelőssége korlátlan. Irányításváltozáskor az ügyfél azonnali hatállyal felmondhat.',
+    findings: [
+      {
+        templateCode: 'LEG-01',
+        pillar: 'LEGAL',
+        title: 'Change of Control záradék kulcsszerződésben',
+        rationale:
+          'A befektető belépése irányításváltozásnak minősülhet, és a bevétel felét adó ügyfél azonnal kiléphet. Ez ellentmond annak, hogy a szerződésből „nem tudnak csak úgy kilépni”.',
+        quote: 'jogosult a szerződést azonnali hatállyal felmondani, ha a Szállító feletti irányítás megváltozik',
+        likelihood: 4,
+        impact: 5,
+        exposureHufEstimate: null,
+        confidence: 0.95,
+      },
+      {
+        templateCode: 'ITF-02',
+        pillar: 'LEGAL',
+        title: 'Korlátlan felelősség és SLA-kötbér az ügyfélszerződésekben',
+        rationale: 'Korlátlan kártérítési felelősség egy bankügyfél felé, óránként 5%-os SLA-kötbérrel: egy nagyobb kiesés a havi díj többszörösét viheti el.',
+        quote: 'a szerződésszegéssel okozott kárért a Polgári Törvénykönyv szabályai szerint, korlátozás nélkül felel',
+        likelihood: 3,
+        impact: 5,
+        exposureHufEstimate: null,
+        confidence: 0.88,
+      },
+    ],
+    facts: [
+      {
+        pillar: 'LEGAL',
+        statement: 'A legnagyobb ügyfél irányításváltozáskor azonnali hatállyal felmondhat (15.4 pont).',
+        quote: 'ha a Szállító feletti irányítás megváltozik, vagy a Szállító tulajdonosi körébe a Megrendelő versenytársa lép be',
+      },
+      {
+        pillar: 'OPERATIONS',
+        statement: 'Az SLA 99,9%-os havi rendelkezésre állást ír elő, óránként a havi díj 5%-ának megfelelő kötbérrel.',
+        quote: 'Minden megkezdett óra kiesés után a Szállító a havi szolgáltatási díj 5%-ának megfelelő kötbért fizet',
+      },
+    ],
+    missingProvisions: ['Felelősségkorlátozás', 'Kötbérplafon az SLA-ban'],
+  },
+};

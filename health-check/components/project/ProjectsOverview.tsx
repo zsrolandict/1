@@ -50,7 +50,13 @@ export default function ProjectsOverview({ onClose, allowNewTab = true }: { onCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-900/40 p-4 pt-16 print:hidden" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-labelledby="projects-title" onClick={(e) => e.stopPropagation()} className="w-full max-w-3xl rounded-xl bg-white shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="projects-title"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-3xl rounded-xl bg-white shadow-2xl"
+      >
         <header className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
           <h2 id="projects-title" className="text-lg font-semibold text-slate-900">
             Projektjeim
@@ -106,7 +112,10 @@ export default function ProjectsOverview({ onClose, allowNewTab = true }: { onCl
                       <ExternalLink className="h-3.5 w-3.5" /> Új lapon
                     </a>
                   )}
-                  <button onClick={() => resume(p)} className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
+                  <button
+                    onClick={() => resume(p)}
+                    className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+                  >
                     Folytatás: {PAGE_LABEL[page]} <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </div>

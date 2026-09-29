@@ -14,11 +14,11 @@ const SOURCE: Record<IntakeOrigin, RiskSource> = {
   AI_SYNTHESIS: 'AI_SYNTHESIS',
 };
 
-const SECTOR_ITEMS = new Map(
-  SCENARIOS.flatMap((s) => s.items).map((r) => [r.code, r] as const),
-);
+const SECTOR_ITEMS = new Map(SCENARIOS.flatMap((s) => s.items).map((r) => [r.code, r] as const));
 const KIND_ITEMS = new Map(
-  Object.values(KIND_RISKS).flat().map((r) => [r.code, r] as const),
+  Object.values(KIND_RISKS)
+    .flat()
+    .map((r) => [r.code, r] as const),
 );
 
 /** Tétel-sablon kód alapján: alapkatalógus › típus-tétel › ágazati katalógus › mintacég tétele. */
@@ -62,11 +62,7 @@ function raiseExposure(r: RiskItem, estimate: number | null | undefined, company
  *  - A lista nem tartalmazza, de van sablonja → a sablonból vesszük fel.
  *  - Egyébként új, egyedi tétel.
  */
-export function applyIntakeSuggestion(
-  items: RiskItem[],
-  s: IntakeSuggestion,
-  company: CompanyProfile = DEFAULT_COMPANY,
-): RiskItem[] {
+export function applyIntakeSuggestion(items: RiskItem[], s: IntakeSuggestion, company: CompanyProfile = DEFAULT_COMPANY): RiskItem[] {
   const merge = (r: RiskItem): RiskItem => {
     const withValuation: RiskItem = { ...r, valuation: patchValuation(r.valuation, s.valuationPatch) };
     return {

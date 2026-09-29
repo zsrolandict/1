@@ -76,9 +76,9 @@ function App() {
   return (
     <NavProvider value={{ page: tab, go }}>
       <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs text-amber-900">
-        <b>Prototípus, csak kitalált tesztanyaggal.</b> Az AI-elemzés élő (interjú-jegyzet, saját Word/PDF/szöveg dokumentum): a claude.ai
-        AI-ja fut a te fiókodon, első használatkor engedélyt kér. Hangfájl itt nem dolgozható fel, azt a saját gépes változat tudja.
-        A módosítások csak ebben a böngészőben maradnak meg; a projektet a jobb felső sarokban fájlba mentheted.
+        <b>Prototípus, csak kitalált tesztanyaggal.</b> Az AI-elemzés élő (interjú-jegyzet, saját Word/PDF/szöveg dokumentum): a claude.ai AI-ja fut a te
+        fiókodon, első használatkor engedélyt kér. Hangfájl itt nem dolgozható fel, azt a saját gépes változat tudja. A módosítások csak ebben a böngészőben
+        maradnak meg; a projektet a jobb felső sarokban fájlba mentheted.
       </div>
       <nav className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-6 px-4 sm:px-6 lg:px-8">
@@ -93,17 +93,17 @@ function App() {
           )
             .filter(([t]) => !TAB_MODULES[t] || TAB_MODULES[t]!.some(isOn))
             .map(([t, label]) => (
-            <button
-              key={t}
-              onClick={() => go(t)}
-              aria-current={tab === t ? 'page' : undefined}
-              className={`-mb-px border-b-2 py-3 text-sm ${
-                tab === t ? 'border-slate-900 font-medium text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+              <button
+                key={t}
+                onClick={() => go(t)}
+                aria-current={tab === t ? 'page' : undefined}
+                className={`-mb-px border-b-2 py-3 text-sm ${
+                  tab === t ? 'border-slate-900 font-medium text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           <div className="ml-auto py-2">
             <ProjectBar saveFile={savePdf} allowNewTab={false} />
           </div>
@@ -111,10 +111,10 @@ function App() {
       </nav>
       <main>
         <ProjectScope>
-        {tab === 'matrix' && <RedFlagMatrix savePdf={savePdf} fontBase={fontBase} showPrint={false} />}
-        {tab === 'adatok' && <IntakeWorkspace onOpenMatrix={() => go('matrix')} />}
-        {tab === 'interjuk' && <InterviewWorkspace showPrint={false} />}
-        {tab === 'projekt' && <ProjectWorkspace />}
+          {tab === 'matrix' && <RedFlagMatrix savePdf={savePdf} fontBase={fontBase} showPrint={false} />}
+          {tab === 'adatok' && <IntakeWorkspace onOpenMatrix={() => go('matrix')} />}
+          {tab === 'interjuk' && <InterviewWorkspace showPrint={false} />}
+          {tab === 'projekt' && <ProjectWorkspace />}
         </ProjectScope>
       </main>
       <Guide page={tab} go={go} />

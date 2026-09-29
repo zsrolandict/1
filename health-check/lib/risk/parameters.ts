@@ -10,8 +10,8 @@ export interface ExpertParameter {
   label: string;
   valueHuf: number;
   approved: boolean;
-  owner: string;          // melyik divízió hagyja jóvá
-  approvedAt?: string;    // ISO dátum
+  owner: string; // melyik divízió hagyja jóvá
+  approvedAt?: string; // ISO dátum
   note: string;
 }
 

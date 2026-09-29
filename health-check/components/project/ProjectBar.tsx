@@ -4,7 +4,18 @@ import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, ChevronDown, FolderOpen, HardDrive, LayoutList, Plus, RotateCcw, Trash2, Upload } from 'lucide-react';
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 import { ago, lastSaved, SAVED_EVENT } from '@/lib/localSave';
-import { backupDue, BackupError, projectHasContent, deleteProject, exportProject, importProject, lastBackup, markBackedUp, parseBackup, resetDemo } from '@/lib/projects';
+import {
+  backupDue,
+  BackupError,
+  projectHasContent,
+  deleteProject,
+  exportProject,
+  importProject,
+  lastBackup,
+  markBackedUp,
+  parseBackup,
+  resetDemo,
+} from '@/lib/projects';
 import { createProject, openDemo, type ProjectMeta } from '@/lib/risk/store';
 import { SCENARIOS } from '@/lib/scenarios';
 import ConfirmDialog from '../ConfirmDialog';
@@ -61,11 +72,16 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
         {open && (
           <div className="absolute right-0 z-40 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white p-2 text-sm shadow-xl">
             {creating ? (
-              <NewProjectForm onCancel={() => setCreating(false)} onCreate={(input) => choose(() => {
-                  createProject(input);
-                  // Saját projekt az Adatgyűjtéssel indul.
-                  if (nav && nav.page !== 'adatok') nav.go('adatok');
-                })} />
+              <NewProjectForm
+                onCancel={() => setCreating(false)}
+                onCreate={(input) =>
+                  choose(() => {
+                    createProject(input);
+                    // Saját projekt az Adatgyűjtéssel indul.
+                    if (nav && nav.page !== 'adatok') nav.go('adatok');
+                  })
+                }
+              />
             ) : (
               <button
                 onClick={() => setCreating(true)}
@@ -81,7 +97,13 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
             ) : (
               <ul className="max-h-56 overflow-auto">
                 {own.map((p) => (
-                  <ProjectRow key={p.id} p={p} active={p.id === activeId} onOpen={() => choose(() => openProject(p.id, nav))} onDelete={() => setPending({ type: 'delete', project: p })} />
+                  <ProjectRow
+                    key={p.id}
+                    p={p}
+                    active={p.id === activeId}
+                    onOpen={() => choose(() => openProject(p.id, nav))}
+                    onDelete={() => setPending({ type: 'delete', project: p })}
+                  />
                 ))}
               </ul>
             )}
@@ -92,10 +114,15 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
                 const opened = demos.find((d) => d.id === s.id);
                 return (
                   <li key={s.id} className="group flex items-center gap-1">
-                    <button onClick={() => choose(() => {
-                      openDemo(s.id);
-                      openProject(s.id, nav);
-                    })} className="flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-50">
+                    <button
+                      onClick={() =>
+                        choose(() => {
+                          openDemo(s.id);
+                          openProject(s.id, nav);
+                        })
+                      }
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-50"
+                    >
                       {s.id === activeId ? <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" /> : <span className="w-3.5" />}
                       <span className="truncate">{s.label}</span>
                     </button>
@@ -142,8 +169,8 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
           setPending(null);
         }}
       >
-        A(z) „{pending?.project.companyName || 'Névtelen projekt'}” projekt minden adata (mátrix, adatgyűjtés, interjúk, időkeret) törlődik ebből a
-        böngészőből. Ha kellhet még, előbb mentsd fájlba.
+        A(z) „{pending?.project.companyName || 'Névtelen projekt'}” projekt minden adata (mátrix, adatgyűjtés, interjúk, időkeret) törlődik ebből a böngészőből.
+        Ha kellhet még, előbb mentsd fájlba.
       </ConfirmDialog>
       <ConfirmDialog
         open={pending?.type === 'reset'}
@@ -157,8 +184,8 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
           setOpen(false);
         }}
       >
-        Biztosan? A(z) „{pending?.project.companyName}” bemutatón végzett minden módosítás elvész (mátrix, adatgyűjtés, interjúk, időkeret), és
-        a minta kiinduló állapota tér vissza.
+        Biztosan? A(z) „{pending?.project.companyName}” bemutatón végzett minden módosítás elvész (mátrix, adatgyűjtés, interjúk, időkeret), és a minta kiinduló
+        állapota tér vissza.
       </ConfirmDialog>
     </div>
   );
@@ -211,7 +238,11 @@ export function NewProjectForm({ onCreate, onCancel }: { onCreate: (input: { com
       {touched && invalid && <p className="text-xs text-red-700">Add meg a cég nevét.</p>}
       <label className="block text-xs text-slate-600">
         Átvilágítás típusa
-        <select value={kind} onChange={(e) => setKind(e.target.value as EngagementKind)} className="mt-0.5 w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-sm">
+        <select
+          value={kind}
+          onChange={(e) => setKind(e.target.value as EngagementKind)}
+          className="mt-0.5 w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-sm"
+        >
           {ENGAGEMENT_KIND_LIST.map((k) => (
             <option key={k.kind} value={k.kind}>
               {k.label}
@@ -304,16 +335,23 @@ function SaveStatus({ projectId, meta, companyName, saveFile }: { projectId: str
         {due && <span className="hidden md:inline">· nincs mentés fájlba</span>}
       </button>
       {open && (
-        <div role="dialog" aria-label="Mentés" className="absolute right-0 z-40 mt-1 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-xl">
+        <div
+          role="dialog"
+          aria-label="Mentés"
+          className="absolute right-0 z-40 mt-1 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-xl"
+        >
           <p className="font-medium text-slate-900">Az adatok csak ebben a böngészőben vannak</p>
           <p className="mt-1 text-xs text-slate-600">
-            Minden módosítás azonnal mentődik ide{saved ? ` (utoljára ${ago(saved)})` : ''}. Ha törlöd a böngészési adatokat, másik gépre vagy
-            böngészőre váltasz, az adatok itt nem lesznek meg. Rendszeresen mentsd a projektet fájlba.
+            Minden módosítás azonnal mentődik ide{saved ? ` (utoljára ${ago(saved)})` : ''}. Ha törlöd a böngészési adatokat, másik gépre vagy böngészőre
+            váltasz, az adatok itt nem lesznek meg. Rendszeresen mentsd a projektet fájlba.
           </p>
           <p className={`mt-2 text-xs ${due ? 'font-medium text-amber-800' : 'text-slate-500'}`}>
             Utolsó mentés fájlba: {backupAt ? ago(backupAt) : 'még nem volt'}
           </p>
-          <button onClick={backup} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
+          <button
+            onClick={backup}
+            className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+          >
             Projekt mentése fájlba
           </button>
           <p className="mt-2 text-xs text-slate-500">Visszatölteni a projektválasztóban lehet („Projekt visszatöltése fájlból…”).</p>

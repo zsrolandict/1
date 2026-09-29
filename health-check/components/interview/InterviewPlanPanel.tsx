@@ -47,10 +47,11 @@ export default function InterviewPlanPanel({
         <span className="text-slate-600">
           Kötelezők: ~{hours(mins.required)} · mind: ~{hours(mins.all)} a {profile.hourBudget} órás keretből
         </span>
-        <span className="text-slate-600">Elemezve: {done} / {plan.length}</span>
+        <span className="text-slate-600">
+          Elemezve: {done} / {plan.length}
+        </span>
         <p className="w-full text-xs text-slate-500">
-          A tervet az átvilágítás típusa ({profile.label}) és a Red Flag mátrixban bejelölt kockázatok határozzák meg.
-          A sorrend a javasolt interjúsorrend.
+          A tervet az átvilágítás típusa ({profile.label}) és a Red Flag mátrixban bejelölt kockázatok határozzák meg. A sorrend a javasolt interjúsorrend.
         </p>
       </div>
 
@@ -62,16 +63,12 @@ export default function InterviewPlanPanel({
           return (
             <li key={p.role} className="flex flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-start gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
-                  {p.order}
-                </span>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">{p.order}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold text-slate-900">{p.label}</h3>
                     <span
-                      className={`rounded px-1.5 text-xs font-medium ${
-                        p.priority === 'REQUIRED' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
-                      }`}
+                      className={`rounded px-1.5 text-xs font-medium ${p.priority === 'REQUIRED' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}
                     >
                       {p.priority === 'REQUIRED' ? 'Kötelező' : 'Ajánlott'}
                     </span>
@@ -91,11 +88,16 @@ export default function InterviewPlanPanel({
                       <Clock className="h-3.5 w-3.5" /> ~{p.minutes} perc
                     </span>
                   </div>
-                  {rec?.alias && <p className="text-xs text-slate-500">Álnév: {rec.alias}{rec.heldAt ? ` · ${rec.heldAt}` : ''}</p>}
+                  {rec?.alias && (
+                    <p className="text-xs text-slate-500">
+                      Álnév: {rec.alias}
+                      {rec.heldAt ? ` · ${rec.heldAt}` : ''}
+                    </p>
+                  )}
                   {status === 'ANALYZED' && (
                     <p className="mt-1 text-xs text-slate-600">
-                      {contradictions} ellentmondás · {rec?.analysis?.suggestedRedFlags.length ?? 0} javaslat, ebből{' '}
-                      {rec?.accepted.length ?? 0} átvéve a mátrixba
+                      {contradictions} ellentmondás · {rec?.analysis?.suggestedRedFlags.length ?? 0} javaslat, ebből {rec?.accepted.length ?? 0} átvéve a
+                      mátrixba
                     </p>
                   )}
                 </div>
@@ -105,7 +107,9 @@ export default function InterviewPlanPanel({
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Miért vele?</p>
                   <ul className="mt-1 space-y-1 text-slate-700">
-                    {p.why.map((w) => <li key={w}>• {w}</li>)}
+                    {p.why.map((w) => (
+                      <li key={w}>• {w}</li>
+                    ))}
                   </ul>
                 </div>
                 <div>
@@ -139,9 +143,7 @@ export default function InterviewPlanPanel({
                     Elemzés
                   </PlanButton>
                 )}
-                {p.role === sampleRole && status === 'PLANNED' && (
-                  <span className="self-center text-xs text-indigo-700">Minta-interjú elérhető</span>
-                )}
+                {p.role === sampleRole && status === 'PLANNED' && <span className="self-center text-xs text-indigo-700">Minta-interjú elérhető</span>}
               </div>
             </li>
           );
@@ -155,17 +157,7 @@ export default function InterviewPlanPanel({
   );
 }
 
-function PlanButton({
-  onClick,
-  icon,
-  primary,
-  children,
-}: {
-  onClick: () => void;
-  icon: ReactNode;
-  primary?: boolean;
-  children: ReactNode;
-}) {
+function PlanButton({ onClick, icon, primary, children }: { onClick: () => void; icon: ReactNode; primary?: boolean; children: ReactNode }) {
   return (
     <button
       onClick={onClick}

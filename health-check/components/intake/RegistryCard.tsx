@@ -80,8 +80,8 @@ export default function RegistryCard({
         )}
       </div>
       <p className="mt-1 text-xs text-slate-500">
-        Az e-cégjegyzék (e-cegjegyzek.hu) ingyenes cégkivonatát másold be vagy töltsd fel. Az AI kiolvassa, a rendszer minden adatot idézettel
-        ellenőriz. Automatikus lekéréshez adatszolgáltatói szerződés kell (pl. Opten).
+        Az e-cégjegyzék (e-cegjegyzek.hu) ingyenes cégkivonatát másold be vagy töltsd fel. Az AI kiolvassa, a rendszer minden adatot idézettel ellenőriz.
+        Automatikus lekéréshez adatszolgáltatói szerződés kell (pl. Opten).
       </p>
       {!rec && (
         <>
@@ -95,7 +95,16 @@ export default function RegistryCard({
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50">
               <Upload className="h-3.5 w-3.5" /> Fájl (PDF/TXT/DOCX)
-              <input type="file" accept=".pdf,.txt,.docx" className="sr-only" onChange={(e) => { const x = e.target.files?.[0]; if (x) readFile(x); e.target.value = ''; }} />
+              <input
+                type="file"
+                accept=".pdf,.txt,.docx"
+                className="sr-only"
+                onChange={(e) => {
+                  const x = e.target.files?.[0];
+                  if (x) readFile(x);
+                  e.target.value = '';
+                }}
+              />
             </label>
             <button
               onClick={extract}
@@ -113,16 +122,24 @@ export default function RegistryCard({
       {rec && f && (
         <div className="mt-3 space-y-2 text-xs">
           <dl className="grid grid-cols-[110px_1fr] gap-x-2 gap-y-1">
-            <dt className="text-slate-500">Cégnév</dt><dd className="text-slate-900">{rec.data.name?.value ?? '—'}</dd>
-            <dt className="text-slate-500">Cégjegyzékszám</dt><dd>{rec.data.registrationNumber?.value ?? '—'}</dd>
-            <dt className="text-slate-500">Adószám</dt><dd>{rec.data.taxNumber?.value ?? '—'}</dd>
-            <dt className="text-slate-500">Székhely</dt><dd>{rec.data.seat?.value ?? '—'}{rec.data.seatService ? ' (székhelyszolgáltató)' : ''}</dd>
+            <dt className="text-slate-500">Cégnév</dt>
+            <dd className="text-slate-900">{rec.data.name?.value ?? '—'}</dd>
+            <dt className="text-slate-500">Cégjegyzékszám</dt>
+            <dd>{rec.data.registrationNumber?.value ?? '—'}</dd>
+            <dt className="text-slate-500">Adószám</dt>
+            <dd>{rec.data.taxNumber?.value ?? '—'}</dd>
+            <dt className="text-slate-500">Székhely</dt>
+            <dd>
+              {rec.data.seat?.value ?? '—'}
+              {rec.data.seatService ? ' (székhelyszolgáltató)' : ''}
+            </dd>
             <dt className="text-slate-500">Főtevékenység</dt>
             <dd>
               {rec.data.mainActivity?.value ?? '—'}
               {f.sector && <span className="ml-1 text-indigo-700">→ {SECTOR_LABEL[f.sector]}</span>}
             </dd>
-            <dt className="text-slate-500">Jegyzett tőke</dt><dd>{rec.data.capitalHuf != null ? formatHufShort(rec.data.capitalHuf) : '—'}</dd>
+            <dt className="text-slate-500">Jegyzett tőke</dt>
+            <dd>{rec.data.capitalHuf != null ? formatHufShort(rec.data.capitalHuf) : '—'}</dd>
             <dt className="text-slate-500">Tulajdonosok</dt>
             <dd>{rec.data.owners.map((o) => `${o.name}${o.sharePct != null ? ` (${o.sharePct}%)` : ''}`).join(', ') || '—'}</dd>
             <dt className="text-slate-500">Vezető</dt>
@@ -137,12 +154,18 @@ export default function RegistryCard({
             <div>
               <p className="font-medium text-slate-600">Változások</p>
               <ul className="mt-0.5 list-inside list-disc text-slate-600">
-                {rec.data.changes.map((c) => <li key={c.quote}>{c.date}: {c.what}</li>)}
+                {rec.data.changes.map((c) => (
+                  <li key={c.quote}>
+                    {c.date}: {c.what}
+                  </li>
+                ))}
               </ul>
             </div>
           )}
           {[...f.notes, ...f.conflicts.map((c) => c.explanation), ...f.suggestions.map((s) => `Kockázati javaslat: ${s.title}`)].map((n) => (
-            <p key={n} className="rounded bg-amber-50 p-2 text-amber-900">{n}</p>
+            <p key={n} className="rounded bg-amber-50 p-2 text-amber-900">
+              {n}
+            </p>
           ))}
           <div className="flex flex-wrap gap-2">
             {f.sector && !intake.profile.sectors.includes(f.sector) && (
@@ -164,8 +187,8 @@ export default function RegistryCard({
           </div>
           <p className="text-slate-500">
             {rec.isSample ? 'Kitalált minta. ' : ''}
-            {rec.data.discardedUnverified ? `${rec.data.discardedUnverified} nem igazolható adatot kiszűrt. ` : ''}
-            A figyelmeztetések és ellentmondások az Összkép fülön is megjelennek.
+            {rec.data.discardedUnverified ? `${rec.data.discardedUnverified} nem igazolható adatot kiszűrt. ` : ''}A figyelmeztetések és ellentmondások az
+            Összkép fülön is megjelennek.
           </p>
         </div>
       )}

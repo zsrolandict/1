@@ -13,7 +13,10 @@ const SECTION_CHARS = 3500;
 
 /** Oldalszám nélküli szöveg → kb. oldalnyi szakaszok, bekezdéshatáron vágva. */
 export function chunkText(text: string, size = SECTION_CHARS): DocumentPage[] {
-  const paragraphs = text.split(/\n\s*\n|\n/).map((p) => p.trim()).filter(Boolean);
+  const paragraphs = text
+    .split(/\n\s*\n|\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
   const pages: DocumentPage[] = [];
   let buf = '';
   for (const p of paragraphs) {

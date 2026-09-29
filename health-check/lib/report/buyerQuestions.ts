@@ -31,11 +31,17 @@ const BANK: Record<string, Entry> = {
     documents: ['ÁFA-egyeztetés', 'NAV-folyószámla', 'Önellenőrzések'],
   },
   'LEG-01': {
-    questions: ['Mely szerződések tartalmaznak tulajdonosváltási (Change of Control) felmondási jogot?', 'Beszerezhető-e a partnerek előzetes lemondó nyilatkozata (waiver) a zárás előtt?'],
+    questions: [
+      'Mely szerződések tartalmaznak tulajdonosváltási (Change of Control) felmondási jogot?',
+      'Beszerezhető-e a partnerek előzetes lemondó nyilatkozata (waiver) a zárás előtt?',
+    ],
     documents: ['Érintett szerződések', 'Partneri lemondó nyilatkozatok', 'Érintett árbevétel kimutatása'],
   },
   'LEG-02': {
-    questions: ['Minden fejlesztő és alkotó szerződése tartalmazza a vagyoni jogok átruházását?', 'Ki a forráskód és a kulcsfontosságú szellemi tulajdon jogosultja?'],
+    questions: [
+      'Minden fejlesztő és alkotó szerződése tartalmazza a vagyoni jogok átruházását?',
+      'Ki a forráskód és a kulcsfontosságú szellemi tulajdon jogosultja?',
+    ],
     documents: ['Fejlesztői és alvállalkozói szerződések', 'Jogátruházó nyilatkozatok', 'IP-nyilvántartás'],
   },
   'LEG-03': {
@@ -67,11 +73,17 @@ const BANK: Record<string, Entry> = {
     documents: ['Vevőnkénti árbevétel', 'Kulcsvevői szerződések'],
   },
   'HR-01': {
-    questions: ['Kiken múlik az árbevétel és a kulcskapcsolatok, és maradnak-e a tranzakció után?', 'Van-e utódlási terv, megtartási és versenytilalmi megállapodás?'],
+    questions: [
+      'Kiken múlik az árbevétel és a kulcskapcsolatok, és maradnak-e a tranzakció után?',
+      'Van-e utódlási terv, megtartási és versenytilalmi megállapodás?',
+    ],
     documents: ['Kulcsemberek szerződései', 'Megtartási megállapodások', 'Utódlási terv'],
   },
   'HR-02': {
-    questions: ['Hányan dolgoznak megbízási vagy számlás konstrukcióban munkaviszony jellegű feladaton?', 'Mekkora az átminősítés esetén várható visszamenőleges közteher?'],
+    questions: [
+      'Hányan dolgoznak megbízási vagy számlás konstrukcióban munkaviszony jellegű feladaton?',
+      'Mekkora az átminősítés esetén várható visszamenőleges közteher?',
+    ],
     documents: ['Megbízási és vállalkozói szerződések', 'Számlák', 'Munkarend-leírás'],
   },
   'HR-03': {
@@ -114,7 +126,10 @@ const BANK: Record<string, Entry> = {
 
 const GENERIC: Record<Pillar, Entry> = {
   FINANCE: { questions: ['Mekkora a tétel pénzügyi hatása, és hogyan jelenik meg a beszámolóban?'], documents: ['Kapcsolódó főkönyvi részletezők'] },
-  LEGAL: { questions: ['Milyen szerződéses vagy jogi kötelezettség áll fenn, és milyen következménnyel jár?'], documents: ['Érintett szerződések és határozatok'] },
+  LEGAL: {
+    questions: ['Milyen szerződéses vagy jogi kötelezettség áll fenn, és milyen következménnyel jár?'],
+    documents: ['Érintett szerződések és határozatok'],
+  },
   OPERATIONS: { questions: ['Hogyan érinti a működést, és mi a kezelés terve?'], documents: ['Kapcsolódó belső dokumentáció'] },
   HR: { questions: ['Mely munkatársakat érinti, és milyen munkajogi kockázattal jár?'], documents: ['Érintett munka- és megbízási szerződések'] },
 };

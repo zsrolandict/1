@@ -36,7 +36,9 @@ export const RegistrySchema = z.object({
   executives: z.array(z.object({ name: z.string(), role: z.string(), since: z.string().nullable().describe('ÉÉÉÉ-HH-NN, ha szerepel'), quote: z.string() })),
   proceedings: z.array(z.object({ type: z.string().describe('pl. felszámolás, végelszámolás, csődeljárás, végrehajtás, kényszertörlés'), quote: z.string() })),
   seatService: z.boolean().describe('Székhelyszolgáltatót vesz-e igénybe.'),
-  changes: z.array(z.object({ date: z.string().describe('ÉÉÉÉ-HH-NN'), what: z.string(), quote: z.string() })).describe('Az elmúlt 3 év bejegyzett változásai (tulajdonos, vezető, székhely, tevékenység).'),
+  changes: z
+    .array(z.object({ date: z.string().describe('ÉÉÉÉ-HH-NN'), what: z.string(), quote: z.string() }))
+    .describe('Az elmúlt 3 év bejegyzett változásai (tulajdonos, vezető, székhely, tevékenység).'),
 });
 
 export type RegistryData = z.infer<typeof RegistrySchema> & { discardedUnverified: number };
@@ -133,25 +135,61 @@ export function registryFindings(rec: RegistryRecord, state: IntakeState, ref = 
   const conflicts: Conflict[] = [];
   const facts: KnownFact[] = [];
   const notes: string[] = [];
-  const sug = (key: string, pillar: IntakeSuggestion['pillar'], title: string, L: 1 | 2 | 3 | 4 | 5, I: 1 | 2 | 3 | 4 | 5, rationale: string, evidence: string, code: string | null = null) =>
-    suggestions.push({ key: `REG:${key}:${L}${I}`, origin: 'CROSS_CHECK', code, pillar, title, rationale, evidence: `${src}: ${evidence}`, likelihood: L, impact: I });
+  const sug = (
+    key: string,
+    pillar: IntakeSuggestion['pillar'],
+    title: string,
+    L: 1 | 2 | 3 | 4 | 5,
+    I: 1 | 2 | 3 | 4 | 5,
+    rationale: string,
+    evidence: string,
+    code: string | null = null,
+  ) =>
+    suggestions.push({
+      key: `REG:${key}:${L}${I}`,
+      origin: 'CROSS_CHECK',
+      code,
+      pillar,
+      title,
+      rationale,
+      evidence: `${src}: ${evidence}`,
+      likelihood: L,
+      impact: I,
+    });
 
   for (const p of d.proceedings) {
-    sug(`PROC:${normalize(p.type)}`, 'LEGAL', `Folyamatban lévő eljárás a cégjegyzékben: ${p.type}`, 4, 5,
+    sug(
+      `PROC:${normalize(p.type)}`,
+      'LEGAL',
+      `Folyamatban lévő eljárás a cégjegyzékben: ${p.type}`,
+      4,
+      5,
       'A cégjegyzékben bejegyzett fizetésképtelenségi, végrehajtási vagy törlési eljárás a cég működését és értékét közvetlenül veszélyezteti; minden más vizsgálat előtt tisztázandó.',
-      `„${p.quote}”`);
+      `„${p.quote}”`,
+    );
     facts.push({ id: `REG-P-${facts.length}`, pillar: 'LEGAL', statement: `A cégjegyzék szerint ${p.type} van folyamatban`, source: src });
   }
   const execChanges = d.changes.filter((c) => /vezet|ügyvezet|igazgat|képvisel/i.test(c.what) && (monthsAgo(c.date, ref) ?? 999) <= 24);
   if (execChanges.length >= 2) {
-    sug('EXEC_CHANGES', 'HR', 'Gyakori vezetőváltás az elmúlt két évben', 3, 3,
+    sug(
+      'EXEC_CHANGES',
+      'HR',
+      'Gyakori vezetőváltás az elmúlt két évben',
+      3,
+      3,
       'Két éven belül többször változott a vezető tisztségviselő; ez a vezetési folytonosság és a döntési felelősség kérdését veti fel.',
-      execChanges.map((c) => `${c.date}: ${c.what}`).join('; '));
+      execChanges.map((c) => `${c.date}: ${c.what}`).join('; '),
+    );
   }
   const ownerChanges = d.changes.filter((c) => /tag|tulajdon|üzletrész|részvény/i.test(c.what) && (monthsAgo(c.date, ref) ?? 999) <= 24);
   if (ownerChanges.length) {
     notes.push(`Tulajdonosi változás az elmúlt két évben: ${ownerChanges.map((c) => `${c.date} – ${c.what}`).join('; ')}`);
-    facts.push({ id: 'REG-OWNCHG', pillar: 'LEGAL', statement: `A cégjegyzék szerint az elmúlt két évben tulajdonosi változás történt (${ownerChanges[0].date})`, source: src });
+    facts.push({
+      id: 'REG-OWNCHG',
+      pillar: 'LEGAL',
+      statement: `A cégjegyzék szerint az elmúlt két évben tulajdonosi változás történt (${ownerChanges[0].date})`,
+      source: src,
+    });
   }
   if (d.seatService) {
     notes.push('A cég székhelyszolgáltatót vesz igénybe: a tényleges működési hely és a hivatalos iratok átvétele ellenőrizendő.');
@@ -166,15 +204,20 @@ export function registryFindings(rec: RegistryRecord, state: IntakeState, ref = 
     source: src,
     askInInterview: false,
   });
-  if (d.mainActivity) facts.push({ id: 'REG-ACT', pillar: 'OPERATIONS', statement: `Főtevékenység: ${d.mainActivity.value}`, source: src, askInInterview: false });
+  if (d.mainActivity)
+    facts.push({ id: 'REG-ACT', pillar: 'OPERATIONS', statement: `Főtevékenység: ${d.mainActivity.value}`, source: src, askInInterview: false });
 
   // Ellentmondások a kérdőívvel és a tényállással
   if (state.answers.Q16 === 'EGY' && multipleOwners) {
     conflicts.push({
-      key: 'REG:Q16', severity: 'HIGH', pillar: 'LEGAL', topic: 'Tulajdonosi kör',
+      key: 'REG:Q16',
+      severity: 'HIGH',
+      pillar: 'LEGAL',
+      topic: 'Tulajdonosi kör',
       a: { source: 'Ügyfélkérdőív', statement: 'Q16: Írásos tulajdonosi megállapodás – Egy tulajdonos van' },
       b: { source: src, statement: `${d.owners.length} tulajdonos: ${d.owners.map((o) => o.name).join(', ')}` },
-      explanation: 'A kérdőív szerint egy tulajdonos van, a cégjegyzék szerint több. Tisztázandó, és ha több tulajdonos van, a tulajdonosi megállapodás is bekérendő.',
+      explanation:
+        'A kérdőív szerint egy tulajdonos van, a cégjegyzék szerint több. Tisztázandó, és ha több tulajdonos van, a tulajdonosi megállapodás is bekérendő.',
       origin: 'RULE',
     });
   }

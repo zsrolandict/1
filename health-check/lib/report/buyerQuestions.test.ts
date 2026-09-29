@@ -7,7 +7,12 @@ import { buildBuyerQuestions, buyerQuestionsText } from './buyerQuestions';
 import { buildWorkbook } from './excelExport';
 
 const sc = getScenario('it-fejleszto');
-const a = assess(sc.items, { company: sc.company, materialityHuf: sc.materialityHuf, adjustments: adjustmentsFor(sc.kind), pillarWeights: ENGAGEMENT_KINDS[sc.kind].weights });
+const a = assess(sc.items, {
+  company: sc.company,
+  materialityHuf: sc.materialityHuf,
+  adjustments: adjustmentsFor(sc.kind),
+  pillarWeights: ENGAGEMENT_KINDS[sc.kind].weights,
+});
 
 describe('vevői kérdéslista', () => {
   it('minden piros és sárga tételhez kérdés, válaszvázlat és iratlista', () => {

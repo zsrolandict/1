@@ -115,13 +115,22 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
         <Compass className="h-4 w-4 text-slate-700" />
         <span className="text-sm font-semibold text-slate-900">Kalauz</span>
         <div className="ml-auto flex gap-1 text-xs">
-          <button onClick={() => setView('start')} className={`rounded px-2 py-1 ${view === 'start' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+          <button
+            onClick={() => setView('start')}
+            className={`rounded px-2 py-1 ${view === 'start' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
             Kezdés
           </button>
-          <button onClick={() => setView('steps')} className={`rounded px-2 py-1 ${view === 'steps' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+          <button
+            onClick={() => setView('steps')}
+            className={`rounded px-2 py-1 ${view === 'steps' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
             Merre tovább
           </button>
-          <button onClick={() => setView('modules')} className={`inline-flex items-center gap-1 rounded px-2 py-1 ${view === 'modules' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+          <button
+            onClick={() => setView('modules')}
+            className={`inline-flex items-center gap-1 rounded px-2 py-1 ${view === 'modules' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
             <SlidersHorizontal className="h-3 w-3" /> Modulok
           </button>
         </div>
@@ -131,12 +140,7 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
       </header>
 
       <div className="overflow-auto p-4 text-sm">
-        {view === 'start' && (
-          <StartView
-            onDone={() => setView('steps')}
-            nav={{ page, go }}
-          />
-        )}
+        {view === 'start' && <StartView onDone={() => setView('steps')} nav={{ page, go }} />}
 
         {view === 'steps' && (
           <>
@@ -146,7 +150,10 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
                 <p className="mt-0.5 font-semibold">{next.title}</p>
                 <p className="mt-1 text-xs text-slate-200">{next.how}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <button onClick={() => jump(next)} className="inline-flex items-center gap-1 rounded bg-white px-2.5 py-1 text-xs font-medium text-slate-900 hover:bg-slate-100">
+                  <button
+                    onClick={() => jump(next)}
+                    className="inline-flex items-center gap-1 rounded bg-white px-2.5 py-1 text-xs font-medium text-slate-900 hover:bg-slate-100"
+                  >
                     Odaviszlek <ChevronRight className="h-3.5 w-3.5" />
                   </button>
                   {next.id === 'case' && hasSample && (
@@ -171,7 +178,9 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
               {steps.map((s) => (
                 <li key={s.id}>
                   <button onClick={() => jump(s)} className="flex w-full items-start gap-2 rounded px-1.5 py-1 text-left hover:bg-slate-50">
-                    <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${s.done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300'}`}>
+                    <span
+                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${s.done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300'}`}
+                    >
                       {s.done && <Check className="h-3 w-3" />}
                     </span>
                     <span className="min-w-0">
@@ -188,7 +197,9 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
                 <Lightbulb className="h-3.5 w-3.5" /> Tippek ehhez az oldalhoz
               </p>
               <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-amber-900">
-                {PAGE_TIPS[page].map((t) => <li key={t}>{t}</li>)}
+                {PAGE_TIPS[page].map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
               </ul>
             </div>
           </>
@@ -197,7 +208,8 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
         {view === 'modules' && (
           <>
             <p className="text-xs text-slate-500">
-              A kikapcsolt modul kimarad a felületről és a lépések közül; az adatai megmaradnak, visszakapcsolva újra látszanak. A Red Flag mátrix mindig bekapcsolt.
+              A kikapcsolt modul kimarad a felületről és a lépések közül; az adatai megmaradnak, visszakapcsolva újra látszanak. A Red Flag mátrix mindig
+              bekapcsolt.
             </p>
             {AREAS.map((area) => (
               <div key={area} className="mt-3">
@@ -238,8 +250,8 @@ function StartView({ onDone, nav }: { onDone: () => void; nav: Nav }) {
       <div>
         <p className="font-semibold text-slate-900">Üdv az ICT Health Checkben!</p>
         <p className="mt-1 text-xs text-slate-600">
-          Egy átvilágítás menete: <b>Adatgyűjtés</b> (tényállás, kérdőív, táblák, dokumentumok) → <b>Interjúk</b> → <b>Red Flag mátrix</b> (a
-          kockázatok értékelése) → PDF- és Excel-riport. A kalauz minden lépésnél megmutatja, mi jön.
+          Egy átvilágítás menete: <b>Adatgyűjtés</b> (tényállás, kérdőív, táblák, dokumentumok) → <b>Interjúk</b> → <b>Red Flag mátrix</b> (a kockázatok
+          értékelése) → PDF- és Excel-riport. A kalauz minden lépésnél megmutatja, mi jön.
         </p>
       </div>
 
@@ -289,9 +301,7 @@ function StartView({ onDone, nav }: { onDone: () => void; nav: Nav }) {
         <span className="block text-xs text-slate-600">Négy kitalált cég kész adatokkal – a projektválasztóban (jobb fent) váltható.</span>
       </button>
 
-      <p className="text-xs text-slate-600">
-        Az adatok ebben a böngészőben tárolódnak; a jobb felső „Helyben mentve” gombbal a projekt fájlba menthető.
-      </p>
+      <p className="text-xs text-slate-600">Az adatok ebben a böngészőben tárolódnak; a jobb felső „Helyben mentve” gombbal a projekt fájlba menthető.</p>
     </div>
   );
 }

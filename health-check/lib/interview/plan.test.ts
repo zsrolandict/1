@@ -57,7 +57,9 @@ describe('buildInterviewPlan', () => {
 describe('típusfüggő kérdések címzettje', () => {
   it('az utódnak más kérdés szól, mint az alapítónak', () => {
     const q = (role: 'OWNER_CEO' | 'KEY_PERSON') =>
-      buildInterviewGuide({ ...base, kind: 'SUCCESSION', role }).filter((x) => x.source.type === 'KIND').map((x) => x.text);
+      buildInterviewGuide({ ...base, kind: 'SUCCESSION', role })
+        .filter((x) => x.source.type === 'KIND')
+        .map((x) => x.text);
     const owner = q('OWNER_CEO');
     const successor = q('KEY_PERSON');
     expect(owner.some((t) => t.includes('kijelölt utód'))).toBe(true);
@@ -114,11 +116,14 @@ describe('interjú-rekord állapota', () => {
     const t = notesToTranscript('Kérdező: szia');
     expect(recordStatus({ ...r, transcript: t })).toBe('TRANSCRIBED');
     expect(
-      recordStatus({ ...r, transcript: t, analysis: { summary: '', statements: [], suggestedRedFlags: [], contradictions: [], followUpQuestions: [], discardedUnverified: 0 } }),
+      recordStatus({
+        ...r,
+        transcript: t,
+        analysis: { summary: '', statements: [], suggestedRedFlags: [], contradictions: [], followUpQuestions: [], discardedUnverified: 0 },
+      }),
     ).toBe('ANALYZED');
   });
 });
-
 
 describe('elemzés céltól függő érvényessége', () => {
   const analysis = { summary: '', statements: [], suggestedRedFlags: [], contradictions: [], followUpQuestions: [], discardedUnverified: 0 };

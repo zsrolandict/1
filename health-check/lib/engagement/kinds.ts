@@ -4,14 +4,7 @@ import type { Pillar } from '@/lib/risk/types';
  * Átvilágítás-típusok. A motor, a katalógus és az interjúmodul ugyanaz,
  * a típus csak a hangsúlyokat, a keretet és a riport címzettjét állítja.
  */
-export type EngagementKind =
-  | 'HEALTH_CHECK'
-  | 'VENDOR_DD'
-  | 'BUY_SIDE_DD'
-  | 'FINANCING_READINESS'
-  | 'SUCCESSION'
-  | 'COMPLIANCE_AUDIT'
-  | 'POST_MERGER';
+export type EngagementKind = 'HEALTH_CHECK' | 'VENDOR_DD' | 'BUY_SIDE_DD' | 'FINANCING_READINESS' | 'SUCCESSION' | 'COMPLIANCE_AUDIT' | 'POST_MERGER';
 
 export interface EngagementKindProfile {
   kind: EngagementKind;
@@ -37,8 +30,7 @@ export const ENGAGEMENT_KINDS: Record<EngagementKind, EngagementKindProfile> = {
     weights: { FINANCE: 0.3, LEGAL: 0.25, OPERATIONS: 0.25, HR: 0.2 },
     hourBudget: 18,
     focusRiskCodes: ['FIN-02', 'LEG-02', 'OPS-01', 'HR-01'],
-    reportLens:
-      'A megállapításokat a tulajdonos szemszögéből rangsoroltuk: mi veszélyezteti a cég stabil működését és növekedését, és mi javítható gyorsan.',
+    reportLens: 'A megállapításokat a tulajdonos szemszögéből rangsoroltuk: mi veszélyezteti a cég stabil működését és növekedését, és mi javítható gyorsan.',
   },
   VENDOR_DD: {
     kind: 'VENDOR_DD',
@@ -81,8 +73,7 @@ export const ENGAGEMENT_KINDS: Record<EngagementKind, EngagementKindProfile> = {
     weights: { FINANCE: 0.2, LEGAL: 0.3, OPERATIONS: 0.15, HR: 0.35 },
     hourBudget: 20,
     focusRiskCodes: ['HR-01', 'LEG-03', 'FIN-02'],
-    reportLens:
-      'A megállapítások az átadás előtti teendőket mutatják: mi veszélyezteti a cég működését és értékét a tulajdonos és a vezetés váltásakor.',
+    reportLens: 'A megállapítások az átadás előtti teendőket mutatják: mi veszélyezteti a cég működését és értékét a tulajdonos és a vezetés váltásakor.',
   },
   COMPLIANCE_AUDIT: {
     kind: 'COMPLIANCE_AUDIT',
@@ -103,8 +94,7 @@ export const ENGAGEMENT_KINDS: Record<EngagementKind, EngagementKindProfile> = {
     weights: { FINANCE: 0.25, LEGAL: 0.2, OPERATIONS: 0.3, HR: 0.25 },
     hourBudget: 20,
     focusRiskCodes: ['HR-01', 'HR-04', 'OPS-02', 'OPS-01'],
-    reportLens:
-      'A megállapítások az integráció első 100 napjának kockázatait és teendőit rangsorolják, az új tulajdonos szemszögéből.',
+    reportLens: 'A megállapítások az integráció első 100 napjának kockázatait és teendőit rangsorolják, az új tulajdonos szemszögéből.',
   },
 };
 

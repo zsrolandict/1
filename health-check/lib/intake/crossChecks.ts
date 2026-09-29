@@ -178,7 +178,18 @@ export function crossChecks(
 
   // ── 4. Egyedi kockázatok több tábla együtt olvasásából ──────────
   const custom = (key: string, pillar: Pillar, title: string, likelihood: Scale5, impact: Scale5, rationale: string, evidence: string, exposure?: number) =>
-    suggestions.push({ key: `CC:${key}:${likelihood}${impact}`, origin: 'CROSS_CHECK', code: null, pillar, title, rationale, evidence, likelihood, impact, exposureHufEstimate: exposure ?? null });
+    suggestions.push({
+      key: `CC:${key}:${likelihood}${impact}`,
+      origin: 'CROSS_CHECK',
+      code: null,
+      pillar,
+      title,
+      rationale,
+      evidence,
+      likelihood,
+      impact,
+      exposureHufEstimate: exposure ?? null,
+    });
 
   const sales = t.SALES_BY_CUSTOMER;
   const purchases = t.PURCHASES_BY_SUPPLIER;
@@ -190,23 +201,33 @@ export function crossChecks(
     const hits = related.partners.filter((p) => salesMap.has(partnerKey(p.name)) || purchMap.has(partnerKey(p.name)));
     if (hits.length) {
       custom(
-        'RELATED_IN_TRADE', 'FINANCE', 'Kapcsolt fél a vevők vagy szállítók között',
-        3, 3,
+        'RELATED_IN_TRADE',
+        'FINANCE',
+        'Kapcsolt fél a vevők vagy szállítók között',
+        3,
+        3,
         'Kapcsolt vállalkozás a rendes vevő- vagy szállítói forgalomban is megjelenik: a piaci ár és a transzferár-nyilvántartás erre a forgalomra is vizsgálandó.',
-        `Kapcsolt ügyletek × ${sales ? 'vevő' : ''}${sales && purchases ? '/' : ''}${purchases ? 'szállító' : ''} tábla: ${hits.map((h) => h.name).slice(0, 3).join(', ')}`,
+        `Kapcsolt ügyletek × ${sales ? 'vevő' : ''}${sales && purchases ? '/' : ''}${purchases ? 'szállító' : ''} tábla: ${hits
+          .map((h) => h.name)
+          .slice(0, 3)
+          .join(', ')}`,
       );
     }
   }
   if (sales && purchases) {
-    const both = sales.partners
-      .filter((p) => purchMap.has(partnerKey(p.name)))
-      .filter((p) => p.amountHuf / Math.max(1, sales.totalHuf) >= 0.02);
+    const both = sales.partners.filter((p) => purchMap.has(partnerKey(p.name))).filter((p) => p.amountHuf / Math.max(1, sales.totalHuf) >= 0.02);
     if (both.length) {
       custom(
-        'BOTH_WAYS', 'FINANCE', 'Oda-vissza üzleti kapcsolat (vevő és szállító egyben)',
-        2, 3,
+        'BOTH_WAYS',
+        'FINANCE',
+        'Oda-vissza üzleti kapcsolat (vevő és szállító egyben)',
+        2,
+        3,
         'Ugyanaz a partner jelentős vevő és szállító is: a nettósítás, a körbeszámlázás és a valós gazdasági tartalom vizsgálandó.',
-        `Vevő- és szállítótábla: ${both.map((b) => b.name).slice(0, 3).join(', ')}`,
+        `Vevő- és szállítótábla: ${both
+          .map((b) => b.name)
+          .slice(0, 3)
+          .join(', ')}`,
       );
     }
   }
@@ -214,8 +235,11 @@ export function crossChecks(
   if (ar?.values?.over180 && ar.totalHuf > 0 && ar.values.over180 / ar.totalHuf >= 0.02) {
     const who = ar.over180Top ? `, legnagyobb: ${ar.over180Top.name} (${formatHufShort(ar.over180Top.amountHuf)})` : '';
     custom(
-      'OVER180', 'FINANCE', '180 napon túli követelés – értékvesztés vizsgálandó',
-      3, 3,
+      'OVER180',
+      'FINANCE',
+      '180 napon túli követelés – értékvesztés vizsgálandó',
+      3,
+      3,
       'A fél évnél régebben lejárt követelések behajthatósága kétséges; ha nincs rájuk értékvesztés, az eredmény és a mérleg túlértékelt lehet.',
       `Vevői korosítás (${ar.fileName}): 180 napon túl ${formatHufShort(ar.values.over180)}${who}`,
       Math.round(ar.values.over180),
@@ -228,8 +252,11 @@ export function crossChecks(
       const partnerDso = Math.round((p.amountHuf / s.amountHuf) * 365);
       if (p.amountHuf / ar.totalHuf >= 0.15 && partnerDso >= 2 * ar.values.dso && partnerDso >= 90) {
         custom(
-          `SLOW:${partnerKey(p.name)}`, 'FINANCE', `Kulcsvevő elhúzódó fizetése (${p.name})`,
-          3, 3,
+          `SLOW:${partnerKey(p.name)}`,
+          'FINANCE',
+          `Kulcsvevő elhúzódó fizetése (${p.name})`,
+          3,
+          3,
           `A vevő a nyitott állomány ${pct(p.amountHuf / ar.totalHuf)}-át adja, fizetési ideje kb. ${partnerDso} nap, a cég átlagának (${ar.values.dso} nap) többszöröse.`,
           `Korosítás × vevőnkénti árbevétel: ${p.name} nyitott ${formatHufShort(p.amountHuf)}, éves forgalom ${formatHufShort(s.amountHuf)}`,
         );

@@ -13,7 +13,8 @@ export function errorResponse(err: unknown): NextResponse {
   if (err instanceof AiServiceError) {
     if (err.status === 429) return NextResponse.json({ error: 'Az AI-szolgáltatás túlterhelt vagy elfogyott a keret, próbálja újra később.' }, { status: 429 });
     if (err.status === 400 && /api key/i.test(err.message)) return NextResponse.json({ error: 'Érvénytelen AI API-kulcs a szerveren.' }, { status: 500 });
-    if (err.status === 401 || err.status === 403) return NextResponse.json({ error: 'Érvénytelen vagy nem jogosult AI API-kulcs a szerveren.' }, { status: 500 });
+    if (err.status === 401 || err.status === 403)
+      return NextResponse.json({ error: 'Érvénytelen vagy nem jogosult AI API-kulcs a szerveren.' }, { status: 500 });
     if (err.status === 404) return NextResponse.json({ error: 'A beállított AI-modell nem elérhető (GEMINI_MODEL).' }, { status: 502 });
     return NextResponse.json({ error: `AI-szolgáltatás hiba (${err.status}).` }, { status: 502 });
   }

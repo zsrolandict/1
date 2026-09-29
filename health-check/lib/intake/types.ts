@@ -18,9 +18,7 @@ export const ORIGIN_LABEL: Record<IntakeOrigin, string> = {
 };
 
 /** Tényadatból pontosított képlet-paraméter. */
-export type ValuationPatch =
-  | { type: 'REVENUE_SHARE'; share: number }
-  | { type: 'PER_ITEM'; count: number };
+export type ValuationPatch = { type: 'REVENUE_SHARE'; share: number } | { type: 'PER_ITEM'; count: number };
 
 export interface IntakeSuggestion {
   /** Stabil azonosító; ha a javaslat tartalma változik, a kulcs is változik. */

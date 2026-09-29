@@ -78,14 +78,18 @@ describe('interjúelemzés Geminivel', () => {
   it('tiltás (SAFETY) → elutasítás-hiba', async () => {
     const { analyzeInterview, AiRefusalError } = await import('@/lib/interview/ai.server');
     next = reply({}, 'SAFETY');
-    await expect(analyzeInterview({ transcript: notesToTranscript(SAMPLE_NOTES), role: 'CFO', kind: 'HEALTH_CHECK', facts: [] })).rejects.toBeInstanceOf(AiRefusalError);
+    await expect(analyzeInterview({ transcript: notesToTranscript(SAMPLE_NOTES), role: 'CFO', kind: 'HEALTH_CHECK', facts: [] })).rejects.toBeInstanceOf(
+      AiRefusalError,
+    );
   });
 
   it('érvénytelen kulcs → szolgáltatói hiba státusszal', async () => {
     const { analyzeInterview } = await import('@/lib/interview/ai.server');
     const { AiServiceError } = await import('./gemini.server');
     next = { status: 400, body: { error: { message: 'API key not valid' } } };
-    await expect(analyzeInterview({ transcript: notesToTranscript(SAMPLE_NOTES), role: 'CFO', kind: 'HEALTH_CHECK', facts: [] })).rejects.toBeInstanceOf(AiServiceError);
+    await expect(analyzeInterview({ transcript: notesToTranscript(SAMPLE_NOTES), role: 'CFO', kind: 'HEALTH_CHECK', facts: [] })).rejects.toBeInstanceOf(
+      AiServiceError,
+    );
   });
 });
 
@@ -109,7 +113,12 @@ describe('leirat Geminivel', () => {
 
   it('értelmezhetetlen időbélyegnél nem állít valós időt', async () => {
     const { geminiToTranscript } = await import('@/lib/interview/transcribe.server');
-    const t = geminiToTranscript({ segments: [{ speaker: 'A', start: 'eleje', text: 'x' }, { speaker: 'B', start: '00:05', text: 'y' }] });
+    const t = geminiToTranscript({
+      segments: [
+        { speaker: 'A', start: 'eleje', text: 'x' },
+        { speaker: 'B', start: '00:05', text: 'y' },
+      ],
+    });
     expect(t.timed).toBe(false);
   });
 

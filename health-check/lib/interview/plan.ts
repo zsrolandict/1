@@ -49,7 +49,12 @@ const KIND_PLAN: Record<EngagementKind, RoleSpec[]> = {
     { role: 'OWNER_CEO', priority: 'REQUIRED', why: 'Eladási szándék, árelvárás, és amit a vevő biztosan kérdezni fog.' },
     { role: 'CFO', priority: 'REQUIRED', why: 'Normalizált EBITDA, forgótőke, mérlegen kívüli tételek: ezekből lesz a vételár.' },
     { role: 'SALES_LEAD', priority: 'RECOMMENDED', why: 'Vevői szerződések, tulajdonosváltási záradékok, pipeline.' },
-    { role: 'KEY_PERSON', priority: 'RECOMMENDED', why: 'Megtartás a tranzakció után: a vevő ezt külön árazza.', tip: 'Csak akkor, ha a tulajdonos engedi, hogy a kulcsember tudjon az eladásról.' },
+    {
+      role: 'KEY_PERSON',
+      priority: 'RECOMMENDED',
+      why: 'Megtartás a tranzakció után: a vevő ezt külön árazza.',
+      tip: 'Csak akkor, ha a tulajdonos engedi, hogy a kulcsember tudjon az eladásról.',
+    },
   ],
   BUY_SIDE_DD: [
     { role: 'OWNER_CEO', priority: 'REQUIRED', label: 'Eladó / ügyvezető', why: 'Az eladói nyilatkozatok és szavatosságok alapja.' },
@@ -59,14 +64,25 @@ const KIND_PLAN: Record<EngagementKind, RoleSpec[]> = {
     { role: 'KEY_PERSON', priority: 'RECOMMENDED', why: 'Kit kell megtartani a zárás után, és milyen feltétellel.' },
   ],
   FINANCING_READINESS: [
-    { role: 'CFO', priority: 'REQUIRED', why: 'Ezt kérdezi először a bank: cash-flow, kovenánsok, biztosítékok.', tip: 'Vele kezdjük: az ő számai adják a többi interjú alapját.' },
+    {
+      role: 'CFO',
+      priority: 'REQUIRED',
+      why: 'Ezt kérdezi először a bank: cash-flow, kovenánsok, biztosítékok.',
+      tip: 'Vele kezdjük: az ő számai adják a többi interjú alapját.',
+    },
     { role: 'OWNER_CEO', priority: 'REQUIRED', why: 'A finanszírozás célja, tulajdonosi kezesség, tőkeemelési hajlandóság.' },
     { role: 'SALES_LEAD', priority: 'RECOMMENDED', why: 'Vevőállomány, fizetési fegyelem, behajtás.' },
     { role: 'OPS_LEAD', priority: 'RECOMMENDED', why: 'Beruházási igény és kapacitás a tervhez.' },
   ],
   SUCCESSION: [
     { role: 'OWNER_CEO', priority: 'REQUIRED', label: 'Alapító / átadó', why: 'Az átadás elképzelése, tulajdonosi struktúra, családi megállapodások.' },
-    { role: 'KEY_PERSON', priority: 'REQUIRED', label: 'Kijelölt utód / helyettes', why: 'Egyezik-e az elképzelése az alapítóéval; mit visz már ma önállóan.', tip: 'Az alapító jelenléte nélkül beszéljünk vele, különben nem kapunk őszinte képet.' },
+    {
+      role: 'KEY_PERSON',
+      priority: 'REQUIRED',
+      label: 'Kijelölt utód / helyettes',
+      why: 'Egyezik-e az elképzelése az alapítóéval; mit visz már ma önállóan.',
+      tip: 'Az alapító jelenléte nélkül beszéljünk vele, különben nem kapunk őszinte képet.',
+    },
     { role: 'CFO', priority: 'RECOMMENDED', why: 'Cégérték, a család és a cég vagyonának szétválasztása.' },
     { role: 'HR_LEAD', priority: 'RECOMMENDED', why: 'Ki bizonytalanodhat el a vezetőváltáskor.' },
   ],
@@ -79,7 +95,12 @@ const KIND_PLAN: Record<EngagementKind, RoleSpec[]> = {
   POST_MERGER: [
     { role: 'OWNER_CEO', priority: 'REQUIRED', label: 'Új ügyvezetés / integrációs vezető', why: 'Integrációs célok és az első 100 nap prioritásai.' },
     { role: 'HR_LEAD', priority: 'REQUIRED', why: 'Kulcsemberek megtartása, bérezés és kultúra összehangolása.' },
-    { role: 'KEY_PERSON', priority: 'REQUIRED', why: 'Maradási szándék és aggodalmak: a legnagyobb integrációs kockázat.', tip: 'Bizalmas, négyszemközti beszélgetés; az álneves jegyzetet csak a HR-szakértő látja.' },
+    {
+      role: 'KEY_PERSON',
+      priority: 'REQUIRED',
+      why: 'Maradási szándék és aggodalmak: a legnagyobb integrációs kockázat.',
+      tip: 'Bizalmas, négyszemközti beszélgetés; az álneves jegyzetet csak a HR-szakértő látja.',
+    },
     { role: 'OPS_LEAD', priority: 'RECOMMENDED', why: 'Párhuzamos folyamatok és rendszerek.' },
     { role: 'IT_LEAD', priority: 'RECOMMENDED', why: 'Rendszerek és hozzáférések összevonása.' },
   ],
@@ -87,11 +108,24 @@ const KIND_PLAN: Record<EngagementKind, RoleSpec[]> = {
 
 /** Mely kockázat kinél kérdezhető a legjobban (ha a kód nincs itt: pillér szerint). */
 const RISK_OWNER: Record<string, IntervieweeRole> = {
-  'LEG-01': 'SALES_LEAD', 'EPI-02': 'SALES_LEAD', 'FIN-03': 'CFO',
-  'LEG-02': 'IT_LEAD', 'OPS-02': 'IT_LEAD', 'OPS-03': 'IT_LEAD', 'LEG-04': 'IT_LEAD',
-  'ITF-01': 'IT_LEAD', 'ITF-03': 'IT_LEAD', 'ITF-04': 'IT_LEAD', 'PMI-02': 'OPS_LEAD',
-  'HR-01': 'KEY_PERSON', 'PMI-01': 'KEY_PERSON',
-  'SUC-01': 'OWNER_CEO', 'KON-04': 'OWNER_CEO', 'LEG-03': 'OWNER_CEO', 'BUY-01': 'OWNER_CEO', 'EPI-01': 'OWNER_CEO',
+  'LEG-01': 'SALES_LEAD',
+  'EPI-02': 'SALES_LEAD',
+  'FIN-03': 'CFO',
+  'LEG-02': 'IT_LEAD',
+  'OPS-02': 'IT_LEAD',
+  'OPS-03': 'IT_LEAD',
+  'LEG-04': 'IT_LEAD',
+  'ITF-01': 'IT_LEAD',
+  'ITF-03': 'IT_LEAD',
+  'ITF-04': 'IT_LEAD',
+  'PMI-02': 'OPS_LEAD',
+  'HR-01': 'KEY_PERSON',
+  'PMI-01': 'KEY_PERSON',
+  'SUC-01': 'OWNER_CEO',
+  'KON-04': 'OWNER_CEO',
+  'LEG-03': 'OWNER_CEO',
+  'BUY-01': 'OWNER_CEO',
+  'EPI-01': 'OWNER_CEO',
 };
 
 const PILLAR_OWNER: Record<Pillar, IntervieweeRole> = {

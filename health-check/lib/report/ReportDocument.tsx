@@ -17,7 +17,19 @@ const RAG_COLOR: Record<Rag, { fg: string; bg: string }> = {
 
 const s = StyleSheet.create({
   page: { fontFamily: BRAND.fontFamily, fontSize: 9.5, color: C.ink, paddingTop: 56, paddingBottom: 48, paddingHorizontal: 44, lineHeight: 1.4 },
-  header: { position: 'absolute', top: 20, left: 44, right: 44, flexDirection: 'row', justifyContent: 'space-between', fontSize: 7.5, color: C.faint, borderBottomWidth: 0.5, borderBottomColor: C.rule, paddingBottom: 6 },
+  header: {
+    position: 'absolute',
+    top: 20,
+    left: 44,
+    right: 44,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    fontSize: 7.5,
+    color: C.faint,
+    borderBottomWidth: 0.5,
+    borderBottomColor: C.rule,
+    paddingBottom: 6,
+  },
   footer: { position: 'absolute', bottom: 20, left: 44, right: 44, flexDirection: 'row', justifyContent: 'space-between', fontSize: 7.5, color: C.faint },
   h1: { fontSize: 22, fontWeight: 700, color: C.primary, lineHeight: 1.2 },
   h2: { fontSize: 14, fontWeight: 700, color: C.primary, marginBottom: 10, lineHeight: 1.25 },
@@ -33,12 +45,7 @@ const s = StyleSheet.create({
 
 export function ReportDocument({ model }: { model: ReportModel }) {
   return (
-    <Document
-      title={`Red Flag összefoglaló – ${model.companyName}`}
-      author={BRAND.firmName}
-      subject={model.kindLabel}
-      language="hu"
-    >
+    <Document title={`Red Flag összefoglaló – ${model.companyName}`} author={BRAND.firmName} subject={model.kindLabel} language="hu">
       <CoverPage m={model} />
       <ScorecardPage m={model} />
       <DetailPages m={model} />
@@ -69,9 +76,7 @@ function Chrome({ m }: { m: ReportModel }) {
 }
 
 function RagPill({ rag, label }: { rag: Rag; label?: string }) {
-  return (
-    <Text style={[s.pill, { color: RAG_COLOR[rag].fg, backgroundColor: RAG_COLOR[rag].bg }]}>{label ?? RAG_LABEL[rag]}</Text>
-  );
+  return <Text style={[s.pill, { color: RAG_COLOR[rag].fg, backgroundColor: RAG_COLOR[rag].bg }]}>{label ?? RAG_LABEL[rag]}</Text>;
 }
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -91,7 +96,9 @@ function CoverPage({ m }: { m: ReportModel }) {
   return (
     <Page size="A4" style={[s.page, { paddingTop: 0 }]}>
       <View style={{ backgroundColor: C.primary, marginHorizontal: -44, paddingHorizontal: 44, paddingTop: 44, paddingBottom: 28 }}>
-        <Text style={{ color: '#cbd5e1', fontSize: 9, letterSpacing: 1 }}>{BRAND.firmName.toUpperCase()} · {BRAND.tagline}</Text>
+        <Text style={{ color: '#cbd5e1', fontSize: 9, letterSpacing: 1 }}>
+          {BRAND.firmName.toUpperCase()} · {BRAND.tagline}
+        </Text>
         <Text style={{ color: '#ffffff', fontSize: 26, fontWeight: 700, marginTop: 18, lineHeight: 1.2 }}>Red Flag összefoglaló</Text>
         <Text style={{ color: '#e2e8f0', fontSize: 13, marginTop: 4, lineHeight: 1.3 }}>{m.companyName}</Text>
         <Text style={{ color: '#94a3b8', fontSize: 9, marginTop: 10 }}>
@@ -135,10 +142,9 @@ function CoverPage({ m }: { m: ReportModel }) {
       <View style={[s.card, { marginTop: 14, backgroundColor: C.panel }]}>
         <Text style={s.h3}>Mit javaslunk?</Text>
         <Text style={s.muted}>
-          {m.assessment.actionPlan.D0_30.length} gyorsan javítható tétel az első 30 napban,{' '}
-          {m.assessment.actionPlan.D31_60.length} kritikus javítás 31–60 nap között és{' '}
-          {m.assessment.actionPlan.D61_90.length} strukturális lépés a 90. napig. A részletes akcióterv a 4. fejezetben,
-          a javítás költsége és a {formatHufShort(m.assessment.pipeline.creditHuf)} beszámítás az 5. fejezetben található.
+          {m.assessment.actionPlan.D0_30.length} gyorsan javítható tétel az első 30 napban, {m.assessment.actionPlan.D31_60.length} kritikus javítás 31–60 nap
+          között és {m.assessment.actionPlan.D61_90.length} strukturális lépés a 90. napig. A részletes akcióterv a 4. fejezetben, a javítás költsége és a{' '}
+          {formatHufShort(m.assessment.pipeline.creditHuf)} beszámítás az 5. fejezetben található.
         </Text>
       </View>
       <Chrome m={m} />
@@ -169,12 +175,17 @@ function ScorecardPage({ m }: { m: ReportModel }) {
                 </Text>
                 <RagPill rag={x.rag} />
               </View>
-              <Text style={{ fontSize: 24, fontWeight: 700, marginTop: 4, lineHeight: 1.2 }}>{x.healthScore}<Text style={{ fontSize: 9, fontWeight: 400, color: C.muted }}> / 100</Text></Text>
+              <Text style={{ fontSize: 24, fontWeight: 700, marginTop: 4, lineHeight: 1.2 }}>
+                {x.healthScore}
+                <Text style={{ fontSize: 9, fontWeight: 400, color: C.muted }}> / 100</Text>
+              </Text>
               <View style={{ height: 4, backgroundColor: C.rule, borderRadius: 2, marginTop: 4 }}>
                 <View style={{ height: 4, width: `${x.healthScore}%`, backgroundColor: RAG_COLOR[x.rag].fg, borderRadius: 2 }} />
               </View>
               <View style={[s.row, { justifyContent: 'space-between', marginTop: 8 }]}>
-                <Text style={s.small}>{x.identified} tétel ({x.red} piros, {x.amber} sárga)</Text>
+                <Text style={s.small}>
+                  {x.identified} tétel ({x.red} piros, {x.amber} sárga)
+                </Text>
                 <Text style={s.small}>{formatHufShort(x.grossExposureHuf)}</Text>
               </View>
             </View>
@@ -192,7 +203,18 @@ function ScorecardPage({ m }: { m: ReportModel }) {
                 const n = byCell.get(`${l}-${i}`) ?? 0;
                 const rag = cellRag(l, i);
                 return (
-                  <View key={i} style={{ width: 44, height: 34, margin: 1.5, borderRadius: 3, backgroundColor: RAG_COLOR[rag].bg, alignItems: 'center', justifyContent: 'center' }}>
+                  <View
+                    key={i}
+                    style={{
+                      width: 44,
+                      height: 34,
+                      margin: 1.5,
+                      borderRadius: 3,
+                      backgroundColor: RAG_COLOR[rag].bg,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
                     {n > 0 && <Text style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.2, color: RAG_COLOR[rag].fg }}>{n}</Text>}
                   </View>
                 );
@@ -200,22 +222,25 @@ function ScorecardPage({ m }: { m: ReportModel }) {
             </View>
           ))}
           <View style={[s.row, { marginLeft: 14 }]}>
-            {[1, 2, 3, 4, 5].map((i) => <Text key={i} style={[s.small, { width: 47, textAlign: 'center' }]}>{i}</Text>)}
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Text key={i} style={[s.small, { width: 47, textAlign: 'center' }]}>
+                {i}
+              </Text>
+            ))}
           </View>
-          <Text style={[s.small, { textAlign: 'center', marginTop: 2 }]}>Hatás →   (függőleges: valószínűség)</Text>
+          <Text style={[s.small, { textAlign: 'center', marginTop: 2 }]}>Hatás → (függőleges: valószínűség)</Text>
         </View>
         <View style={{ flex: 1, marginLeft: 16 }}>
           <Text style={s.h3}>Hogyan olvassuk?</Text>
           <Text style={[s.muted, { marginBottom: 6 }]}>
-            Minden azonosított kockázatot 1–5 skálán értékeltünk a bekövetkezés valószínűsége és a hatás súlyossága szerint.
-            A cellában a tételek száma látható.
+            Minden azonosított kockázatot 1–5 skálán értékeltünk a bekövetkezés valószínűsége és a hatás súlyossága szerint. A cellában a tételek száma látható.
           </Text>
-          <Text style={s.muted}>• Piros: pontszám ≥ 15, vagy a várható veszteség (kitettség × valószínűség) eléri a {formatHufShort(m.materialityHuf)} lényegességi küszöböt.</Text>
+          <Text style={s.muted}>
+            • Piros: pontszám ≥ 15, vagy a várható veszteség (kitettség × valószínűség) eléri a {formatHufShort(m.materialityHuf)} lényegességi küszöböt.
+          </Text>
           <Text style={s.muted}>• Sárga: pontszám 8–14.</Text>
           <Text style={s.muted}>• Zöld: pontszám 8 alatt – figyelemmel kísérendő.</Text>
-          <Text style={[s.muted, { marginTop: 6 }]}>
-            A várható veszteség a bruttó kitettség és a valószínűség szorzata (5% / 20% / 40% / 65% / 90%).
-          </Text>
+          <Text style={[s.muted, { marginTop: 6 }]}>A várható veszteség a bruttó kitettség és a valószínűség szorzata (5% / 20% / 40% / 65% / 90%).</Text>
           <Text style={[s.muted, { marginTop: 6 }]}>
             Az összesített Health Score a pillérek súlyozott átlaga; a súlyokat az átvilágítás típusa ({m.kindLabel}) adja.
           </Text>
@@ -233,7 +258,9 @@ function DetailPages({ m }: { m: ReportModel }) {
       <Chrome m={m} />
       <Text style={s.h2}>3. Red Flag részletező</Text>
       {m.detailed.length === 0 && <Text style={s.muted}>Nincs sárga vagy piros besorolású tétel.</Text>}
-      {m.detailed.map((r) => <FindingCard key={r.id} r={r} />)}
+      {m.detailed.map((r) => (
+        <FindingCard key={r.id} r={r} />
+      ))}
       {m.greenCount > 0 && (
         <Text style={[s.small, { marginTop: 6 }]}>
           További {m.greenCount} zöld besorolású tétel azonosítva; ezek monitorozását javasoljuk, részletezésük a munkaanyagban.
@@ -247,7 +274,9 @@ function FindingCard({ r }: { r: ScoredRisk }) {
   return (
     <View style={[s.card, { marginBottom: 8, borderLeftWidth: 3, borderLeftColor: RAG_COLOR[r.rag].fg }]} wrap={false}>
       <View style={[s.row, { justifyContent: 'space-between', alignItems: 'center' }]}>
-        <Text style={s.small}>{r.code} · {PILLAR_LABEL[r.pillar]} · V{r.likelihood} × H{r.impact} = {r.score}</Text>
+        <Text style={s.small}>
+          {r.code} · {PILLAR_LABEL[r.pillar]} · V{r.likelihood} × H{r.impact} = {r.score}
+        </Text>
         <RagPill rag={r.rag} />
       </View>
       <Text style={{ fontSize: 11, fontWeight: 600, marginTop: 3 }}>{r.title}</Text>
@@ -301,7 +330,10 @@ function ActionPlanPage({ m }: { m: ReportModel }) {
               <Text style={{ width: 18 }}>{i + 1}.</Text>
               <View style={{ flex: 2.2, paddingRight: 6 }}>
                 <Text style={{ fontWeight: 600 }}>{r.remediation || r.title}</Text>
-                <Text style={s.small}>{r.title}{r.quickWin ? ' · Quick win' : ''}</Text>
+                <Text style={s.small}>
+                  {r.title}
+                  {r.quickWin ? ' · Quick win' : ''}
+                </Text>
               </View>
               <Text style={{ flex: 1 }}>{PILLAR_LABEL[r.pillar]}</Text>
               <Text style={{ flex: 1 }}>{DIVISION_LABEL[r.division]}</Text>
@@ -310,11 +342,7 @@ function ActionPlanPage({ m }: { m: ReportModel }) {
           ))}
         </View>
       ))}
-      {plan.BACKLOG.length > 0 && (
-        <Text style={s.small}>
-          Monitorozandó (90 napon túl): {plan.BACKLOG.map((r) => r.title).join('; ')}.
-        </Text>
-      )}
+      {plan.BACKLOG.length > 0 && <Text style={s.small}>Monitorozandó (90 napon túl): {plan.BACKLOG.map((r) => r.title).join('; ')}.</Text>}
     </Page>
   );
 }
@@ -328,8 +356,8 @@ function OfferPage({ m }: { m: ReportModel }) {
       <Chrome m={m} />
       <Text style={s.h2}>5. Következő lépések és ajánlat</Text>
       <Text style={[s.muted, { marginBottom: 8 }]}>
-        {m.reportLens} A sárga és piros tételek javításában az ICT Európa divíziói közvetlenül tudnak támogatni. Az
-        átvilágítás díja 100%-ban beszámít a javítási megbízásokba.
+        {m.reportLens} A sárga és piros tételek javításában az ICT Európa divíziói közvetlenül tudnak támogatni. Az átvilágítás díja 100%-ban beszámít a
+        javítási megbízásokba.
       </Text>
       <View style={s.row}>
         <Text style={[s.th, { flex: 2 }]}>Divízió</Text>
@@ -360,24 +388,24 @@ function OfferPage({ m }: { m: ReportModel }) {
 
       <Text style={[s.h2, { marginTop: 20 }]}>Módszertan és korlátozások</Text>
       <Text style={[s.muted, { marginBottom: 4 }]}>
-        • Az átvilágítás a rendelkezésre bocsátott dokumentumokon, az ügyfél által kitöltött kérdőíven és a vezetői
-        interjúkon alapul; nem minősül könyvvizsgálatnak vagy teljes körű jogi átvilágításnak.
+        • Az átvilágítás a rendelkezésre bocsátott dokumentumokon, az ügyfél által kitöltött kérdőíven és a vezetői interjúkon alapul; nem minősül
+        könyvvizsgálatnak vagy teljes körű jogi átvilágításnak.
       </Text>
       <Text style={[s.muted, { marginBottom: 4 }]}>
-        • A forintosított értékek kiinduló becslések (árbevétel-arány, tételszám × egységösszeg, forgótőke-különbség),
-        amelyeket a szakértők tételenként felülvizsgáltak; nem jelentenek jogi vagy adóhatósági döntést.
+        • A forintosított értékek kiinduló becslések (árbevétel-arány, tételszám × egységösszeg, forgótőke-különbség), amelyeket a szakértők tételenként
+        felülvizsgáltak; nem jelentenek jogi vagy adóhatósági döntést.
       </Text>
       {m.adjustedRisks.length > 0 && (
         <Text style={[s.muted, { marginBottom: 4 }]}>
-          • Az átvilágítás típusa ({m.kindLabel}) {m.adjustedRisks.length} tételnél módosította a valószínűséget vagy a hatást,
-          mert ugyanannak a ténynek a vizsgálat céljától függően más a súlya. A korrekciót és az okát tételenként jelöljük.
+          • Az átvilágítás típusa ({m.kindLabel}) {m.adjustedRisks.length} tételnél módosította a valószínűséget vagy a hatást, mert ugyanannak a ténynek a
+          vizsgálat céljától függően más a súlya. A korrekciót és az okát tételenként jelöljük.
           {KIND_ADJUSTMENTS_STATUS.approved ? '' : ' (A korrekciós táblázat kezdő javaslat, szakértői jóváhagyásra vár.)'}
         </Text>
       )}
       {m.aiSourcedCount > 0 && (
         <Text style={[s.muted, { marginBottom: 4 }]}>
-          • {m.aiSourcedCount} megállapítás AI-alapú előszűrésből (interjú- vagy dokumentumelemzés) származik; mindegyiket
-          szakértő ellenőrizte és hagyta jóvá, szó szerinti forrásidézettel.
+          • {m.aiSourcedCount} megállapítás AI-alapú előszűrésből (interjú- vagy dokumentumelemzés) származik; mindegyiket szakértő ellenőrizte és hagyta jóvá,
+          szó szerinti forrásidézettel.
         </Text>
       )}
       {m.unapprovedParameterRisks.length > 0 && (

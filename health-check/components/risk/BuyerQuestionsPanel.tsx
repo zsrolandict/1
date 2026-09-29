@@ -50,20 +50,36 @@ export default function BuyerQuestionsPanel({ companyName, result, highlighted }
             </button>
             <span className="text-slate-500">Az Excel-exportban külön munkalapon is benne van.</span>
           </div>
-          {showText && <textarea readOnly value={text} rows={14} onFocus={(e) => e.target.select()} className="mt-3 w-full rounded-md border border-slate-200 p-2 font-mono text-xs" />}
+          {showText && (
+            <textarea
+              readOnly
+              value={text}
+              rows={14}
+              onFocus={(e) => e.target.select()}
+              className="mt-3 w-full rounded-md border border-slate-200 p-2 font-mono text-xs"
+            />
+          )}
           <ol className="mt-3 space-y-3">
             {list.map((q) => (
               <li key={q.code} className="rounded-md border border-slate-200 p-3 text-sm">
                 <p className="font-medium text-slate-900">
                   <span className="mr-1.5 font-mono text-xs text-slate-500">{q.code}</span>
                   {q.title}
-                  <span className={`ml-2 text-xs ${q.rag === 'RED' ? 'text-red-700' : q.rag === 'AMBER' ? 'text-amber-700' : 'text-emerald-700'}`}>{RAG_LABEL[q.rag]}</span>
+                  <span className={`ml-2 text-xs ${q.rag === 'RED' ? 'text-red-700' : q.rag === 'AMBER' ? 'text-amber-700' : 'text-emerald-700'}`}>
+                    {RAG_LABEL[q.rag]}
+                  </span>
                 </p>
                 <ul className="mt-1 list-inside list-disc text-slate-700">
-                  {q.questions.map((x) => <li key={x}>{x}</li>)}
+                  {q.questions.map((x) => (
+                    <li key={x}>{x}</li>
+                  ))}
                 </ul>
-                <p className="mt-1 text-xs text-slate-600"><b>Válaszvázlat:</b> {q.answerDraft}</p>
-                <p className="mt-0.5 text-xs text-slate-500"><b>Szükséges iratok:</b> {q.documents.join('; ')}</p>
+                <p className="mt-1 text-xs text-slate-600">
+                  <b>Válaszvázlat:</b> {q.answerDraft}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  <b>Szükséges iratok:</b> {q.documents.join('; ')}
+                </p>
               </li>
             ))}
           </ol>

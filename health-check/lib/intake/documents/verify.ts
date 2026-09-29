@@ -26,12 +26,18 @@ export function verifyDocumentAnalysis(raw: RawDocumentAnalysis, pages: Document
   let discarded = 0;
   const findings = raw.findings.flatMap((f) => {
     const pageIndex = findQuoteInPages(pages, f.quote);
-    if (pageIndex == null) { discarded++; return []; }
+    if (pageIndex == null) {
+      discarded++;
+      return [];
+    }
     return [{ ...f, pageIndex, confidence: Math.min(1, Math.max(0, f.confidence)) }];
   });
   const facts = raw.facts.flatMap((f) => {
     const pageIndex = findQuoteInPages(pages, f.quote);
-    if (pageIndex == null) { discarded++; return []; }
+    if (pageIndex == null) {
+      discarded++;
+      return [];
+    }
     return [{ ...f, pageIndex }];
   });
   return {

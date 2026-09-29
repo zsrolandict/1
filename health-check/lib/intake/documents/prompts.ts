@@ -29,13 +29,15 @@ const DocumentSchema = z.object({
       confidence: z.number().describe('0 és 1 között'),
     }),
   ),
-  facts: z.array(
-    z.object({
-      pillar: PillarEnum,
-      statement: z.string().describe('Egy mondatos tény, amelyet az interjún ellenőrizni érdemes.'),
-      quote: z.string().describe('SZÓ SZERINTI idézet a dokumentumból.'),
-    }),
-  ).describe('Legfeljebb 6 lényeges tény.'),
+  facts: z
+    .array(
+      z.object({
+        pillar: PillarEnum,
+        statement: z.string().describe('Egy mondatos tény, amelyet az interjún ellenőrizni érdemes.'),
+        quote: z.string().describe('SZÓ SZERINTI idézet a dokumentumból.'),
+      }),
+    )
+    .describe('Legfeljebb 6 lényeges tény.'),
   missingProvisions: z.array(z.string()).describe('Ilyen típusú dokumentumban szokásos, de hiányzó rendelkezések (legfeljebb 5).'),
 });
 
@@ -65,11 +67,14 @@ ${CATALOG_TEXT}`;
 
 const clamp = (n: number) => Math.min(5, Math.max(1, Math.round(n))) as Scale5;
 
-export async function runDocumentAnalysis(call: StructuredCall, input: {
-  fileName: string;
-  pages: DocumentPage[];
-  kind: EngagementKind;
-}): Promise<DocumentAnalysis> {
+export async function runDocumentAnalysis(
+  call: StructuredCall,
+  input: {
+    fileName: string;
+    pages: DocumentPage[];
+    kind: EngagementKind;
+  },
+): Promise<DocumentAnalysis> {
   const k = ENGAGEMENT_KINDS[input.kind];
   const body = input.pages.map((p, i) => `<oldal n="${i + 1}" cimke="${p.label}">\n${p.text}\n</oldal>`).join('\n');
   const user = `Átvilágítás típusa: ${k.label}. Címzett: ${k.audience}. Cél: ${k.purpose}

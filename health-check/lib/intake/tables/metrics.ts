@@ -60,7 +60,11 @@ const TOTAL_ROW = /^(osszesen|mindosszesen|total|sum|osszeg)\b/i;
 const pct = (x: number) => `${(x * 100).toLocaleString('hu-HU', { maximumFractionDigits: 1 })}%`;
 const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
-interface Row { partner: string; amount: number; cells: Grid[number] }
+interface Row {
+  partner: string;
+  amount: number;
+  cells: Grid[number];
+}
 
 function readRows(input: TableInput): { rows: Row[]; skipped: number } {
   const { grid, headerRow, mapping } = input;
@@ -125,10 +129,24 @@ export function analyzeTable(input: TableInput, ctx: TableContext): TableAnalysi
   const partners = byPartner(rows);
   const topPartners = partners.slice(0, 5).map((p) => ({ ...p, share: total > 0 ? p.amountHuf / total : 0 }));
   const source = `${spec.label} (${input.fileName})`;
-  const base = { kind: input.kind, fileName: input.fileName, rows: rows.length, skipped, totalHuf: total, topPartners, partners: partners.slice(0, 200), values: {} as Record<string, number> };
+  const base = {
+    kind: input.kind,
+    fileName: input.fileName,
+    rows: rows.length,
+    skipped,
+    totalHuf: total,
+    topPartners,
+    partners: partners.slice(0, 200),
+    values: {} as Record<string, number>,
+  };
   const warnings: string[] = [];
   if (!rows.length) {
-    return { ...base, metrics: [], warnings: ['Egyetlen feldolgozható sor sincs. Ellenőrizze az oszlopokat.'], result: { suggestions: [], companySuggestions: [], facts: [] } };
+    return {
+      ...base,
+      metrics: [],
+      warnings: ['Egyetlen feldolgozható sor sincs. Ellenőrizze az oszlopokat.'],
+      result: { suggestions: [], companySuggestions: [], facts: [] },
+    };
   }
   if (total <= 0) warnings.push('Az összegek összege nem pozitív – ellenőrizze az összeg oszlopot.');
 
@@ -163,14 +181,16 @@ export function analyzeTable(input: TableInput, ctx: TableContext): TableAnalysi
 
       const companySuggestions: CompanySuggestion[] =
         dso > 0 && dso !== ctx.company.actualDsoDays
-          ? [{
-              key: `TBL:AR_AGING:DSO:${dso}`,
-              origin: 'DATA_TABLE',
-              field: 'actualDsoDays',
-              value: dso,
-              label: `Tényleges DSO: ${ctx.company.actualDsoDays} → ${dso} nap`,
-              evidence: `${source}: nyitott állomány ${formatHufShort(total)} / árbevétel ${formatHufShort(revenue)} × 365`,
-            }]
+          ? [
+              {
+                key: `TBL:AR_AGING:DSO:${dso}`,
+                origin: 'DATA_TABLE',
+                field: 'actualDsoDays',
+                value: dso,
+                label: `Tényleges DSO: ${ctx.company.actualDsoDays} → ${dso} nap`,
+                evidence: `${source}: nyitott állomány ${formatHufShort(total)} / árbevétel ${formatHufShort(revenue)} × 365`,
+              },
+            ]
           : [];
 
       const suggestions: IntakeSuggestion[] = [];
@@ -178,11 +198,16 @@ export function analyzeTable(input: TableInput, ctx: TableContext): TableAnalysi
         const L: Scale5 = share90 >= 0.3 ? 4 : share90 >= 0.15 ? 3 : 2;
         const I: Scale5 = gap >= 30 ? 4 : gap >= 15 ? 3 : 2;
         const conc = topOver90Share >= 0.5 ? ` A 90 napon túli állomány ${pct(topOver90Share)}-a egyetlen vevőnél van.` : '';
-        suggestions.push(suggestion(
-          'AR_AGING', 'FIN-03', L, I,
-          `A 90 napon túl lejárt állomány ${pct(share90)}, a DSO ${dso} nap az iparági ${ctx.company.industryDsoDays} nappal szemben.${conc}`,
-          `${source}${when}: 90 napon túl ${formatHufShort(over90)} (${pct(share90)}), DSO ${dso} nap`,
-        ));
+        suggestions.push(
+          suggestion(
+            'AR_AGING',
+            'FIN-03',
+            L,
+            I,
+            `A 90 napon túl lejárt állomány ${pct(share90)}, a DSO ${dso} nap az iparági ${ctx.company.industryDsoDays} nappal szemben.${conc}`,
+            `${source}${when}: 90 napon túl ${formatHufShort(over90)} (${pct(share90)}), DSO ${dso} nap`,
+          ),
+        );
       }
       return {
         ...base,
@@ -200,7 +225,14 @@ export function analyzeTable(input: TableInput, ctx: TableContext): TableAnalysi
         result: {
           suggestions,
           companySuggestions,
-          facts: [fact('AR_AGING', 'FINANCE', `Nyitott vevőállomány ${formatHufShort(total)}, ebből 90 napon túl lejárt ${formatHufShort(over90)} (${pct(share90)}); DSO ${dso} nap`, `${source}${when}`)],
+          facts: [
+            fact(
+              'AR_AGING',
+              'FINANCE',
+              `Nyitott vevőállomány ${formatHufShort(total)}, ebből 90 napon túl lejárt ${formatHufShort(over90)} (${pct(share90)}); DSO ${dso} nap`,
+              `${source}${when}`,
+            ),
+          ],
         },
       };
     }
@@ -211,25 +243,32 @@ export function analyzeTable(input: TableInput, ctx: TableContext): TableAnalysi
       const hhi = Math.round(partners.reduce((s, p) => s + (total > 0 ? ((p.amountHuf / total) * 100) ** 2 : 0), 0));
       const companySuggestions: CompanySuggestion[] =
         total > 0 && Math.abs(total - ctx.company.revenueHuf) / Math.max(1, ctx.company.revenueHuf) > 0.02
-          ? [{
-              key: `TBL:SALES:REVENUE:${Math.round(total)}`,
-              origin: 'DATA_TABLE',
-              field: 'revenueHuf',
-              value: Math.round(total),
-              label: `Árbevétel: ${formatHufShort(ctx.company.revenueHuf)} → ${formatHufShort(total)}`,
-              evidence: `${source}: ${rows.length} sor összege`,
-            }]
+          ? [
+              {
+                key: `TBL:SALES:REVENUE:${Math.round(total)}`,
+                origin: 'DATA_TABLE',
+                field: 'revenueHuf',
+                value: Math.round(total),
+                label: `Árbevétel: ${formatHufShort(ctx.company.revenueHuf)} → ${formatHufShort(total)}`,
+                evidence: `${source}: ${rows.length} sor összege`,
+              },
+            ]
           : [];
       const suggestions: IntakeSuggestion[] = [];
       if (top1 >= 0.25) {
         const L: Scale5 = hhi >= 2500 ? 4 : 3;
         const I: Scale5 = top1 >= 0.4 ? 5 : 4;
-        suggestions.push(suggestion(
-          'SALES_BY_CUSTOMER', 'OPS-05', L, I,
-          `A legnagyobb vevő az árbevétel ${pct(top1)}-át adja (top 5: ${pct(top5)}, HHI ${hhi}).`,
-          `${source}: legnagyobb vevő ${pct(top1)}, top 5 ${pct(top5)}, HHI ${hhi}`,
-          { type: 'REVENUE_SHARE', share: Math.round(top1 * 1000) / 1000 },
-        ));
+        suggestions.push(
+          suggestion(
+            'SALES_BY_CUSTOMER',
+            'OPS-05',
+            L,
+            I,
+            `A legnagyobb vevő az árbevétel ${pct(top1)}-át adja (top 5: ${pct(top5)}, HHI ${hhi}).`,
+            `${source}: legnagyobb vevő ${pct(top1)}, top 5 ${pct(top5)}, HHI ${hhi}`,
+            { type: 'REVENUE_SHARE', share: Math.round(top1 * 1000) / 1000 },
+          ),
+        );
       }
       return {
         ...base,
@@ -255,11 +294,16 @@ export function analyzeTable(input: TableInput, ctx: TableContext): TableAnalysi
       const top3 = topPartners.slice(0, 3).reduce((s, p) => s + p.share, 0);
       const suggestions: IntakeSuggestion[] = [];
       if (top1 >= 0.4) {
-        suggestions.push(suggestion(
-          'PURCHASES_BY_SUPPLIER', 'OPS-01', top1 >= 0.6 ? 4 : 3, 4,
-          `A legnagyobb beszállító a beszerzés ${pct(top1)}-át adja.`,
-          `${source}: legnagyobb szállító ${pct(top1)}, top 3 ${pct(top3)}`,
-        ));
+        suggestions.push(
+          suggestion(
+            'PURCHASES_BY_SUPPLIER',
+            'OPS-01',
+            top1 >= 0.6 ? 4 : 3,
+            4,
+            `A legnagyobb beszállító a beszerzés ${pct(top1)}-át adja.`,
+            `${source}: legnagyobb szállító ${pct(top1)}, top 3 ${pct(top3)}`,
+          ),
+        );
       }
       return {
         ...base,
@@ -290,12 +334,17 @@ export function analyzeTable(input: TableInput, ctx: TableContext): TableAnalysi
       const above = rows.filter((r) => r.amount >= THRESHOLD).length;
       const suggestions: IntakeSuggestion[] = [];
       if (missing.length) {
-        suggestions.push(suggestion(
-          'RELATED_PARTY', 'FIN-01', 4, missing.length >= 3 ? 4 : 3,
-          `${above} db 50 M Ft feletti kapcsolt ügyletből ${missing.length} db-hoz nincs transzferár-nyilvántartás.`,
-          `${source}: ${missing.length} db nyilvántartás nélküli ügylet, összesen ${formatHufShort(missingSum)}`,
-          { type: 'PER_ITEM', count: missing.length },
-        ));
+        suggestions.push(
+          suggestion(
+            'RELATED_PARTY',
+            'FIN-01',
+            4,
+            missing.length >= 3 ? 4 : 3,
+            `${above} db 50 M Ft feletti kapcsolt ügyletből ${missing.length} db-hoz nincs transzferár-nyilvántartás.`,
+            `${source}: ${missing.length} db nyilvántartás nélküli ügylet, összesen ${formatHufShort(missingSum)}`,
+            { type: 'PER_ITEM', count: missing.length },
+          ),
+        );
       }
       return {
         ...base,
@@ -309,7 +358,14 @@ export function analyzeTable(input: TableInput, ctx: TableContext): TableAnalysi
         result: {
           suggestions,
           companySuggestions: [],
-          facts: [fact('RELATED_PARTY', 'FINANCE', `${above} db 50 M Ft feletti kapcsolt ügylet, ebből ${missing.length} db transzferár-nyilvántartás nélkül`, source)],
+          facts: [
+            fact(
+              'RELATED_PARTY',
+              'FINANCE',
+              `${above} db 50 M Ft feletti kapcsolt ügylet, ebből ${missing.length} db transzferár-nyilvántartás nélkül`,
+              source,
+            ),
+          ],
         },
       };
     }

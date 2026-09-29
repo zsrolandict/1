@@ -32,7 +32,11 @@ export function buildWorkbook(input: ReportInput): Sheet[] {
 
   const summary: Sheet = {
     name: 'Összefoglaló',
-    columns: [{ header: 'Mutató', width: 38 }, { header: 'Érték', width: 26 }, { header: 'Megjegyzés', width: 60, format: 'wrap' }],
+    columns: [
+      { header: 'Mutató', width: 38 },
+      { header: 'Érték', width: 26 },
+      { header: 'Megjegyzés', width: 60, format: 'wrap' },
+    ],
     rows: [
       ['Cég', input.companyName, null],
       ['Átvilágítás típusa', kind.label, kind.audience],
@@ -120,9 +124,17 @@ export function buildWorkbook(input: ReportInput): Sheet[] {
 
   const offer: Sheet = {
     name: 'Ajánlat',
-    columns: [{ header: 'Divízió', width: 18 }, { header: 'Tételek', width: 10, format: 'int' }, { header: 'Becsült díj', width: 16, format: 'huf' }],
+    columns: [
+      { header: 'Divízió', width: 18 },
+      { header: 'Tételek', width: 10, format: 'int' },
+      { header: 'Becsült díj', width: 16, format: 'huf' },
+    ],
     rows: [
-      ...DIVISIONS.filter((d) => a.pipeline.byDivision[d].count > 0).map((d) => [DIVISION_LABEL[d], a.pipeline.byDivision[d].count, a.pipeline.byDivision[d].feeHuf]),
+      ...DIVISIONS.filter((d) => a.pipeline.byDivision[d].count > 0).map((d) => [
+        DIVISION_LABEL[d],
+        a.pipeline.byDivision[d].count,
+        a.pipeline.byDivision[d].feeHuf,
+      ]),
       ['Összesen', null, a.pipeline.totalFeeHuf],
       ['Beszámítható kredit', null, -a.pipeline.creditHuf],
       ['Nettó', null, a.pipeline.netAfterCreditHuf],

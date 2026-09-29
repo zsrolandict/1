@@ -20,7 +20,7 @@ export type ActionWindow = 'D0_30' | 'D31_60' | 'D61_90' | 'BACKLOG';
 export interface RiskItem {
   id: string;
   pillar: Pillar;
-  code: string;               // pl. "LEG-03" – a sablonkatalógus kódja
+  code: string; // pl. "LEG-03" – a sablonkatalógus kódja
   title: string;
   description: string;
   /** A tanácsadó bepipálta: az átvilágítás során ténylegesen fennáll. */
@@ -64,14 +64,14 @@ export interface ScoredRisk extends RiskItem {
   /** Honnan jön a kitettség összege (képlet / felülírás / kézi) és a levezetés. */
   exposureSource: 'FORMULA' | 'OVERRIDE' | 'MANUAL';
   exposureExplanation: string;
-  score: number;              // likelihood × impact, 1–25
+  score: number; // likelihood × impact, 1–25
   rag: Rag;
   /** A várható veszteség elérte a lényegességi küszöböt, ezért piros (a pontszám alapján nem lenne). */
   materialityOverride: boolean;
-  probability: number;        // likelihood → valószínűség (0–1)
-  expectedLossHuf: number;    // exposure × probability
+  probability: number; // likelihood → valószínűség (0–1)
+  expectedLossHuf: number; // exposure × probability
   quickWin: boolean;
-  priority: number;           // rendezési kulcs az akciótervhez
+  priority: number; // rendezési kulcs az akciótervhez
   window: ActionWindow;
 }
 
@@ -89,7 +89,7 @@ export interface PillarSummary {
 }
 
 export interface RiskAssessment {
-  risks: ScoredRisk[];        // csak az azonosítottak, prioritás szerint
+  risks: ScoredRisk[]; // csak az azonosítottak, prioritás szerint
   pillars: Record<Pillar, PillarSummary>;
   totals: {
     identified: number;

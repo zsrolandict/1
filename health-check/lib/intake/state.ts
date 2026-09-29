@@ -37,7 +37,16 @@ export interface IntakeState {
   dismissed: string[];
 }
 
-export const EMPTY_INTAKE: IntakeState = { profile: EMPTY_PROFILE, requestStatus: {}, extraRequests: [], answers: {}, tables: {}, documents: [], accepted: [], dismissed: [] };
+export const EMPTY_INTAKE: IntakeState = {
+  profile: EMPTY_PROFILE,
+  requestStatus: {},
+  extraRequests: [],
+  answers: {},
+  tables: {},
+  documents: [],
+  accepted: [],
+  dismissed: [],
+};
 
 const key = (scenarioId: string) => `ict-hc:intake:v1:${scenarioId}`;
 
@@ -94,7 +103,6 @@ export function intakeFacts(state: IntakeState, kind: EngagementKind): KnownFact
   const reg = state.registry ? registryFindings(state.registry, state).facts : [];
   return [...r.documents.facts, ...r.tables.facts, ...r.checklist.facts, ...reg];
 }
-
 
 /** A teljes iratlista: szabály alapú lista + felvett extra iratok. */
 export function requestList(state: IntakeState, kind: EngagementKind): DocRequest[] {

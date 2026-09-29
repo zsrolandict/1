@@ -11,12 +11,7 @@ import { UserFacingError } from '@/lib/errors';
  * Ugyanez fut a szerveren és a böngészős előnézetben; csak a szövegkinyerés
  * és az AI-hívás (`call`) forrása más.
  */
-export async function analyzeExtracted(
-  call: StructuredCall,
-  doc: ExtractedDocument,
-  kind: EngagementKind,
-  limits: { maxChars: number; maxPages: number },
-) {
+export async function analyzeExtracted(call: StructuredCall, doc: ExtractedDocument, kind: EngagementKind, limits: { maxChars: number; maxPages: number }) {
   if (doc.pages.length > limits.maxPages || documentChars(doc.pages) > limits.maxChars) {
     throw new UserFacingError('A dokumentum túl hosszú egy elemzéshez. Töltse fel részenként.');
   }

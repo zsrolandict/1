@@ -14,7 +14,10 @@ import { detectColumns, type TableKind } from './tables/spec';
 function table(kind: TableKind, csv: string, fileName = 't.csv') {
   const grid = parseCsv(csv);
   const d = detectColumns(kind, grid);
-  return analyzeTable({ kind, fileName, grid, headerRow: d.headerRow, mapping: d.mapping, refDay: isoToDay(SAMPLE_REF_DATE) }, { company: getScenario('gyarto').company });
+  return analyzeTable(
+    { kind, fileName, grid, headerRow: d.headerRow, mapping: d.mapping, refDay: isoToDay(SAMPLE_REF_DATE) },
+    { company: getScenario('gyarto').company },
+  );
 }
 
 describe('keresztellenőrzés', () => {
@@ -59,8 +62,18 @@ describe('keresztellenőrzés', () => {
 
   it('az interjúk AI-ellentmondásai is egy helyen, a tény szövegével', () => {
     const sc = getScenario('it-fejleszto');
-    const rec = { role: 'OWNER_CEO' as const, alias: 'Ügyvezető', heldAt: null, notes: '', transcript: null, speakerNames: {}, analysisIsSample: true, accepted: [], asked: [],
-      analysis: { ...sc.interview!.analysis, discardedUnverified: 0 } };
+    const rec = {
+      role: 'OWNER_CEO' as const,
+      alias: 'Ügyvezető',
+      heldAt: null,
+      notes: '',
+      transcript: null,
+      speakerNames: {},
+      analysisIsSample: true,
+      accepted: [],
+      asked: [],
+      analysis: { ...sc.interview!.analysis, discardedUnverified: 0 },
+    };
     const c = crossChecks(EMPTY_INTAKE, 'VENDOR_DD', { OWNER_CEO: rec }, sc.facts).conflicts.filter((x) => x.origin === 'AI_INTERVIEW');
     expect(c.length).toBe(sc.interview!.analysis.contradictions.length);
     expect(c[0].b.statement).not.toMatch(/^F\d$/);
@@ -74,7 +87,9 @@ describe('AI-összkép', () => {
     answers: SAMPLE_ANSWERS.konyvelo,
     documents: [sampleDocumentRecord(SAMPLE_DOCUMENTS.konyvelo[0], 'd1')],
   };
-  const sources = buildSources(state, {}, [{ id: 'CHK-QK3', statement: 'Díjemelési (indexálási) záradék az ügyfélszerződésekben: Igen, mindenhol', source: 'x' }]);
+  const sources = buildSources(state, {}, [
+    { id: 'CHK-QK3', statement: 'Díjemelési (indexálási) záradék az ügyfélszerződésekben: Igen, mindenhol', source: 'x' },
+  ]);
 
   it('forrásokat épít azonosítóval (tényállás, kérdőív, dokumentum)', () => {
     expect(sources.map((s) => s.id)).toEqual(['T1', 'K1', 'D1']);
@@ -84,13 +99,45 @@ describe('AI-összkép', () => {
     const call = (async () => ({
       risks: [
         {
-          title: 'Az iroda ingatlanhasználata nincs szerződésben rendezve', templateCode: null, pillar: 'LEGAL', rationale: 'r',
-          likelihood: 3, impact: 3, confidence: 0.8,
+          title: 'Az iroda ingatlanhasználata nincs szerződésben rendezve',
+          templateCode: null,
+          pillar: 'LEGAL',
+          rationale: 'r',
+          likelihood: 3,
+          impact: 3,
+          confidence: 0.8,
           evidence: [{ sourceId: 'T1', quote: 'családi tulajdonú ingatlanban működik' }],
         },
-        { title: 'Kitalált', templateCode: null, pillar: 'HR', rationale: 'r', likelihood: 3, impact: 3, confidence: 0.9, evidence: [{ sourceId: 'D1', quote: 'ez a mondat nincs a dokumentumban' }] },
-        { title: 'Rossz forrás', templateCode: null, pillar: 'HR', rationale: 'r', likelihood: 3, impact: 3, confidence: 0.9, evidence: [{ sourceId: 'K1', quote: 'családi tulajdonú ingatlanban működik' }] },
-        { title: 'x', templateCode: 'HR-01', pillar: 'HR', rationale: 'r', likelihood: 9, impact: 3, confidence: 0.5, evidence: [{ sourceId: 'T1', quote: 'személyesen az alapítóhoz kötődnek' }] },
+        {
+          title: 'Kitalált',
+          templateCode: null,
+          pillar: 'HR',
+          rationale: 'r',
+          likelihood: 3,
+          impact: 3,
+          confidence: 0.9,
+          evidence: [{ sourceId: 'D1', quote: 'ez a mondat nincs a dokumentumban' }],
+        },
+        {
+          title: 'Rossz forrás',
+          templateCode: null,
+          pillar: 'HR',
+          rationale: 'r',
+          likelihood: 3,
+          impact: 3,
+          confidence: 0.9,
+          evidence: [{ sourceId: 'K1', quote: 'családi tulajdonú ingatlanban működik' }],
+        },
+        {
+          title: 'x',
+          templateCode: 'HR-01',
+          pillar: 'HR',
+          rationale: 'r',
+          likelihood: 9,
+          impact: 3,
+          confidence: 0.5,
+          evidence: [{ sourceId: 'T1', quote: 'személyesen az alapítóhoz kötődnek' }],
+        },
       ],
     })) as never;
     const existing = getScenario('konyvelo').items; // HR-01 már azonosított

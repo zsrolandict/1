@@ -42,7 +42,11 @@ describe.each(SCENARIOS.filter((s) => s.id !== 'gyarto'))('mintaeset: $label', (
 
   it('a kérdéslista a dokumentum-tényekre és a hiányzó dokumentumokra is kérdez', () => {
     const qs = buildInterviewGuide({
-      kind: sc.kind, role: sc.interview!.role, risks: sc.items, missingDocuments: sc.missingDocuments, facts: sc.facts,
+      kind: sc.kind,
+      role: sc.interview!.role,
+      risks: sc.items,
+      missingDocuments: sc.missingDocuments,
+      facts: sc.facts,
     });
     expect(qs.some((q) => q.source.type === 'DOCUMENT_FINDING')).toBe(true);
     expect(qs.some((q) => q.source.type === 'MISSING_DOCUMENT')).toBe(true);

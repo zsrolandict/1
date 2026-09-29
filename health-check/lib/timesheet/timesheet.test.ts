@@ -3,7 +3,14 @@ import { ENGAGEMENT_KINDS } from '@/lib/engagement/kinds';
 import { addEntry, budgetFor, EMPTY_TIMESHEET, removeEntry, summarize, validateEntry, type Bucket } from './timesheet';
 
 const LABELS: Record<Bucket, string> = { FINANCE: 'Pénzügy', LEGAL: 'Jog', OPERATIONS: 'Működés', HR: 'HR', PM: 'Projektvezetés' };
-const e = (bucket: Bucket, hours: number, role: 'PARTNER' | 'SENIOR' | 'JUNIOR' = 'SENIOR') => ({ date: '2026-09-01', bucket, role, person: 'Teszt', hours, note: '' });
+const e = (bucket: Bucket, hours: number, role: 'PARTNER' | 'SENIOR' | 'JUNIOR' = 'SENIOR') => ({
+  date: '2026-09-01',
+  bucket,
+  role,
+  person: 'Teszt',
+  hours,
+  note: '',
+});
 
 describe('óraszám-követés', () => {
   it('a keret a típus teljes óraszáma, projektvezetéssel', () => {

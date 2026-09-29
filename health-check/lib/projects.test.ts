@@ -3,7 +3,19 @@ import { lastSaved } from './localSave';
 import { backupDue, BackupError, deleteProject, exportProject, importProject, MODULE_KEYS, parseBackup, projectHasContent, resetDemo } from './projects';
 import { saveIntake, loadIntake, EMPTY_INTAKE } from './intake/state';
 import { saveTimesheet, loadTimesheet, EMPTY_TIMESHEET } from './timesheet/timesheet';
-import { activeProjectId, lastPageOf, rememberPage, setActiveProject, createProject, listProjects, loadProject, loadWorkspace, openDemo, saveWorkspace, STORAGE_KEY } from './risk/store';
+import {
+  activeProjectId,
+  lastPageOf,
+  rememberPage,
+  setActiveProject,
+  createProject,
+  listProjects,
+  loadProject,
+  loadWorkspace,
+  openDemo,
+  saveWorkspace,
+  STORAGE_KEY,
+} from './risk/store';
 
 // Böngésző nélküli tesztkörnyezet: egyszerű memóriabeli localStorage.
 class MemoryStorage {
@@ -143,7 +155,15 @@ describe('projektek', () => {
   });
 
   it('figyelmeztetés, ha régóta nincs mentés fájlba', () => {
-    const meta = { id: 'p', companyName: 'x', kind: 'HEALTH_CHECK' as const, scenarioId: 'ures', isDemo: false, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z' };
+    const meta = {
+      id: 'p',
+      companyName: 'x',
+      kind: 'HEALTH_CHECK' as const,
+      scenarioId: 'ures',
+      isDemo: false,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-03-01T00:00:00Z',
+    };
     const now = Date.parse('2026-03-02T00:00:00Z');
     expect(backupDue(meta, null, now)).toBe(true);
     expect(backupDue(meta, null, now, false)).toBe(false); // üres projekt: nincs mit menteni
