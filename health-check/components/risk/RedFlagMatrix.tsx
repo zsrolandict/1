@@ -33,6 +33,9 @@ import type { Division, Pillar, Rag, RiskItem, RiskSource, Scale5, ScoredRisk } 
 import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario } from '@/lib/risk/store';
 import ConfirmDialog, { useConfirm } from '../ConfirmDialog';
 import { useNav } from '../Nav';
+import InfoTip from '../InfoTip';
+import type { GlossaryKey } from '@/lib/glossary';
+import { templateFor } from '@/lib/intake/apply';
 import { getScenario, isDemoScenario } from '@/lib/scenarios';
 import { loadIntake } from '@/lib/intake/state';
 import { SECTOR_LABEL } from '@/lib/intake/requests';
@@ -46,7 +49,7 @@ import BuyerQuestionsPanel from './BuyerQuestionsPanel';
 import ExportPdfButton, { browserDownload, slug, type SaveFile } from '@/components/report/ExportPdfButton';
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, hourSplit, PM_HOURS, type EngagementKind } from '@/lib/engagement/kinds';
 import { KIND_RISKS } from '@/lib/engagement/kindRisks';
-import { adjustmentsFor, formatAdjustment, KIND_ADJUSTMENTS_STATUS, type KindAdjustment } from '@/lib/engagement/adjustments';
+import { adjustmentsFor, describeAdjustment, formatAdjustment, KIND_ADJUSTMENTS_STATUS, type KindAdjustment } from '@/lib/engagement/adjustments';
 
 const SOURCE_LABEL: Partial<Record<RiskSource, string>> = {
   CHECKLIST: 'Kérdőív',
@@ -106,6 +109,8 @@ export default function RedFlagMatrix({
   const [projectId, setProjectId] = useState(DEFAULT_WORKSPACE.projectId);
   const [confirmReset, setConfirmReset] = useState(false);
   const [editingName, setEditingName] = useState(false);
+  // A beállítások doboza: alapból csukva, amíg nincs teendő (hiányzó árbevétel).
+  const [settingsPref, setSettingsPref] = useState<boolean | null>(null);
   const [confirmDialog, ask] = useConfirm();
   const nav = useNav();
   const [companyName, setCompanyName] = useState(initialName);
@@ -261,6 +266,8 @@ export default function RedFlagMatrix({
   const { totals, pillars, actionPlan, pipeline } = result;
   const missingRevenue = company.revenueHuf <= 0;
   const noAssessment = totals.identified === 0;
+  const settingsOpen = settingsPref ?? missingRevenue;
+  const setSettingsOpen = (v: boolean) => setSettingsPref(v);
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -268,7 +275,7 @@ export default function RedFlagMatrix({
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-            {ENGAGEMENT_KINDS[kind].label} · Red Flag Mátrix
+            {ENGAGEMENT_KINDS[kind].label} · Red Flag Mátrix <InfoTip term="redFlag" label="Red Flag mátrix" />
           </p>
           {editingName ? (
             <input
@@ -364,101 +371,6 @@ export default function RedFlagMatrix({
 
       {confirmDialog}
 
-      {/* ── Cégadatok a forintosításhoz ─────────────────────────── */}
-      <section
-        className={`flex flex-wrap items-end gap-x-5 gap-y-3 rounded-lg border px-4 py-3 shadow-sm print:hidden ${
-          missingRevenue ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'
-        }`}
-      >
-        <span className="flex items-center gap-1.5 self-center text-sm font-semibold text-slate-700">
-          <Calculator className="h-4 w-4" /> Cégadatok
-        </span>
-        <Field label="Éves árbevétel (Ft)">
-          <HufInput value={company.revenueHuf} placeholder="pl. 800 000 000" onChange={(v) => setCompany((c) => ({ ...c, revenueHuf: v }))} className="w-40 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
-        </Field>
-        <Field label="Fedezeti hányad (%)">
-          <PercentInput value={company.grossMarginPct} onChange={(v) => setCompany((c) => ({ ...c, grossMarginPct: v }))} />
-        </Field>
-        <Field label="DSO tényleges / iparági (nap)">
-          <span className="flex items-center gap-1">
-            <NumberInput value={company.actualDsoDays} onChange={(v) => setCompany((c) => ({ ...c, actualDsoDays: v }))} />
-            <span className="text-slate-500">/</span>
-            <NumberInput value={company.industryDsoDays} onChange={(v) => setCompany((c) => ({ ...c, industryDsoDays: v }))} />
-          </span>
-        </Field>
-        <Field label="Lényegességi küszöb (Ft)">
-          <HufInput value={materialityHuf} onChange={setMaterialityHuf} className="w-36 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
-        </Field>
-        {missingRevenue ? (
-          <p role="status" className="ml-auto max-w-sm self-center text-sm font-medium text-amber-900">
-            Add meg az éves árbevételt: enélkül a kockázatok forintösszege nem számolható (0 Ft-ot mutat).
-          </p>
-        ) : (
-          <p className="ml-auto max-w-xs self-center text-xs text-slate-600">A képletek kiinduló becslést adnak; tételenként felülírhatók.</p>
-        )}
-      </section>
-
-      {/* ── Az átvilágítás típusa: cél, keret, fókusz ───────────── */}
-      <section className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm print:hidden">
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <span className="font-semibold text-slate-900">{profile.label}</span>
-          <span className="text-slate-500">Címzett: {profile.audience}</span>
-          <span className="text-slate-500">{profile.purpose}</span>
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-slate-500">Keret: <b className="text-slate-800">{profile.hourBudget} óra</b></span>
-          {hourSplit(kind).map((h) => (
-            <span key={h.pillar} className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">
-              {PILLAR_LABEL[h.pillar]} {h.hours} ó · súly {Math.round(profile.weights[h.pillar] * 100)}%
-            </span>
-          ))}
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">Projektvezetés {PM_HOURS} ó</span>
-          <span className="ml-auto text-slate-500">
-            Fókusz: {profile.focusRiskCodes.join(', ')}
-          </span>
-        </div>
-        <div className="mt-1 text-xs text-violet-800">
-          Típus-korrekció {adjustedCount} bejelölt tételnél módosítja a valószínűséget vagy a hatást
-          {!KIND_ADJUSTMENTS_STATUS.approved && ' (kezdő javaslat, szakértői jóváhagyásra vár)'}.
-        </div>
-        {kindExtras.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 text-xs">
-            <span className="text-slate-500">Ehhez a típushoz javasolt további tételek:</span>
-            {kindExtras.map((k) => (
-              <button
-                key={k.code}
-                onClick={() => addKindRisk(k.code)}
-                title={k.description}
-                className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-indigo-800 hover:bg-indigo-100"
-              >
-                <Plus className="h-3 w-3" /> {k.code} {k.title}
-              </button>
-            ))}
-          </div>
-        )}
-        {sectorExtras.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 text-xs">
-            <span className="text-slate-500">Ágazati tételek ({sectors.map((x) => SECTOR_LABEL[x]).join(', ')}):</span>
-            <button
-              onClick={() => setItems((xs) => [...xs, ...sectorExtras])}
-              className="rounded-full bg-indigo-700 px-2.5 py-0.5 font-medium text-white hover:bg-indigo-800"
-            >
-              Mind a {sectorExtras.length} felvétele
-            </button>
-            {sectorExtras.map((k) => (
-              <button
-                key={k.code}
-                onClick={() => setItems((xs) => [...xs, k])}
-                title={k.description}
-                className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-indigo-800 hover:bg-indigo-100"
-              >
-                <Plus className="h-3 w-3" /> {k.code} {k.title}
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
-
       {/* ── Még nincs értékelés ─────────────────────────────────── */}
       {noAssessment ? (
         <section className="rounded-lg border-2 border-dashed border-slate-300 bg-white p-6 text-center">
@@ -487,20 +399,20 @@ export default function RedFlagMatrix({
         <>
       {/* ── KPI sáv ─────────────────────────────────────────────── */}
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <Kpi label="Összesített státusz" icon={<ShieldAlert className="h-4 w-4" />}>
+        <Kpi label="Összesített státusz" term="status" icon={<ShieldAlert className="h-4 w-4" />}>
           <span className="flex items-center gap-2">
-            <span className={`h-3 w-3 rounded-full ${RAG_STYLE[totals.rag].dot}`} />
+            <span className={`h-3 w-3 rounded-full ${RAG_STYLE[totals.rag].dot}`} aria-hidden />
             {RAG_LABEL[totals.rag]}
           </span>
         </Kpi>
-        <Kpi label="Health Score" icon={<Gauge className="h-4 w-4" />}>
+        <Kpi label="Health Score" term="healthScore" icon={<Gauge className="h-4 w-4" />}>
           {totals.healthScore}
           <span className="text-base font-normal text-slate-500"> / 100</span>
         </Kpi>
-        <Kpi label="Bruttó kitettség" icon={<Banknote className="h-4 w-4" />} hint={formatHuf(totals.grossExposureHuf)}>
+        <Kpi label="Bruttó kitettség" term="grossExposure" icon={<Banknote className="h-4 w-4" />} hint={formatHuf(totals.grossExposureHuf)}>
           {formatHufShort(totals.grossExposureHuf)}
         </Kpi>
-        <Kpi label="Várható veszteség" icon={<TrendingDown className="h-4 w-4" />} hint="kitettség × valószínűség">
+        <Kpi label="Várható veszteség" term="expectedLoss" icon={<TrendingDown className="h-4 w-4" />}>
           {formatHufShort(totals.expectedLossHuf)}
         </Kpi>
         <Kpi label="Azonosított tételek" icon={<Filter className="h-4 w-4" />} className="col-span-2 lg:col-span-1">
@@ -558,6 +470,128 @@ export default function RedFlagMatrix({
         </>
       )}
 
+      {/* ── Javasolt további tételek (típus, ágazat) ───────────── */}
+      {(kindExtras.length > 0 || sectorExtras.length > 0) && (
+        <section aria-label="Javasolt további tételek" className="rounded-lg border border-indigo-100 bg-indigo-50/40 px-4 py-3 shadow-sm print:hidden">
+          <p className="mb-2 text-xs text-slate-600">Egy kattintással a listába kerülnek (pipálatlanul); utána döntöd el, fennáll-e.</p>
+        {kindExtras.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-xs [&+&]:mt-2 [&+&]:border-t [&+&]:border-slate-100 [&+&]:pt-2">
+            <span className="font-medium text-slate-700">Ehhez az átvilágítás-típushoz érdemes megvizsgálni:</span>
+            {kindExtras.map((k) => (
+              <button
+                key={k.code}
+                onClick={() => addKindRisk(k.code)}
+                title={k.description}
+                className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-indigo-800 hover:bg-indigo-100"
+              >
+                <Plus className="h-3 w-3" /> {k.title}
+              </button>
+            ))}
+          </div>
+        )}
+        {sectorExtras.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-xs [&+&]:mt-2 [&+&]:border-t [&+&]:border-slate-100 [&+&]:pt-2">
+            <span className="font-medium text-slate-700">Az ágazatban ({sectors.map((x) => SECTOR_LABEL[x]).join(', ')}) gyakori kockázatok:</span>
+            <button
+              onClick={() => setItems((xs) => [...xs, ...sectorExtras])}
+              className="rounded-full bg-indigo-700 px-2.5 py-0.5 font-medium text-white hover:bg-indigo-800"
+            >
+              Mind a {sectorExtras.length} felvétele
+            </button>
+            {sectorExtras.map((k) => (
+              <button
+                key={k.code}
+                onClick={() => setItems((xs) => [...xs, k])}
+                title={k.description}
+                className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-indigo-800 hover:bg-indigo-100"
+              >
+                <Plus className="h-3 w-3" /> {k.title}
+              </button>
+            ))}
+          </div>
+        )}
+        </section>
+      )}
+
+      {/* ── Beállítások: cégadatok + átvilágítás-típus (összecsukható) ── */}
+      <details
+        open={settingsOpen}
+        onToggle={(e) => setSettingsOpen((e.currentTarget as HTMLDetailsElement).open)}
+        className={`rounded-lg border shadow-sm print:hidden ${missingRevenue ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'}`}
+      >
+        <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-sm [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center gap-1.5 font-semibold text-slate-800">
+            <Calculator className="h-4 w-4" /> Cégadatok és átvilágítás-típus
+          </span>
+          {missingRevenue ? (
+            <span role="status" className="font-medium text-amber-900">
+              Add meg az éves árbevételt: enélkül a kockázatok forintösszege nem számolható.
+            </span>
+          ) : (
+            <span className="text-xs text-slate-600">
+              Árbevétel {formatHufShort(company.revenueHuf)} · fedezet {Math.round(company.grossMarginPct * 100)}% · küszöb{' '}
+              {formatHufShort(materialityHuf)} · {profile.label}, {profile.hourBudget} óra
+            </span>
+          )}
+          <ChevronDown className={`ml-auto h-4 w-4 text-slate-500 transition ${settingsOpen ? 'rotate-180' : ''}`} aria-hidden />
+        </summary>
+        <div className="space-y-3 border-t border-slate-200/70 px-4 pb-4 pt-3">
+          <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+        <Field label="Éves árbevétel (Ft)" term="revenue">
+          <HufInput value={company.revenueHuf} placeholder="pl. 800 000 000" onChange={(v) => setCompany((c) => ({ ...c, revenueHuf: v }))} className="w-40 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
+        </Field>
+        <Field label="Fedezeti hányad (%)" term="grossMargin">
+          <PercentInput value={company.grossMarginPct} onChange={(v) => setCompany((c) => ({ ...c, grossMarginPct: v }))} />
+        </Field>
+        <Field label="Fizetési idő: tényleges / iparági (nap)" term="dso">
+          <span className="flex items-center gap-1">
+            <NumberInput value={company.actualDsoDays} onChange={(v) => setCompany((c) => ({ ...c, actualDsoDays: v }))} />
+            <span className="text-slate-500">/</span>
+            <NumberInput value={company.industryDsoDays} onChange={(v) => setCompany((c) => ({ ...c, industryDsoDays: v }))} />
+          </span>
+        </Field>
+        <Field label="Lényegességi küszöb (Ft)" term="materiality">
+          <HufInput value={materialityHuf} onChange={setMaterialityHuf} className="w-36 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
+        </Field>
+        {missingRevenue ? (
+          <p role="status" className="ml-auto max-w-sm self-center text-sm font-medium text-amber-900">
+            Add meg az éves árbevételt: enélkül a kockázatok forintösszege nem számolható (0 Ft-ot mutat).
+          </p>
+        ) : (
+          <p className="ml-auto max-w-xs self-center text-xs text-slate-600">A képletek kiinduló becslést adnak; tételenként felülírhatók.</p>
+        )}
+          </div>
+          <div className="rounded-md bg-white/70 text-sm">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <span className="font-semibold text-slate-900">{profile.label}</span>
+          <span className="text-slate-500">Címzett: {profile.audience}</span>
+          <span className="text-slate-500">{profile.purpose}</span>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-slate-500">Keret: <b className="text-slate-800">{profile.hourBudget} óra</b></span>
+          {hourSplit(kind).map((h) => (
+            <span key={h.pillar} className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">
+              {PILLAR_LABEL[h.pillar]} {h.hours} óra · súly {Math.round(profile.weights[h.pillar] * 100)}%
+            </span>
+          ))}
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">Projektvezetés {PM_HOURS} óra</span>
+          <InfoTip term="weight" label="súly" />
+        </div>
+        <p className="mt-2 text-xs text-slate-600">
+          <span className="font-medium text-slate-700">Kiemelt tételek</span> <InfoTip term="focus" label="kiemelt tételek" />:{' '}
+          {profile.focusRiskCodes.map((c) => templateFor(c)?.title ?? c).join(' · ')}
+        </p>
+        <p className="mt-1 text-xs text-violet-800">
+          {adjustedCount > 0
+            ? `Az átvilágítás célja miatt ${adjustedCount} bepipált tétel súlyosabbnak vagy enyhébbnek számít`
+            : 'Az átvilágítás célja most egyik bepipált tétel súlyát sem módosítja'}
+          {!KIND_ADJUSTMENTS_STATUS.approved && ' (kezdő javaslat, szakértői jóváhagyásra vár)'}.{' '}
+          <InfoTip term="kindAdjustment" label="típusfüggő korrekció" />
+        </p>
+          </div>
+        </div>
+      </details>
+
       {/* ── Kockázati tételek ───────────────────────────────────── */}
       <section id="kockazati-tetelek" className="scroll-mt-4 rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 p-3 print:hidden">
@@ -606,9 +640,15 @@ export default function RedFlagMatrix({
                 <th className="px-3 py-2">Kockázat</th>
                 <th className="px-2 py-2 text-center" title="Valószínűség 1–5">Valósz.</th>
                 <th className="px-2 py-2 text-center" title="Hatás 1–5">Hatás</th>
-                <th className="px-2 py-2 text-center">Pont</th>
-                <th className="px-2 py-2 text-right">Kitettség (Ft)</th>
-                <th className="px-2 py-2 text-right">Várható</th>
+                <th className="px-2 py-2 text-center">
+                  Pont <InfoTip term="score" label="pontszám" />
+                </th>
+                <th className="px-2 py-2 text-right">
+                  Kitettség (Ft) <InfoTip term="grossExposure" label="kitettség" />
+                </th>
+                <th className="px-2 py-2 text-right">
+                  Várható <InfoTip term="expectedLoss" label="várható veszteség" />
+                </th>
                 <th className="px-2 py-2 text-center">Munkanap</th>
                 <th className="px-2 py-2">Divízió / díj</th>
                 <th className="w-10 px-2 py-2" />
@@ -815,8 +855,8 @@ function RiskRow({
             <span className="text-xs text-slate-500">{PILLAR_LABEL[r.pillar]}</span>
           )}
           {focus && (
-            <span className="rounded bg-slate-900 px-1.5 text-xs font-medium text-white" title="A választott átvilágítás-típus kiemelt tétele">
-              Fókusz
+            <span className="rounded bg-slate-900 px-1.5 text-xs font-medium text-white" title="Ennél az átvilágítás-típusnál mindig érdemes megvizsgálni">
+              Kiemelt
             </span>
           )}
           {r.source && SOURCE_LABEL[r.source] && (
@@ -863,7 +903,7 @@ function RiskRow({
             title={`Típus-korrekció: ${eff.adjustment.reason}`}
             className="mt-1 block w-full text-xs font-medium text-violet-700 hover:underline"
           >
-            típus: {formatAdjustment(eff.adjustment)} → V{eff.likelihood}×H{eff.impact}
+            a cél miatt {describeAdjustment(eff.adjustment)} → {eff.likelihood} × {eff.impact}
           </button>
         )}
       </td>
@@ -1066,10 +1106,13 @@ function defaultFormula(type: Formula['type'], catalogFormula?: Formula): Formul
   }
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, children, term }: { label: string; children: ReactNode; term?: GlossaryKey }) {
   return (
-    <label className="flex flex-col gap-1 text-xs text-slate-500">
-      {label}
+    <label className="flex flex-col gap-1 text-xs text-slate-600">
+      <span className="flex items-center gap-1">
+        {label}
+        {term && <InfoTip term={term} label={label} />}
+      </span>
       {children}
     </label>
   );
@@ -1198,12 +1241,14 @@ function Kpi({
   label,
   icon,
   hint,
+  term,
   className = '',
   children,
 }: {
   label: string;
   icon: ReactNode;
   hint?: string;
+  term?: GlossaryKey;
   className?: string;
   children: ReactNode;
 }) {
@@ -1212,6 +1257,7 @@ function Kpi({
       <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
         {icon}
         {label}
+        {term && <InfoTip term={term} label={label} />}
       </div>
       <div className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">{children}</div>
     </div>

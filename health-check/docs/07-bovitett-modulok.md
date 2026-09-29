@@ -123,3 +123,9 @@ Minden piros és sárga tételhez elkészíti a várható vevői kérdéseket, e
 - A színek mellett szöveg: „5 piros · 2 sárga · 0 zöld”, a pillérkártyákon a besorolás neve, a hőtérkép celláin felolvasható leírás.
 - Olvasandó szöveg legalább `slate-500` (a korábbi `slate-400` helyett), legkisebb betűméret 12 px; minden beviteli mezőn látható fókusz.
 - A mobil nézetet szándékosan nem optimalizáljuk: a program asztali munkára készül.
+
+## Érthető szöveg és letisztult mátrix
+
+- **Magyarázó ⓘ ikonok** a szakkifejezések mellett (Health Score, összesített státusz, bruttó kitettség, várható veszteség, pontszám, lényegességi küszöb, fedezeti hányad, fizetési idő / DSO, súly, típusfüggő korrekció, kiemelt tételek, Red Flag mátrix). A szövegek egy helyen vannak (`lib/glossary.ts`), és a motor tényleges szabályait írják le.
+- **Kódok helyett nevek:** a „Fókusz: FIN-01…” sor helyett „Kiemelt tételek” a tételek nevével; a javasolt tételek gombjain a név; a sorokban „Kiemelt” címke; a típusfüggő korrekció szövegesen („a cél miatt valószínűség +1 → 5 × 4”).
+- **A mátrix teteje:** fejléc → eredmény (státusz, Health Score, összegek, pillérek, hőtérkép) → javasolt további tételek → összecsukható „Cégadatok és átvilágítás-típus” doboz (egy sorban összefoglalva; nyitva, ha hiányzik az árbevétel) → kockázati tételek.

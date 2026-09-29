@@ -86,6 +86,12 @@ export function adjustmentsFor(kind: EngagementKind | undefined): KindAdjustment
   return kind ? KIND_ADJUSTMENTS[kind] : undefined;
 }
 
+/** Olvasható változat a felületre: „valószínűség +1, hatás −1”. */
+export function describeAdjustment(a: KindAdjustment): string {
+  const part = (label: string, d?: number) => (d ? `${label} ${d > 0 ? '+' : '−'}${Math.abs(d)}` : '');
+  return [part('valószínűség', a.dL), part('hatás', a.dI)].filter(Boolean).join(', ') || 'nincs változás';
+}
+
 export function formatAdjustment(a: KindAdjustment): string {
   const part = (label: string, d?: number) => (d ? `${label}${d > 0 ? '+' : '−'}${Math.abs(d)}` : '');
   return [part('V', a.dL), part('H', a.dI)].filter(Boolean).join(' ') || '0';
