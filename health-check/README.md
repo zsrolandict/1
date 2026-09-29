@@ -21,6 +21,7 @@ Belső eszköz az ICT Európa átvilágítási szolgáltatásaihoz. Nem csak ven
 | 11 | Bővített modulok: tényállás, ágazatok, cégkivonat, összkép, mi lenne ha, vevői kérdések, utókövetés, időkeret, tudástár, kalauz és modulkapcsolók | [`docs/07-bovitett-modulok.md`](docs/07-bovitett-modulok.md), `/projekt`, `0006`–`0009` migrációk |
 | 12 | Üzemeltetés: parancsok, CI, élesítés, visszaállítás, kulcscsere | [`docs/08-uzemeltetes.md`](docs/08-uzemeltetes.md), `.github/workflows/health-check-ci.yml` |
 | 13 | AI-promptok: mit kér, miért, hogyan ellenőrzött | [`docs/09-ai-promptok.md`](docs/09-ai-promptok.md) |
+| 14 | Teljes rendszerleírás egy dokumentumban (AI-beszélgetéshez, pl. Gemini) | [`docs/10-rendszerleiras-ai-beszelgeteshez.md`](docs/10-rendszerleiras-ai-beszelgeteshez.md) |
 
 ## Futtatás
 
