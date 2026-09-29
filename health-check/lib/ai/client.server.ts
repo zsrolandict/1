@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import type { z } from 'zod';
 import { geminiJson, GeminiBlockedError, geminiKey } from './gemini.server';
+import { UserFacingError } from '@/lib/errors';
 
 // Közös AI-hívás az interjú- és a dokumentumelemzéshez, szolgáltató-függetlenül.
 // Csak szerveroldalon (route handler) importálható: az API-kulcs nem kerülhet a kliensre.
@@ -56,7 +57,7 @@ export async function parseStructured<T extends z.ZodType>(
       throw e;
     }
     const parsed = schema.safeParse(json);
-    if (!parsed.success) throw new Error('Az AI-válasz formátuma eltér a várttól.');
+    if (!parsed.success) throw new UserFacingError('Az AI-válasz formátuma eltér a várttól.');
     return parsed.data as z.infer<T>;
   }
   // create() + saját parse: a stop_reason-t a JSON-feldolgozás ELŐTT kell vizsgálni,
@@ -75,16 +76,16 @@ export async function parseStructured<T extends z.ZodType>(
     throw new AiRefusalError('A modell elutasította a kérést.');
   }
   if (response.stop_reason === 'max_tokens') {
-    throw new Error('Az AI-válasz hiányos (túl hosszú bemenet?). Bontsa részekre.');
+    throw new UserFacingError('Az AI-válasz hiányos (túl hosszú bemenet?). Bontsa részekre.');
   }
   const text = response.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('');
   let json: unknown;
   try {
     json = JSON.parse(text);
   } catch {
-    throw new Error('Az AI-válasz nem értelmezhető.');
+    throw new UserFacingError('Az AI-válasz nem értelmezhető.');
   }
   const parsed = schema.safeParse(json);
-  if (!parsed.success) throw new Error('Az AI-válasz formátuma eltér a várttól.');
+  if (!parsed.success) throw new UserFacingError('Az AI-válasz formátuma eltér a várttól.');
   return parsed.data as z.infer<T>;
 }

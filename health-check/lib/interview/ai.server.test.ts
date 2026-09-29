@@ -8,6 +8,7 @@ import { notesToTranscript } from './transcript';
 // helyi mock szerver fogadja az SDK kérését és ad vissza egy Messages API választ.
 
 let server: Server;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- a mock szerver tetszőleges JSON-t fogad; a tesztek mélyen belenéznek
 let lastRequest: { headers: Record<string, unknown>; body: Record<string, any> } | null = null;
 let nextResponse: Record<string, unknown> = {};
 

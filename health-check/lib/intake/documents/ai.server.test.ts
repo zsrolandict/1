@@ -6,6 +6,7 @@ import { redactPages } from './redact';
 
 // Élő API nélkül: helyi mock szerver fogadja az SDK kérését.
 let server: Server;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- a mock szerver tetszőleges JSON-t fogad; a tesztek mélyen belenéznek
 let lastBody: Record<string, any> = {};
 let nextText = '';
 

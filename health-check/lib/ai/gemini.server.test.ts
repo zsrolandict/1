@@ -6,6 +6,7 @@ import { notesToTranscript } from '@/lib/interview/transcript';
 
 // Gemini-szolgáltató élő API nélkül: helyi mock szerver a Generative Language API helyett.
 let server: Server;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- a mock szerver tetszőleges JSON-t fogad; a tesztek mélyen belenéznek
 let last: { url: string; headers: Record<string, unknown>; body: any } | null = null;
 let next: { status?: number; body: unknown } = { body: {} };
 

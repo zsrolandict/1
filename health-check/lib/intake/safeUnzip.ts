@@ -1,4 +1,5 @@
 import { unzipSync, type UnzipFileInfo } from 'fflate';
+import { UserFacingError } from '@/lib/errors';
 
 /**
  * Kicsomagolás mérethatárral („tömörítési bomba” ellen): egy kis méretű,
@@ -9,7 +10,7 @@ export const MAX_UNZIPPED_BYTES = 80 * 1024 * 1024;
 /** Ennél nagyobb tömörítési arány gyanús (normál Office-fájlnál ~10–30×). */
 export const MAX_RATIO = 200;
 
-export class ZipTooLargeError extends Error {
+export class ZipTooLargeError extends UserFacingError {
   constructor() {
     super('A fájl kicsomagolva túl nagy vagy gyanúsan tömörített; bontsa részekre, vagy mentse újra.');
   }

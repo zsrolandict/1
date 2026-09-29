@@ -19,6 +19,7 @@ Belső eszköz az ICT Európa átvilágítási szolgáltatásaihoz. Nem csak ven
 | 9 | Bejelentkezés és API-védelem (Supabase) | [`lib/auth/`](lib/auth), `/login` |
 | 10 | Adatgyűjtés: kérdőív-előjelölés, adattáblák (CSV/XLSX), AI-dokumentumelemzés | [`docs/06-adatgyujtes.md`](docs/06-adatgyujtes.md), [`lib/intake/`](lib/intake), `/adatok`, `0005_intake.sql` |
 | 11 | Bővített modulok: tényállás, ágazatok, cégkivonat, összkép, mi lenne ha, vevői kérdések, utókövetés, időkeret, tudástár, kalauz és modulkapcsolók | [`docs/07-bovitett-modulok.md`](docs/07-bovitett-modulok.md), `/projekt`, `0006`–`0009` migrációk |
+| 12 | Üzemeltetés: parancsok, CI, élesítés, visszaállítás, kulcscsere | [`docs/08-uzemeltetes.md`](docs/08-uzemeltetes.md), `.github/workflows/health-check-ci.yml` |
 
 ## Futtatás
 

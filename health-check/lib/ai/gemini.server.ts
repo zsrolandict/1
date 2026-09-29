@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 import { toJsonSchema } from './schema';
+import { UserFacingError } from '@/lib/errors';
 
 // Google Gemini (Generative Language API) – közvetlen REST-hívás, SDK nélkül.
 // Csak szerveroldalon importálható: az API-kulcs nem kerülhet a kliensre.
@@ -90,12 +91,12 @@ export async function geminiJson(opts: {
   if (reason && ['SAFETY', 'RECITATION', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII'].includes(reason)) {
     throw new GeminiBlockedError(reason);
   }
-  if (reason === 'MAX_TOKENS') throw new Error('Az AI-válasz hiányos (túl hosszú bemenet?). Bontsa részekre.');
+  if (reason === 'MAX_TOKENS') throw new UserFacingError('Az AI-válasz hiányos (túl hosszú bemenet?). Bontsa részekre.');
   const text = (cand?.content?.parts ?? []).filter((p) => !p.thought && p.text).map((p) => p.text).join('');
   try {
     return JSON.parse(text);
   } catch {
-    throw new Error('Az AI-válasz nem értelmezhető.');
+    throw new UserFacingError('Az AI-válasz nem értelmezhető.');
   }
 }
 

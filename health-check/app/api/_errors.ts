@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { NextResponse } from 'next/server';
 import { AiRefusalError } from '@/lib/ai/client.server';
 import { AiServiceError } from '@/lib/ai/gemini.server';
+import { UserFacingError } from '@/lib/errors';
 
 /** Egységes, felhasználóbarát hibaválasz; a részleteket csak a szerver naplózza. */
 export function errorResponse(err: unknown): NextResponse {
@@ -25,6 +26,8 @@ export function errorResponse(err: unknown): NextResponse {
   if (err instanceof Anthropic.APIError) {
     return NextResponse.json({ error: `AI-szolgáltatás hiba (${err.status ?? 'hálózat'}).` }, { status: 502 });
   }
-  const message = err instanceof Error ? err.message : 'Ismeretlen hiba.';
-  return NextResponse.json({ error: message }, { status: 500 });
+  // Csak a szándékosan felhasználónak szánt üzenet mehet ki; a többi (könyvtári
+  // hibák, útvonalak, szolgáltatói részletek) csak a naplóba.
+  if (err instanceof UserFacingError) return NextResponse.json({ error: err.message }, { status: 422 });
+  return NextResponse.json({ error: 'Váratlan hiba történt a feldolgozás közben. Próbálja újra, vagy jelezze a rendszergazdának.' }, { status: 500 });
 }

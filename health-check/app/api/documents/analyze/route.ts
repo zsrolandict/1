@@ -5,6 +5,7 @@ import { requireAi } from '@/lib/auth/guard.server';
 import { extractDocument } from '@/lib/intake/documents/extract.server';
 import { analyzeExtracted } from '@/lib/intake/documents/pipeline';
 import { errorResponse } from '../../_errors';
+import { EngagementKindSchema } from '@/lib/engagement/kindSchema';
 
 export const maxDuration = 300;
 
@@ -12,7 +13,7 @@ const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
 const MAX_DOCUMENT_CHARS = 300_000;
 const MAX_PAGES = 300;
 
-const Kind = z.enum(['HEALTH_CHECK', 'VENDOR_DD', 'BUY_SIDE_DD', 'FINANCING_READINESS', 'SUCCESSION', 'COMPLIANCE_AUDIT', 'POST_MERGER']);
+const Kind = EngagementKindSchema;
 
 /**
  * Dokumentum → ellenőrzött kockázati javaslatok.

@@ -5,10 +5,11 @@ import { requireAi } from '@/lib/auth/guard.server';
 import { runSynthesis } from '@/lib/intake/synthesis';
 import { RiskItemSchema } from '@/lib/interview/schemas';
 import { errorResponse } from '../../_errors';
+import { EngagementKindSchema } from '@/lib/engagement/kindSchema';
 
 export const maxDuration = 300;
 
-const Kind = z.enum(['HEALTH_CHECK', 'VENDOR_DD', 'BUY_SIDE_DD', 'FINANCING_READINESS', 'SUCCESSION', 'COMPLIANCE_AUDIT', 'POST_MERGER']);
+const Kind = EngagementKindSchema;
 const RequestSchema = z.object({
   kind: Kind,
   companyName: z.string().max(200),

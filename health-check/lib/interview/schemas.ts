@@ -1,9 +1,10 @@
 import { z } from 'zod';
+import { EngagementKindSchema } from '@/lib/engagement/kindSchema';
 
 // Bemeneti validáció az API-végpontokhoz (a kliensről jövő adat nem megbízható).
 
 const Pillar = z.enum(['FINANCE', 'LEGAL', 'OPERATIONS', 'HR']);
-const Kind = z.enum(['HEALTH_CHECK', 'VENDOR_DD', 'BUY_SIDE_DD', 'FINANCING_READINESS', 'SUCCESSION', 'COMPLIANCE_AUDIT', 'POST_MERGER']);
+const Kind = EngagementKindSchema;
 const Role = z.enum(['OWNER_CEO', 'CFO', 'HR_LEAD', 'OPS_LEAD', 'SALES_LEAD', 'IT_LEAD', 'KEY_PERSON']);
 const Scale = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]);
 

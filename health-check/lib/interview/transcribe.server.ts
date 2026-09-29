@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { geminiJson, GeminiBlockedError, geminiKey, geminiMedia } from '@/lib/ai/gemini.server';
 import type { Transcript } from './types';
+import { UserFacingError } from '@/lib/errors';
 
 /**
  * Hang (vagy videó) → szöveg, szolgáltató-függetlenül.
@@ -52,7 +53,7 @@ export const azureSpeech: TranscriptionProvider = {
   async transcribe(audio, fileName, { maxSpeakers }) {
     const region = process.env.AZURE_SPEECH_REGION;
     const key = process.env.AZURE_SPEECH_KEY;
-    if (!region || !key) throw new Error('A leiratkészítő szolgáltatás nincs beállítva.');
+    if (!region || !key) throw new UserFacingError('A leiratkészítő szolgáltatás nincs beállítva.');
 
     const form = new FormData();
     form.append('audio', audio, fileName);
@@ -70,7 +71,7 @@ export const azureSpeech: TranscriptionProvider = {
       { method: 'POST', headers: { 'Ocp-Apim-Subscription-Key': key }, body: form },
     );
     if (!res.ok) {
-      throw new Error(`Leiratkészítés sikertelen (${res.status}).`);
+      throw new UserFacingError(`Leiratkészítés sikertelen (${res.status}).`);
     }
     return azureToTranscript((await res.json()) as AzureFastTranscriptionResponse);
   },
@@ -166,10 +167,10 @@ export const geminiTranscriber: TranscriptionProvider = {
         maxTokens: 65_000,
       });
       const parsed = GeminiTranscriptSchema.safeParse(raw);
-      if (!parsed.success) throw new Error('A leirat formátuma eltér a várttól.');
+      if (!parsed.success) throw new UserFacingError('A leirat formátuma eltér a várttól.');
       return geminiToTranscript(parsed.data);
     } catch (e) {
-      if (e instanceof GeminiBlockedError) throw new Error('A szolgáltató nem dolgozta fel a felvételt.');
+      if (e instanceof GeminiBlockedError) throw new UserFacingError('A szolgáltató nem dolgozta fel a felvételt.');
       throw e;
     } finally {
       await cleanup();

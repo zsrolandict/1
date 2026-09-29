@@ -2,6 +2,7 @@ import { strFromU8 } from 'fflate';
 import { safeUnzip, ZipTooLargeError } from '../safeUnzip';
 import { decodeText } from '../tables/parse';
 import type { DocumentPage, ExtractedDocument } from './types';
+import { UserFacingError } from '@/lib/errors';
 
 /**
  * Szövegkinyerés Wordből és szövegfájlból (böngészőben és szerveren is fut).
@@ -38,10 +39,10 @@ export function docxToText(bytes: Uint8Array): string {
     files = safeUnzip(bytes, (name) => name === 'word/document.xml');
   } catch (e) {
     if (e instanceof ZipTooLargeError) throw e;
-    throw new Error('A fájl nem érvényes Word (.docx) dokumentum.');
+    throw new UserFacingError('A fájl nem érvényes Word (.docx) dokumentum.');
   }
   const xml = files['word/document.xml'];
-  if (!xml) throw new Error('A Word-dokumentum tartalma nem olvasható.');
+  if (!xml) throw new UserFacingError('A Word-dokumentum tartalma nem olvasható.');
   return [...strFromU8(xml).matchAll(/<w:p\b[^>]*>([\s\S]*?)<\/w:p>/g)]
     .map((p) =>
       [...p[1].matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\/>|<w:br\/>/g)]
@@ -55,8 +56,8 @@ export function extractPlain(fileName: string, bytes: Uint8Array): ExtractedDocu
   const lower = fileName.toLowerCase();
   if (lower.endsWith('.docx')) return { fileName, format: 'DOCX', pages: chunkText(docxToText(bytes)) };
   if (lower.endsWith('.txt') || lower.endsWith('.md')) return { fileName, format: 'TXT', pages: chunkText(decodeText(bytes)) };
-  if (lower.endsWith('.doc')) throw new Error('A régi .doc formátumot mentse el .docx-ként vagy PDF-ként.');
-  throw new Error('Támogatott formátum: PDF, DOCX, TXT.');
+  if (lower.endsWith('.doc')) throw new UserFacingError('A régi .doc formátumot mentse el .docx-ként vagy PDF-ként.');
+  throw new UserFacingError('Támogatott formátum: PDF, DOCX, TXT.');
 }
 
 export const SUPPORTED_DOCUMENTS = '.pdf,.docx,.txt';

@@ -5,11 +5,12 @@ import { requireAi } from '@/lib/auth/guard.server';
 import { runCaseSuggestion } from '@/lib/intake/casePrompts';
 import { FLAG_LABEL, SECTOR_LABEL, type CaseFlag, type Sector } from '@/lib/intake/requests';
 import { errorResponse } from '../../_errors';
+import { EngagementKindSchema } from '@/lib/engagement/kindSchema';
 
 export const maxDuration = 120;
 
 const Pillar = z.enum(['FINANCE', 'LEGAL', 'OPERATIONS', 'HR']);
-const Kind = z.enum(['HEALTH_CHECK', 'VENDOR_DD', 'BUY_SIDE_DD', 'FINANCING_READINESS', 'SUCCESSION', 'COMPLIANCE_AUDIT', 'POST_MERGER']);
+const Kind = EngagementKindSchema;
 const RequestSchema = z.object({
   kind: Kind,
   companyName: z.string().max(200),

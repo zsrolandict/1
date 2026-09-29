@@ -1,6 +1,7 @@
 import { extractText, getDocumentProxy } from 'unpdf';
 import { chunkText, extractPlain } from './extract';
 import type { ExtractedDocument } from './types';
+import { UserFacingError } from '@/lib/errors';
 
 // PDF-szöveg kinyerése a szerveren (pdf.js). Szkennelt, szövegréteg nélküli
 // PDF-ből nem jön szöveg: azt OCR nélkül nem elemezzük, mert az idézetek
@@ -14,7 +15,7 @@ export async function extractDocument(fileName: string, bytes: Uint8Array): Prom
     const res = await extractText(pdf, { mergePages: false });
     pages = res.text;
   } catch {
-    throw new Error('A PDF nem olvasható (sérült vagy jelszóval védett).');
+    throw new UserFacingError('A PDF nem olvasható (sérült vagy jelszóval védett).');
   }
   const doc: ExtractedDocument = {
     fileName,
@@ -22,7 +23,7 @@ export async function extractDocument(fileName: string, bytes: Uint8Array): Prom
     pages: pages.map((text, i) => ({ label: `${i + 1}. oldal`, text: text.trim() })),
   };
   if (doc.pages.every((p) => p.text.length < 20)) {
-    throw new Error('A PDF-ben nincs szövegréteg (szkennelt kép). OCR után vagy Word-változatban töltse fel.');
+    throw new UserFacingError('A PDF-ben nincs szövegréteg (szkennelt kép). OCR után vagy Word-változatban töltse fel.');
   }
   return doc;
 }

@@ -553,13 +553,7 @@ export default function RedFlagMatrix({
         <Field label="Lényegességi küszöb (Ft)" term="materiality">
           <HufInput value={materialityHuf} onChange={setMaterialityHuf} className="w-36 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
         </Field>
-        {missingRevenue ? (
-          <p role="status" className="ml-auto max-w-sm self-center text-sm font-medium text-amber-900">
-            Add meg az éves árbevételt: enélkül a kockázatok forintösszege nem számolható (0 Ft-ot mutat).
-          </p>
-        ) : (
-          <p className="ml-auto max-w-xs self-center text-xs text-slate-600">A képletek kiinduló becslést adnak; tételenként felülírhatók.</p>
-        )}
+        <p className="ml-auto max-w-xs self-center text-xs text-slate-600">A képletek kiinduló becslést adnak; tételenként felülírhatók.</p>
           </div>
           <div className="rounded-md bg-white/70 text-sm">
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">

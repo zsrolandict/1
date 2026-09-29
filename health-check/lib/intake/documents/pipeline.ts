@@ -4,6 +4,7 @@ import { documentChars } from './extract';
 import { runDocumentAnalysis } from './prompts';
 import { redactPages } from './redact';
 import type { ExtractedDocument } from './types';
+import { UserFacingError } from '@/lib/errors';
 
 /**
  * Kinyert dokumentum → maszkolás → AI → ellenőrzött eredmény.
@@ -17,7 +18,7 @@ export async function analyzeExtracted(
   limits: { maxChars: number; maxPages: number },
 ) {
   if (doc.pages.length > limits.maxPages || documentChars(doc.pages) > limits.maxChars) {
-    throw new Error('A dokumentum túl hosszú egy elemzéshez. Töltse fel részenként.');
+    throw new UserFacingError('A dokumentum túl hosszú egy elemzéshez. Töltse fel részenként.');
   }
   const { pages, counts } = redactPages(doc.pages);
   const analysis = await runDocumentAnalysis(call, { fileName: doc.fileName, pages, kind });

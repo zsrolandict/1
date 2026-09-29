@@ -8,7 +8,7 @@ import { projectProgress } from '@/lib/projectProgress';
 import { lastPageOf, type ProjectMeta, type ProjectPage } from '@/lib/risk/store';
 import { useModules } from '../useModules';
 import { openProject } from './openProject';
-import { useNav } from '../Nav';
+import { PAGE_PATH, useNav } from '../Nav';
 import { useProjects } from './useProjects';
 
 export const PAGE_LABEL: Record<ProjectPage, string> = {
@@ -98,7 +98,7 @@ export default function ProjectsOverview({ onClose, allowNewTab = true }: { onCl
                 <div className="flex shrink-0 items-center gap-2">
                   {allowNewTab && (
                     <a
-                      href={`${pagePath(page)}?projekt=${encodeURIComponent(p.id)}`}
+                      href={`${PAGE_PATH[page]}?projekt=${encodeURIComponent(p.id)}`}
                       target="_blank"
                       rel="noopener"
                       className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-white"
@@ -117,8 +117,4 @@ export default function ProjectsOverview({ onClose, allowNewTab = true }: { onCl
       </div>
     </div>
   );
-}
-
-function pagePath(page: ProjectPage): string {
-  return page === 'matrix' ? '/' : `/${page}`;
 }

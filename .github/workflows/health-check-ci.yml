@@ -1,0 +1,69 @@
+# ICT Health Check – ellenőrzések minden pushra és PR-ra.
+name: Health Check CI
+
+on:
+  push:
+    paths: ['health-check/**', '.github/workflows/health-check-ci.yml']
+  pull_request:
+    paths: ['health-check/**', '.github/workflows/health-check-ci.yml']
+
+concurrency:
+  group: hc-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: health-check
+
+jobs:
+  check:
+    name: Típusok, lint, formázás, tesztek, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: health-check/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+      - run: npm run build
+
+  database:
+    name: Migrációk és jogosultsági füsttesztek
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hc_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: hc_test
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/db-smoke.sh
+
+  e2e:
+    name: Böngészős füstteszt (előnézet-build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: health-check/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
