@@ -18,6 +18,7 @@ Belső eszköz az ICT Európa átvilágítási szolgáltatásaihoz. Nem csak ven
 | 8 | Egykattintásos PDF-riport (vezetői összefoglaló, scorecard, részletező, akcióterv, ajánlat) | [`lib/report/`](lib/report), „PDF riport” gomb |
 | 9 | Bejelentkezés és API-védelem (Supabase) | [`lib/auth/`](lib/auth), `/login` |
 | 10 | Adatgyűjtés: kérdőív-előjelölés, adattáblák (CSV/XLSX), AI-dokumentumelemzés | [`docs/06-adatgyujtes.md`](docs/06-adatgyujtes.md), [`lib/intake/`](lib/intake), `/adatok`, `0005_intake.sql` |
+| 11 | Bővített modulok: tényállás, ágazatok, cégkivonat, összkép, mi lenne ha, vevői kérdések, utókövetés, időkeret, tudástár, kalauz és modulkapcsolók | [`docs/07-bovitett-modulok.md`](docs/07-bovitett-modulok.md), `/projekt`, `0006`–`0009` migrációk |
 
 ## Futtatás
 
@@ -50,7 +51,14 @@ psql -d hc_test -f supabase/tests/00_auth_stub.sql \
                 -f supabase/tests/01_rls_smoke.sql \
                 -f supabase/migrations/0003_valuation_and_reasoning.sql \
                 -f supabase/tests/02_interviews_smoke.sql \
-                -f supabase/tests/03_valuation_smoke.sql
+                -f supabase/tests/03_valuation_smoke.sql \
+                -f supabase/migrations/0004_materiality_expected_loss.sql \
+                -f supabase/migrations/0005_intake.sql \
+                -f supabase/migrations/0006_case_profile_requests.sql \
+                -f supabase/migrations/0007_sectors_overview.sql \
+                -f supabase/migrations/0008_snapshots.sql \
+                -f supabase/migrations/0009_registry_benchmark_timesheet.sql \
+                -f supabase/tests/07_benchmark_smoke.sql
 ```
 
 A füstteszt öt felhasználó nézőpontjából ellenőrzi a láthatóságot: partner mindent lát, HR-szakértő csak HR-dokumentumot és kulcsember-interjút, pénzügyi szakértő csak főkönyvet, ügyfél csak a saját feltöltéseit, idegen ügyfél semmit. Emellett ellenőrzi, hogy a kredit-főkönyv append-only és nem mehet negatívba, és hogy pénzügyi szakértő nem írhat HR red flaget. Az interjús teszt azt ellenőrzi, hogy bizalmas (HR 361) interjút csak a HR-szakértő és a partner lát, az ügyfél egyetlen interjút sem, hozzájárulás nélkül nem menthető felvétel, és AI-találat nem létezhet idézet nélkül.

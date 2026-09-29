@@ -64,6 +64,7 @@ export interface TimesheetSummary {
 
 const level = (ratio: number): BurnLevel => (ratio > 1 ? 'OVER' : ratio >= 0.8 ? 'WARN' : 'OK');
 const r1 = (x: number) => Math.round(x * 10) / 10;
+const h = (x: number) => String(x).replace('.', ',');
 
 export function budgetFor(kind: EngagementKind): { bucket: Bucket; hours: number }[] {
   return [...hourSplit(kind).map((s) => ({ bucket: s.pillar as Bucket, hours: s.hours })), { bucket: 'PM' as Bucket, hours: PM_HOURS }];
@@ -84,10 +85,10 @@ export function summarize(state: TimesheetState, kind: EngagementKind, labels: R
   const ratio = budget ? used / budget : 0;
   const warnings: string[] = [];
   for (const b of buckets) {
-    if (b.level === 'OVER') warnings.push(`${labels[b.bucket]}: ${b.used} óra a ${b.budget} órás keretből – túllépés.`);
+    if (b.level === 'OVER') warnings.push(`${labels[b.bucket]}: ${h(b.used)} óra a ${h(b.budget)} órás keretből – túllépés.`);
     else if (b.level === 'WARN') warnings.push(`${labels[b.bucket]}: a keret ${Math.round(b.ratio * 100)}%-a elfogyott.`);
   }
-  if (level(ratio) === 'OVER') warnings.unshift(`A teljes ${budget} órás keret túllépve (${used} óra).`);
+  if (level(ratio) === 'OVER') warnings.unshift(`A teljes ${budget} órás keret túllépve (${h(used)} óra).`);
   if (marginHuf < 0) warnings.push('A belső költség meghaladja a díjat: a projekt veszteséges.');
   return {
     budget,

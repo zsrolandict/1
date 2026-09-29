@@ -31,6 +31,10 @@ import { SAMPLE_DOCUMENTS, sampleDocumentRecord, samplePagesRedacted } from '@/l
 import { hasSampleTables, SAMPLE_REF_DATE, sampleTableCsv } from '@/lib/intake/samples/tables';
 import { EMPTY_INTAKE, intakeResults, loadIntake, requestList, saveIntake, type IntakeState } from '@/lib/intake/state';
 import CaseTab from './CaseTab';
+import ModuleOff from '../ModuleOff';
+import { useModules } from '../useModules';
+import { INTAKE_TAB_EVENT, takeRequestedIntakeTab } from '@/lib/guide';
+import { INTAKE_MODULES, type ModuleId } from '@/lib/modules';
 import OverviewTab from './OverviewTab';
 import { crossChecks } from '@/lib/intake/crossChecks';
 import { buildSources } from '@/lib/intake/synthesis';
@@ -50,6 +54,7 @@ import { useAiBackend } from '@/components/AiBackendContext';
 
 type Tab = 'case' | 'checklist' | 'tables' | 'documents' | 'overview';
 type SourceTab = Exclude<Tab, 'case'>;
+const TAB_MODULE: Record<Tab, ModuleId> = { case: 'CASE', checklist: 'CHECKLIST', tables: 'TABLES', documents: 'DOCUMENTS', overview: 'OVERVIEW' };
 
 /** A feltöltött tábla nyers rácsa csak memóriában él (oszlop-javításhoz, újraszámoláshoz). */
 interface RawTable {
@@ -76,6 +81,21 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
   const backend = useAiBackend();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { isOn } = useModules();
+  const enabledTabs = (Object.keys(TAB_MODULE) as Tab[]).filter((t) => isOn(TAB_MODULE[t]));
+  const activeTab: Tab | null = enabledTabs.includes(tab) ? tab : (enabledTabs[0] ?? null);
+
+  // A kalauz egy adott fülre küldhet (oldalváltáson át is).
+  useEffect(() => {
+    const requested = takeRequestedIntakeTab();
+    if (requested) setTab(requested);
+    const onRequest = (e: Event) => {
+      takeRequestedIntakeTab();
+      setTab((e as CustomEvent<Tab>).detail);
+    };
+    window.addEventListener(INTAKE_TAB_EVENT, onRequest);
+    return () => window.removeEventListener(INTAKE_TAB_EVENT, onRequest);
+  }, []);
 
   useEffect(() => {
     const loaded = loadWorkspace();
@@ -276,22 +296,24 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
       </div>
 
       <nav className="flex gap-1 overflow-x-auto border-b border-slate-200">
-        <TabButton active={tab === 'case'} onClick={() => setTab('case')} icon={<FolderInput className="h-4 w-4" />}>
+        {isOn('CASE') && <TabButton active={activeTab === 'case'} onClick={() => setTab('case')} icon={<FolderInput className="h-4 w-4" />}>
           0. Tényállás, iratbekérés <Count>{requestList(intake, ws.kind).length}</Count>
-        </TabButton>
-        <TabButton active={tab === 'checklist'} onClick={() => setTab('checklist')} icon={<ClipboardList className="h-4 w-4" />}>
+        </TabButton>}
+        {isOn('CHECKLIST') && <TabButton active={activeTab === 'checklist'} onClick={() => setTab('checklist')} icon={<ClipboardList className="h-4 w-4" />}>
           1. Kérdőív <Count>{progress.answered}/{progress.total}</Count>
-        </TabButton>
-        <TabButton active={tab === 'tables'} onClick={() => setTab('tables')} icon={<Table2 className="h-4 w-4" />}>
+        </TabButton>}
+        {isOn('TABLES') && <TabButton active={activeTab === 'tables'} onClick={() => setTab('tables')} icon={<Table2 className="h-4 w-4" />}>
           2. Adattáblák <Count>{tableCount}/4</Count>
-        </TabButton>
-        <TabButton active={tab === 'documents'} onClick={() => setTab('documents')} icon={<FileText className="h-4 w-4" />}>
+        </TabButton>}
+        {isOn('DOCUMENTS') && <TabButton active={activeTab === 'documents'} onClick={() => setTab('documents')} icon={<FileText className="h-4 w-4" />}>
           3. Dokumentumok <Count>{intake.documents.length}</Count>
-        </TabButton>
-        <TabButton active={tab === 'overview'} onClick={() => setTab('overview')} icon={<Sparkles className="h-4 w-4" />}>
+        </TabButton>}
+        {isOn('OVERVIEW') && <TabButton active={activeTab === 'overview'} onClick={() => setTab('overview')} icon={<Sparkles className="h-4 w-4" />}>
           4. Összkép <Count>{cross.conflicts.length} ellentmondás</Count>
-        </TabButton>
+        </TabButton>}
       </nav>
+
+      {!activeTab && <ModuleOff ids={INTAKE_MODULES} />}
 
       {error && (
         <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
@@ -300,7 +322,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
         </div>
       )}
 
-      {tab === 'case' && (
+      {activeTab === 'case' && (
         <CaseTab
           intake={intake}
           update={updateIntake}
@@ -316,10 +338,10 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
         />
       )}
 
-      {tab !== 'case' && (
+      {activeTab && activeTab !== 'case' && (
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
         <div className="min-w-0">
-          {tab === 'checklist' && (
+          {activeTab === 'checklist' && (
             <ChecklistTab
               answers={intake.answers}
               sectors={intake.profile.sectors}
@@ -334,7 +356,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
               flagged={new Set(results.checklist.suggestions.flatMap((s) => s.evidence.match(/Q\d\d/g) ?? []))}
             />
           )}
-          {tab === 'tables' && (
+          {activeTab === 'tables' && (
             <TablesTab
               tables={intake.tables}
               raw={raw}
@@ -345,7 +367,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
               onChangeRaw={setTable}
             />
           )}
-          {tab === 'overview' && (
+          {activeTab === 'overview' && (
             <OverviewTab
               conflicts={cross.conflicts}
               crossCount={cross.suggestions.length}
@@ -355,7 +377,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
               onSynthesize={synthesize}
             />
           )}
-          {tab === 'documents' && (
+          {activeTab === 'documents' && (
             <DocumentsTab
               documents={intake.documents}
               kind={ws.kind}
@@ -371,26 +393,26 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
 
         <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
           <SuggestionPanel
-            result={results[tab as SourceTab]}
+            result={results[activeTab as SourceTab]}
             ws={ws}
             accepted={accepted}
             dismissed={dismissed}
             onAccept={accept}
-            onAcceptAll={() => acceptMany(results[tab as SourceTab].suggestions)}
+            onAcceptAll={() => acceptMany(results[activeTab as SourceTab].suggestions)}
             onDismiss={dismiss}
             onUndismiss={undismiss}
             onAcceptCompany={acceptCompany}
             empty={
-              tab === 'checklist'
+              activeTab === 'checklist'
                 ? 'Válaszoljon a kérdésekre – a jelző válaszokból itt jelennek meg a javaslatok.'
-                : tab === 'tables'
+                : activeTab === 'tables'
                   ? 'Töltsön be egy táblát – a küszöb feletti mutatókból itt lesznek javaslatok.'
-                  : tab === 'overview'
+                  : activeTab === 'overview'
                     ? 'Készítsen összképet, vagy töltsön be több táblát – a források összevetéséből itt lesznek javaslatok.'
                     : 'Elemezzen egy dokumentumot – az ellenőrzött idézetű találatok itt jelennek meg.'
             }
           />
-          <FactsNote result={results[tab as SourceTab]} />
+          <FactsNote result={results[activeTab as SourceTab]} />
         </aside>
       </div>
       )}

@@ -6,6 +6,9 @@ import IntakeWorkspace from '@/components/intake/IntakeWorkspace';
 import ProjectWorkspace from '@/components/project/ProjectWorkspace';
 import type { SaveFile } from '@/components/report/ExportPdfButton';
 import { AiBackendProvider } from '@/components/AiBackendContext';
+import Guide from '@/components/guide/Guide';
+import { useModules } from '@/components/useModules';
+import { INTAKE_MODULES, PROJECT_MODULES, type ModuleId } from '@/lib/modules';
 import { sampleBackend } from './sampleBackend';
 import './styles.css';
 
@@ -40,8 +43,11 @@ function tabFromHash(): Tab {
   return h === 'interjuk' || h === 'adatok' || h === 'projekt' ? h : 'matrix';
 }
 
+const TAB_MODULES: Record<Tab, ModuleId[] | null> = { adatok: INTAKE_MODULES, interjuk: ['INTERVIEWS'], matrix: null, projekt: PROJECT_MODULES };
+
 function App() {
   const [tab, setTab] = useState<Tab>(tabFromHash);
+  const { isOn } = useModules();
   useEffect(() => {
     const onHash = () => setTab(tabFromHash());
     window.addEventListener('hashchange', onHash);
@@ -74,7 +80,9 @@ function App() {
               ['matrix', 'Red Flag mátrix'],
               ['projekt', 'Projekt'],
             ] as const
-          ).map(([t, label]) => (
+          )
+            .filter(([t]) => !TAB_MODULES[t] || TAB_MODULES[t]!.some(isOn))
+            .map(([t, label]) => (
             <button
               key={t}
               onClick={() => go(t)}
@@ -94,6 +102,7 @@ function App() {
         {tab === 'interjuk' && <InterviewWorkspace showPrint={false} />}
         {tab === 'projekt' && <ProjectWorkspace />}
       </main>
+      <Guide page={tab} go={go} />
     </>
   );
 }

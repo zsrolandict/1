@@ -24,6 +24,7 @@ import { PILLARS } from '@/lib/risk/engine';
 import type { Pillar } from '@/lib/risk/types';
 import { useAiBackend } from '@/components/AiBackendContext';
 import RegistryCard from './RegistryCard';
+import { useModules } from '../useModules';
 
 const FLAGS = Object.keys(FLAG_LABEL) as CaseFlag[];
 const SECTORS = Object.keys(SECTOR_LABEL) as Sector[];
@@ -55,6 +56,7 @@ export default function CaseTab({
 }) {
   const backend = useAiBackend();
   const profile = intake.profile;
+  const modules = useModules();
   const profileRef = useRef(profile);
   profileRef.current = profile;
   const list = useMemo(() => requestList(intake, kind), [intake, kind]);
@@ -196,13 +198,15 @@ export default function CaseTab({
           {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
         </div>
 
-        <RegistryCard
-          intake={intake}
-          update={update}
-          scenarioId={scenarioId}
-          aiReady={aiReady}
-          onAddSector={(sec) => setSectors([...new Set([...profileRef.current.sectors, sec])])}
-        />
+        {modules.isOn('REGISTRY') && (
+          <RegistryCard
+            intake={intake}
+            update={update}
+            scenarioId={scenarioId}
+            aiReady={aiReady}
+            onAddSector={(sec) => setSectors([...new Set([...profileRef.current.sectors, sec])])}
+          />
+        )}
 
         {suggestion && (
           <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-4 text-sm shadow-sm">

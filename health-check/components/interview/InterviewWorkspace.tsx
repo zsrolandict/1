@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import ModuleOff from '../ModuleOff';
+import { useModules } from '../useModules';
 import {
   AlertTriangle,
   Bot,
@@ -239,7 +241,9 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   };
   const speakerLabels = transcript ? [...new Set(transcript.segments.map((s) => s.speaker))] : [];
 
+  const modules = useModules();
   if (!hydrated) return null;
+  if (!modules.isOn('INTERVIEWS')) return <ModuleOff ids={['INTERVIEWS']} />;
 
   return (
     <div className="mx-auto max-w-[1200px] space-y-5 px-4 py-6 sm:px-6 lg:px-8">

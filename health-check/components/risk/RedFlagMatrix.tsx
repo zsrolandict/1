@@ -37,6 +37,7 @@ import { EXPERT_PARAMETERS } from '@/lib/risk/parameters';
 import { computeFormula, resolveExposure, type CompanyProfile, type Formula } from '@/lib/risk/valuation';
 import WhatIfPanel from './WhatIfPanel';
 import FollowUpPanel from './FollowUpPanel';
+import { useModules } from '../useModules';
 import BuyerQuestionsPanel from './BuyerQuestionsPanel';
 import ExportPdfButton, { browserDownload, slug, type SaveFile } from '@/components/report/ExportPdfButton';
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, hourSplit, PM_HOURS, type EngagementKind } from '@/lib/engagement/kinds';
@@ -108,6 +109,7 @@ export default function RedFlagMatrix({
   const [query, setQuery] = useState('');
   const [cell, setCell] = useState<{ l: Scale5; i: Scale5 } | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const modules = useModules();
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
@@ -599,20 +601,22 @@ export default function RedFlagMatrix({
       </section>
 
       {/* ── Mi lenne, ha…? ──────────────────────────────────────── */}
-      <WhatIfPanel key={scenarioId} items={items} opts={engineOpts} result={result} />
+      {modules.isOn('WHATIF') && <WhatIfPanel key={scenarioId} items={items} opts={engineOpts} result={result} />}
 
       {/* ── Várható vevői kérdések ───────────────────────────────── */}
-      <BuyerQuestionsPanel companyName={companyName} result={result} highlighted={kind === 'VENDOR_DD' || kind === 'BUY_SIDE_DD'} />
+      {modules.isOn('BUYER_QUESTIONS') && <BuyerQuestionsPanel companyName={companyName} result={result} highlighted={kind === 'VENDOR_DD' || kind === 'BUY_SIDE_DD'} />}
 
       {/* ── Utókövetés ─────────────────────────────────────────── */}
-      <FollowUpPanel
-        scenarioId={scenarioId}
-        kind={kind}
-        items={items}
-        opts={engineOpts}
-        result={result}
-        onStatus={(id, status) => update(id, { remediationStatus: status })}
-      />
+      {modules.isOn('FOLLOWUP') && (
+        <FollowUpPanel
+          scenarioId={scenarioId}
+          kind={kind}
+          items={items}
+          opts={engineOpts}
+          result={result}
+          onStatus={(id, status) => update(id, { remediationStatus: status })}
+        />
+      )}
 
       {/* ── Keresztértékesítés + kredit ─────────────────────────── */}
       <section className="grid gap-4 lg:grid-cols-[1fr_360px]">

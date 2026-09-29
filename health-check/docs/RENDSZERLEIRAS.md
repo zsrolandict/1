@@ -110,9 +110,21 @@ A jogosultságokat az adatbázis érvényesíti sorszintű szabályokkal, ezt te
 | **Adatgyűjtés: adattáblák** | CSV/XLSX beolvasás a böngészőben, oszlopfelismerés, 4 táblatípus mutatói | ✅ · főkönyvi kivonat ⬜ |
 | **Dokumentumelemzés (AI)** | Maszkolás, idézet + oldalszám, hiányzó szokásos rendelkezések, tények az interjúkhoz | ✅ · OCR ⬜ |
 | **Ügyfélportál** | Az ügyfél maga tölti ki a kérdőívet és tölt fel, hiánypótlás | 🟡 (a kérdőív és a feltöltés kész, az ügyféloldali belépés még nem) |
-| **Időkeret-követés** | Óraszámfogyás pillérenként, fedezet | 🟡 |
+| **Tényállás és iratbekérés** | Ágazat, létszám, jellemzők → alap iratkör + célzott extra iratok, állapotkövetés | ✅ |
+| **Ágazati katalógusok** | 6 ágazat saját kockázati tételei és kérdőív-kérdései | ✅ |
+| **Cégkivonat** | Tulajdonosok, vezetők, eljárások, változások kiolvasása (AI, idézettel), figyelmeztető jelek | ✅ · automatikus lekérés adatszolgáltatóval ⬜ |
+| **Összkép** | Források keresztellenőrzése, ellentmondások, AI-szintézis egyedi kockázatokkal | ✅ |
+| **Mi lenne, ha…** | Javítások hatása a Health Score-ra és a várható veszteségre | ✅ |
+| **Vevői kérdéslista** | Várható vevői kérdések, válaszvázlat, iratok; Excelben is | ✅ |
+| **Utókövetés** | Javítási állapot, pillanatkép, összevetés 3–6 hónap múlva | ✅ |
+| **Időkeret-követés** | Órarögzítés pillérenként, 80%/100% riasztás, költség és fedezet | ✅ · óraköltségek jóváhagyása 🟡 |
+| **Tudástár** | Anonim tapasztalatok a lezárt projektekből, „itt nincs jelölve” jelzés, katalógus-kalibrálás | ✅ |
+| **Kalauz és modulkapcsolók** | Következő lépés, haladás, tippek; modulok ki-be kapcsolása | ✅ |
 | **Bejelentkezés** | Céges Microsoft-fiók vagy meghívásos e-mail link | ✅ kód · élesítéshez Supabase-projekt kell |
 | **Adatmentés szerverre** | Projektek, kockázatok mentése adatbázisba | 🟡 (a prototípus a böngészőben tárol) |
+| **Excel-export** | Összefoglaló, kockázatok, akcióterv, ajánlat, pillérek (+ vevői kérdések) | ✅ |
+
+A bővített modulok részletes leírása: [`07-bovitett-modulok.md`](07-bovitett-modulok.md).
 
 ---
 
@@ -206,7 +218,7 @@ A prototípusban négy mintaeset választható („Minta:” menü a mátrix és
 - **Adatbázis és bejelentkezés:** Supabase (PostgreSQL, EU régió), sorszintű jogosultságkezelés, audit napló; belépés céges Microsoft-fiókkal vagy meghívásos e-mail linkkel.
 - **AI (szolgáltató-független):** Claude API vagy Google Gemini az interjú- és dokumentumelemzéshez; Azure AI Speech vagy Gemini a leirathoz (Gemini videót is fogad). A választás egy beállítás (`AI_PROVIDER`, `TRANSCRIBE_PROVIDER`); az idézet-ellenőrzés és a szabályok szolgáltatótól függetlenek. Mind csak a szerveren, bejelentkezés után érhető el.
 - **Riport:** böngészőben generált PDF (react-pdf, Inter betűkészlet).
-- **Tesztek:** 122 automatikus teszt (számítás, kérdőív-szabályok, táblabeolvasás, maszkolás, idézet-ellenőrzés, PDF-generálás, jogosultság, mintaesetek) és adatbázis-tesztek.
+- **Tesztek:** 178 automatikus teszt (számítás, kérdőív-szabályok, táblabeolvasás, maszkolás, idézet-ellenőrzés, PDF-generálás, jogosultság, mintaesetek) és adatbázis-tesztek.
 
 ---
 
@@ -222,6 +234,8 @@ A prototípusban négy mintaeset választható („Minta:” menü a mátrix és
   - sor lenyitása: indoklás, képlet és felülírás;
   - akcióterv, ajánlat és beszámítás;
   - **PDF-riport** mentése.
+- **Projekt:** órarögzítés és keretfigyelés; a projekt felvétele a tudástárba, gyakori tételek és kalibrálási javaslat.
+- **Kalauz** (jobb alsó sarok): következő lépés „Odaviszlek” gombbal; a **Modulok** fülön a modulok ki-be kapcsolhatók.
 - **Interjúk:**
   - kérdéslista szerepkör és típus szerint;
   - „Minta interjú betöltése”, majd „Minta-elemzés megtekintése”: ellentmondások, javaslatok;
@@ -236,7 +250,7 @@ A prototípusban négy mintaeset választható („Minta:” menü a mátrix és
 1. A Change of Control és a kulcsember-kockázat alapja az elmaradó fedezet vagy a teljes árbevétel legyen?
 2. A transzferár-tételösszeg jóváhagyása (ICT Adó).
 3. A DSO-alapú lekötött forgótőke kitettségként vagy külön „likviditási hatásként” szerepeljen a riportban?
-4. Kell-e szektoronként saját katalógus (építőipar, szolgáltatás, IT), vagy elég az alapkatalógus és néhány szektortétel?
+4. Az ágazati katalógusok (6 ágazat) szakmai átnézése: a tételek, az alapértékek és a kérdések jóváhagyása.
 
 **Termék és folyamat**
 5. Egy ár mind a 7 átvilágítás-típusra, vagy típusonként külön csomag?
@@ -248,6 +262,7 @@ A prototípusban négy mintaeset választható („Minta:” menü a mátrix és
 9. Pilot: melyik 2–3 éles projekt, melyik szenior jogász és adószakértő vesz részt?
 10. Mérés: mennyi ma egy projekt óraszáma és a riportírás ideje? Ez a megtakarítás bizonyításának alapja.
 11. Ki üzemelteti a rendszert, és ki hagyja jóvá az AI-szolgáltatók adatfeldolgozói szerződéseit?
+12. A belső óraköltségek (partner / szenior / junior) véglegesítése a fedezetszámításhoz.
 
 ---
 

@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import ModuleOff from '../ModuleOff';
+import { useModules } from '../useModules';
+import { PROJECT_MODULES } from '@/lib/modules';
 import { BookOpen, Clock, Plus, Trash2 } from 'lucide-react';
 import { adjustmentsFor } from '@/lib/engagement/adjustments';
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
@@ -54,6 +57,7 @@ export default function ProjectWorkspace() {
   const [ws, setWs] = useState<Workspace>(DEFAULT_WORKSPACE);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const { isOn } = useModules();
   useEffect(() => {
     const w = loadWorkspace();
     setWs(w);
@@ -69,8 +73,9 @@ export default function ProjectWorkspace() {
           {ws.companyName} · {ENGAGEMENT_KINDS[ws.kind].label}. Az időkeret és a tudástár a Red Flag mátrixban kiválasztott projekthez tartozik.
         </p>
       </header>
-      {hydrated && <TimesheetSection key={ws.scenarioId} scenarioId={ws.scenarioId} kind={ws.kind} />}
-      {hydrated && <KnowledgeSection ws={ws} sectors={sectors} />}
+      {hydrated && isOn('TIMESHEET') && <TimesheetSection key={ws.scenarioId} scenarioId={ws.scenarioId} kind={ws.kind} />}
+      {!PROJECT_MODULES.some(isOn) && <ModuleOff ids={PROJECT_MODULES} />}
+      {hydrated && isOn('KNOWLEDGE') && <KnowledgeSection ws={ws} sectors={sectors} />}
     </div>
   );
 }
