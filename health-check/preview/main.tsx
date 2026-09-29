@@ -12,7 +12,8 @@ import ProjectScope from '@/components/project/ProjectScope';
 import { NavProvider } from '@/components/Nav';
 import { activeProjectId, lastPageOf } from '@/lib/risk/store';
 import { useModules } from '@/components/useModules';
-import { INTAKE_MODULES, PROJECT_MODULES, type ModuleId } from '@/lib/modules';
+import { pageVisible } from '@/lib/modules';
+import { isPageId, PAGE_IDS, PAGE_LABEL, type PageId } from '@/lib/guide';
 import { sampleBackend } from './sampleBackend';
 import './styles.css';
 
@@ -22,7 +23,7 @@ import './styles.css';
  * a néző fiókján); a PDF-et a nézőnek a `downloads` képesség adja át.
  */
 
-type Tab = 'matrix' | 'adatok' | 'interjuk' | 'projekt';
+type Tab = PageId;
 
 interface DownloadsNs {
   save(req: { filename: string; data: Blob }): Promise<{ status: string }>;
@@ -44,7 +45,7 @@ const fontBase = new URL('fonts', document.baseURI).href;
 
 function tabFromHash(): Tab {
   const h = window.location.hash.slice(1);
-  if (h === 'interjuk' || h === 'adatok' || h === 'projekt' || h === 'matrix') return h;
+  if (isPageId(h)) return h;
   // Cím nélkül: ahol a projektet legutóbb abbahagytad.
   try {
     return lastPageOf(activeProjectId());
@@ -52,8 +53,6 @@ function tabFromHash(): Tab {
     return 'matrix';
   }
 }
-
-const TAB_MODULES: Record<Tab, ModuleId[] | null> = { adatok: INTAKE_MODULES, interjuk: ['INTERVIEWS'], matrix: null, projekt: PROJECT_MODULES };
 
 function App() {
   const [tab, setTab] = useState<Tab>(tabFromHash);
@@ -83,27 +82,18 @@ function App() {
       <nav className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-6 px-4 sm:px-6 lg:px-8">
           <span className="py-3 text-sm font-semibold tracking-tight text-slate-900">ICT Health Check</span>
-          {(
-            [
-              ['adatok', 'Adatgyűjtés'],
-              ['interjuk', 'Interjúk'],
-              ['matrix', 'Red Flag mátrix'],
-              ['projekt', 'Projekt'],
-            ] as const
-          )
-            .filter(([t]) => !TAB_MODULES[t] || TAB_MODULES[t]!.some(isOn))
-            .map(([t, label]) => (
-              <button
-                key={t}
-                onClick={() => go(t)}
-                aria-current={tab === t ? 'page' : undefined}
-                className={`-mb-px border-b-2 py-3 text-sm ${
-                  tab === t ? 'border-slate-900 font-medium text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+          {PAGE_IDS.filter((t) => pageVisible(t, isOn)).map((t) => (
+            <button
+              key={t}
+              onClick={() => go(t)}
+              aria-current={tab === t ? 'page' : undefined}
+              className={`-mb-px border-b-2 py-3 text-sm ${
+                tab === t ? 'border-slate-900 font-medium text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {PAGE_LABEL[t]}
+            </button>
+          ))}
           <div className="ml-auto py-2">
             <ProjectBar saveFile={savePdf} allowNewTab={false} />
           </div>
@@ -117,7 +107,7 @@ function App() {
           {tab === 'projekt' && <ProjectWorkspace />}
         </ProjectScope>
       </main>
-      <Guide page={tab} go={go} />
+      <Guide />
     </NavProvider>
   );
 }

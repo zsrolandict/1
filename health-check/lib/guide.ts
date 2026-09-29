@@ -9,6 +9,20 @@ import type { ModuleId } from '@/lib/modules';
  */
 
 export type PageId = 'adatok' | 'interjuk' | 'matrix' | 'projekt';
+
+/** Az oldalak a menü sorrendjében, egy helyen (menü, előnézet, Projektjeim). */
+export const PAGE_IDS: PageId[] = ['adatok', 'interjuk', 'matrix', 'projekt'];
+
+export const PAGE_LABEL: Record<PageId, string> = {
+  adatok: 'Adatgyűjtés',
+  interjuk: 'Interjúk',
+  matrix: 'Red Flag mátrix',
+  projekt: 'Projekt',
+};
+
+export function isPageId(s: string): s is PageId {
+  return (PAGE_IDS as string[]).includes(s);
+}
 export type IntakeTab = 'case' | 'checklist' | 'tables' | 'documents' | 'overview';
 
 export interface GuideStep {

@@ -20,18 +20,14 @@ function subscribe(cb: () => void): () => void {
   };
 }
 
-let cacheRaw = '';
 let cache: { activeId: string; projects: ProjectMeta[] } = { activeId: '', projects: [] };
 const SERVER = { activeId: '', projects: [] as ProjectMeta[] };
 
+// A listProjects ugyanazt a tömböt adja, amíg a tárolt lista nem változik: elég az azonosságot nézni.
 function snapshot() {
   const projects = listProjects();
   const activeId = activeProjectId();
-  const raw = activeId + JSON.stringify(projects);
-  if (raw !== cacheRaw) {
-    cacheRaw = raw;
-    cache = { activeId, projects };
-  }
+  if (projects !== cache.projects || activeId !== cache.activeId) cache = { activeId, projects };
   return cache;
 }
 

@@ -31,7 +31,7 @@ import { assess, scoreRisk, AUDIT_FEE_HUF, DIVISIONS, formatHuf, formatHufShort,
 import { catalogDefault, DEFAULT_CATALOG, DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
 import type { Division, Pillar, Rag, RiskItem, RiskSource, Scale5, ScoredRisk } from '@/lib/risk/types';
 import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario } from '@/lib/risk/store';
-import ConfirmDialog, { useConfirm } from '../ConfirmDialog';
+import { useConfirm } from '../ConfirmDialog';
 import { useNav } from '../Nav';
 import InfoTip from '../InfoTip';
 import type { GlossaryKey } from '@/lib/glossary';
@@ -107,7 +107,6 @@ export default function RedFlagMatrix({
   const [items, setItems] = useState<RiskItem[]>(initialItems);
   const [scenarioId, setScenarioId] = useState(DEFAULT_WORKSPACE.scenarioId);
   const [projectId, setProjectId] = useState(DEFAULT_WORKSPACE.projectId);
-  const [confirmReset, setConfirmReset] = useState(false);
   const [editingName, setEditingName] = useState(false);
   // A beállítások doboza: alapból csukva, amíg nincs teendő (hiányzó árbevétel).
   const [settingsPref, setSettingsPref] = useState<boolean | null>(null);
@@ -140,9 +139,12 @@ export default function RedFlagMatrix({
     setHydrated(true);
   }, []);
 
+  // Az első futás a betöltés utáni állapot: azt nem írjuk vissza változatlanul.
+  const skipFirstSave = useRef(true);
   useEffect(() => {
     if (!hydrated) return;
-    saveWorkspace({ projectId, scenarioId, companyName, company, kind, materialityHuf, items });
+    if (skipFirstSave.current) skipFirstSave.current = false;
+    else saveWorkspace({ projectId, scenarioId, companyName, company, kind, materialityHuf, items });
     onChangeRef.current?.(items);
   }, [items, materialityHuf, kind, companyName, company, scenarioId, projectId, hydrated]);
 
@@ -225,7 +227,17 @@ export default function RedFlagMatrix({
   };
 
   /** A kiinduló állapot – csak megerősítés után (a mátrix módosításai elvesznek). */
-  const reset = () => setConfirmReset(true);
+  const reset = async () => {
+    const ok = await ask({
+      title: 'Visszaállítod a mátrixot?',
+      confirmLabel: 'Igen, visszaállítom',
+      danger: true,
+      body: `Biztosan? A mátrixban végzett módosítások (pipálások, pontszámok, egyedi tételek, cégadatok) elvesznek.${
+        isDemoScenario(scenarioId) ? ' A bemutató minta kiinduló állapota tér vissza.' : ' A projekt üres katalógussal indul újra.'
+      } Az adatgyűjtés, az interjúk és az időkeret megmarad.`,
+    });
+    if (ok) applyWorkspace(scenarioId);
+  };
 
   const saveFile = savePdf ?? browserDownload;
   const fileBase = `${slug(companyName)}-${new Date().toISOString().slice(0, 10)}`;
@@ -274,7 +286,6 @@ export default function RedFlagMatrix({
   const missingRevenue = company.revenueHuf <= 0;
   const noAssessment = totals.identified === 0;
   const settingsOpen = settingsPref ?? missingRevenue;
-  const setSettingsOpen = (v: boolean) => setSettingsPref(v);
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -331,7 +342,7 @@ export default function RedFlagMatrix({
             Excel
           </ToolbarButton>
           {showPrint && (
-            <ToolbarButton onClick={() => window.print()} icon={<Printer className="h-4 w-4" />}>
+            <ToolbarButton onClick={async () => (await confirmEmptyExport()) && window.print()} icon={<Printer className="h-4 w-4" />}>
               Nyomtatás
             </ToolbarButton>
           )}
@@ -369,22 +380,6 @@ export default function RedFlagMatrix({
           {fileNote && <p className="w-full text-right text-xs text-red-700">{fileNote}</p>}
         </div>
       </header>
-
-      <ConfirmDialog
-        open={confirmReset}
-        title="Visszaállítod a mátrixot?"
-        confirmLabel="Igen, visszaállítom"
-        danger
-        onCancel={() => setConfirmReset(false)}
-        onConfirm={() => {
-          setConfirmReset(false);
-          applyWorkspace(scenarioId);
-        }}
-      >
-        Biztosan? A mátrixban végzett módosítások (pipálások, pontszámok, egyedi tételek, cégadatok) elvesznek.
-        {isDemoScenario(scenarioId) ? ' A bemutató minta kiinduló állapota tér vissza.' : ' A projekt üres katalógussal indul újra.'} Az adatgyűjtés, az
-        interjúk és az időkeret megmarad.
-      </ConfirmDialog>
 
       {confirmDialog}
 
@@ -543,7 +538,7 @@ export default function RedFlagMatrix({
       {/* ── Beállítások: cégadatok + átvilágítás-típus (összecsukható) ── */}
       <details
         open={settingsOpen}
-        onToggle={(e) => setSettingsOpen((e.currentTarget as HTMLDetailsElement).open)}
+        onToggle={(e) => setSettingsPref((e.currentTarget as HTMLDetailsElement).open)}
         className={`rounded-lg border shadow-sm print:hidden ${missingRevenue ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'}`}
       >
         <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-sm [&::-webkit-details-marker]:hidden">

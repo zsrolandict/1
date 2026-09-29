@@ -1,3 +1,5 @@
+import type { PageId } from '@/lib/guide';
+
 /**
  * Modulkapcsolók: egy-egy modul passzívra tehető, ekkor kimarad a
  * felületről és a kalauz lépései közül. A Red Flag mátrix (a kockázatok
@@ -47,6 +49,20 @@ export const MODULES: ModuleInfo[] = [
 
 export const INTAKE_MODULES: ModuleId[] = ['CASE', 'CHECKLIST', 'TABLES', 'DOCUMENTS', 'OVERVIEW'];
 export const PROJECT_MODULES: ModuleId[] = ['TIMESHEET', 'KNOWLEDGE'];
+
+/** Melyik oldal mely modulokból áll; null = mindig látszik (Red Flag mátrix). */
+export const PAGE_MODULES: Record<PageId, ModuleId[] | null> = {
+  adatok: INTAKE_MODULES,
+  interjuk: ['INTERVIEWS'],
+  matrix: null,
+  projekt: PROJECT_MODULES,
+};
+
+/** Az oldal akkor látszik a menüben, ha legalább egy modulja be van kapcsolva. */
+export function pageVisible(page: PageId, isOn: (id: ModuleId) => boolean): boolean {
+  const mods = PAGE_MODULES[page];
+  return !mods || mods.some(isOn);
+}
 
 const KEY = 'ict-hc:modules:v1';
 const EVENT = 'ict-hc:modules';

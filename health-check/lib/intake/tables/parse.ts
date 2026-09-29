@@ -1,5 +1,6 @@
 import { strFromU8 } from 'fflate';
-import { safeUnzip, ZipTooLargeError } from '../safeUnzip';
+import { safeUnzip } from '../safeUnzip';
+import { UserFacingError } from '@/lib/errors';
 
 /**
  * Táblázatok beolvasása a böngészőben: CSV (magyar Excel-exporttal is) és XLSX.
@@ -86,14 +87,14 @@ export function parseXlsx(bytes: Uint8Array): Grid {
   try {
     files = safeUnzip(bytes, (name) => name === 'xl/sharedStrings.xml' || /^xl\/worksheets\/sheet\d+\.xml$/.test(name));
   } catch (e) {
-    if (e instanceof ZipTooLargeError) throw e;
-    throw new Error('A fájl nem érvényes XLSX.');
+    if (e instanceof UserFacingError) throw e;
+    throw new UserFacingError('A fájl nem érvényes XLSX.');
   }
   const shared = files['xl/sharedStrings.xml'] ? [...strFromU8(files['xl/sharedStrings.xml']).matchAll(/<si>([\s\S]*?)<\/si>/g)].map((m) => textOf(m[1])) : [];
   const sheetName = Object.keys(files)
     .filter((n) => /^xl\/worksheets\/sheet\d+\.xml$/.test(n))
     .sort((a, b) => Number(/\d+/.exec(a)![0]) - Number(/\d+/.exec(b)![0]))[0];
-  if (!sheetName) throw new Error('Az XLSX-ben nincs munkalap.');
+  if (!sheetName) throw new UserFacingError('Az XLSX-ben nincs munkalap.');
   const xml = strFromU8(files[sheetName]);
   const grid: Grid = [];
   for (const rm of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)) {
@@ -122,7 +123,7 @@ export function parseXlsx(bytes: Uint8Array): Grid {
 export function parseTableFile(name: string, bytes: Uint8Array): Grid {
   const lower = name.toLowerCase();
   if (lower.endsWith('.xlsx')) return parseXlsx(bytes);
-  if (lower.endsWith('.xls')) throw new Error('A régi .xls formátumot mentse el .xlsx-ként vagy CSV-ként.');
+  if (lower.endsWith('.xls')) throw new UserFacingError('A régi .xls formátumot mentse el .xlsx-ként vagy CSV-ként.');
   return parseCsv(decodeText(bytes));
 }
 

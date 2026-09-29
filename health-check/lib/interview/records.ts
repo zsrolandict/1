@@ -48,11 +48,12 @@ export function recordStatus(r: InterviewRecord | undefined): InterviewStatus {
 
 export type InterviewRecords = Partial<Record<IntervieweeRole, InterviewRecord>>;
 
-const key = (scenarioId: string) => `ict-hc:interviews:v1:${scenarioId}`;
+/** Tárolási kulcs projektenként (a projektszintű műveletek – törlés, mentés fájlba – is ezt használják). */
+export const interviewsKey = (scenarioId: string) => `ict-hc:interviews:v1:${scenarioId}`;
 
 export function loadRecords(scenarioId: string): InterviewRecords {
   try {
-    const raw = localStorage.getItem(key(scenarioId));
+    const raw = localStorage.getItem(interviewsKey(scenarioId));
     return raw ? (JSON.parse(raw) as InterviewRecords) : {};
   } catch {
     return {};
@@ -61,7 +62,7 @@ export function loadRecords(scenarioId: string): InterviewRecords {
 
 export function saveRecords(scenarioId: string, records: InterviewRecords): void {
   try {
-    localStorage.setItem(key(scenarioId), JSON.stringify(records));
+    localStorage.setItem(interviewsKey(scenarioId), JSON.stringify(records));
     markSaved();
   } catch {
     /* privát mód – a munkamenet végéig memóriában marad */
@@ -70,7 +71,7 @@ export function saveRecords(scenarioId: string, records: InterviewRecords): void
 
 export function clearRecords(scenarioId: string): void {
   try {
-    localStorage.removeItem(key(scenarioId));
+    localStorage.removeItem(interviewsKey(scenarioId));
   } catch {
     /* ignore */
   }

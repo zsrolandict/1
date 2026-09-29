@@ -4,19 +4,14 @@ import { useEffect, useMemo, useRef } from 'react';
 import { ArrowRight, ExternalLink, X } from 'lucide-react';
 import { ENGAGEMENT_KINDS } from '@/lib/engagement/kinds';
 import { ago } from '@/lib/localSave';
-import { projectProgress } from '@/lib/projectProgress';
-import { lastPageOf, type ProjectMeta, type ProjectPage } from '@/lib/risk/store';
+import { benchmarkedRefs, projectProgress } from '@/lib/projectProgress';
+import { PAGE_LABEL } from '@/lib/guide';
+import { byRecent, lastPageOf, type ProjectMeta } from '@/lib/risk/store';
 import { useModules } from '../useModules';
+import { useEscape } from '../useDismiss';
 import { openProject } from './openProject';
 import { PAGE_PATH, useNav } from '../Nav';
 import { useProjects } from './useProjects';
-
-export const PAGE_LABEL: Record<ProjectPage, string> = {
-  adatok: 'Adatgyűjtés',
-  interjuk: 'Interjúk',
-  matrix: 'Red Flag mátrix',
-  projekt: 'Projekt (időkeret)',
-};
 
 /**
  * Projektjeim: minden projekt egy helyen, hol tart, mi a következő lépés,
@@ -28,20 +23,15 @@ export default function ProjectsOverview({ onClose, allowNewTab = true }: { onCl
   const { disabled } = useModules();
   const nav = useNav();
   const closeRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscape(onClose);
+  useEffect(() => closeRef.current?.focus(), []);
 
-  const rows = useMemo(
-    () =>
-      [...projects]
-        .sort((a, b) => Number(a.isDemo) - Number(b.isDemo) || b.updatedAt.localeCompare(a.updatedAt))
-        .map((p) => ({ p, progress: projectProgress(p.id, disabled), page: lastPageOf(p.id) })),
-    [projects, disabled],
-  );
+  const rows = useMemo(() => {
+    const benchmarked = benchmarkedRefs(); // egyszer, nem projektenként
+    return [...projects]
+      .sort((a, b) => Number(a.isDemo) - Number(b.isDemo) || byRecent(a, b))
+      .map((p) => ({ p, progress: projectProgress(p.id, disabled, benchmarked), page: lastPageOf(p.id) }));
+  }, [projects, disabled]);
 
   const resume = (p: ProjectMeta) => {
     openProject(p.id, nav);

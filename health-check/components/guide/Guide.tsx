@@ -2,39 +2,36 @@
 
 import { useEffect, useState } from 'react';
 import { Check, ChevronRight, Compass, Lightbulb, SlidersHorizontal, X } from 'lucide-react';
-import { nextStep, PAGE_TIPS, requestIntakeTab, type GuideStep, type PageId } from '@/lib/guide';
-import { MODULES, type ModuleArea } from '@/lib/modules';
+import { nextStep, PAGE_TIPS, requestIntakeTab, type GuideStep } from '@/lib/guide';
 import { SAMPLE_PROFILES } from '@/lib/intake/samples/profiles';
-import { SAVED_EVENT } from '@/lib/localSave';
+import { ago, SAVED_EVENT } from '@/lib/localSave';
+import { MODULES, type ModuleArea } from '@/lib/modules';
+import { stepsFor } from '@/lib/projectProgress';
 import { applySampleProfile } from '@/lib/projects';
-import { loadWorkspace, PROJECT_EVENT } from '@/lib/risk/store';
-import { useModules } from '../useModules';
-import { projectSteps } from '@/lib/projectProgress';
-import { createProject } from '@/lib/risk/store';
-import { ago } from '@/lib/localSave';
+import { byRecent, createProject, loadWorkspace, PROJECT_EVENT } from '@/lib/risk/store';
+import { useNav, type Nav } from '../Nav';
 import { NewProjectForm } from '../project/ProjectBar';
 import { openProject } from '../project/openProject';
 import { useProjects } from '../project/useProjects';
-import type { Nav } from '../Nav';
+import { useModules } from '../useModules';
 
 const SEEN_KEY = 'ict-hc:guide-seen';
 const AREAS: ModuleArea[] = ['Adatgyűjtés', 'Interjúk', 'Red Flag mátrix', 'Projekt'];
-
-function readSteps(disabled: Parameters<typeof projectSteps>[1]): GuideStep[] {
-  return projectSteps(loadWorkspace().projectId, disabled);
-}
 
 /**
  * Kalauz: lebegő segítő a jobb alsó sarokban. Megmutatja, hol tart a
  * projekt, mi a következő lépés, ad tippeket az adott oldalhoz, és itt
  * lehet a modulokat ki-be kapcsolni.
  */
-export default function Guide({ page, go }: { page: PageId; go: (page: PageId) => void }) {
+export default function Guide() {
+  const nav = useNav();
   const { disabled, isOn, toggle } = useModules();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<'start' | 'steps' | 'modules'>('steps');
   const [steps, setSteps] = useState<GuideStep[]>([]);
-  const [seen, setSeen] = useState(true);
+  const [note, setNote] = useState<string | null>(null);
+  const [hasSample, setHasSample] = useState(false);
+  const page = nav?.page ?? 'matrix';
 
   // Első látogatás: a kalauz magától nyílik, üdvözlő nézettel.
   useEffect(() => {
@@ -50,20 +47,25 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
       setOpen(true);
     }
   }, []);
-  const [note, setNote] = useState<string | null>(null);
-  const [hasSample, setHasSample] = useState(false);
   useEffect(() => {
     if (!open) return;
     const refresh = () => {
-      setSteps(readSteps(disabled));
-      setHasSample(Boolean(SAMPLE_PROFILES[loadWorkspace().scenarioId]));
+      const ws = loadWorkspace();
+      setSteps(stepsFor(ws, disabled));
+      setHasSample(Boolean(SAMPLE_PROFILES[ws.scenarioId]));
     };
     refresh();
-    // Mentéskor és projektváltáskor frissül (pl. kitöltötted a tényállást).
-    window.addEventListener(SAVED_EVENT, refresh);
+    // Mentéskor és projektváltáskor frissül; gépelés közben nem minden billentyűre.
+    let timer: number | undefined;
+    const later = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(refresh, 400);
+    };
+    window.addEventListener(SAVED_EVENT, later);
     window.addEventListener(PROJECT_EVENT, refresh);
     return () => {
-      window.removeEventListener(SAVED_EVENT, refresh);
+      window.clearTimeout(timer);
+      window.removeEventListener(SAVED_EVENT, later);
       window.removeEventListener(PROJECT_EVENT, refresh);
     };
   }, [open, disabled, page]);
@@ -74,21 +76,12 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
     if (added == null) return;
     setNote(`Minta tényállás betöltve${added ? `, ${added} ágazati tétel a mátrixba került (pipálatlanul)` : ''}.`);
     requestIntakeTab('case');
-    if (page !== 'adatok') go('adatok');
+    if (page !== 'adatok') nav?.go('adatok');
   };
 
-  const openPanel = () => {
-    setOpen(true);
-    setSeen(true);
-    try {
-      localStorage.setItem(SEEN_KEY, '1');
-    } catch {
-      /* ignore */
-    }
-  };
   const jump = (s: GuideStep) => {
     if (s.target.tab) requestIntakeTab(s.target.tab);
-    if (s.target.page !== page) go(s.target.page);
+    if (s.target.page !== page) nav?.go(s.target.page);
   };
 
   const next = nextStep(steps);
@@ -97,11 +90,10 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
   if (!open) {
     return (
       <button
-        onClick={openPanel}
+        onClick={() => setOpen(true)}
         className="fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-slate-800 print:hidden"
       >
         <Compass className="h-4 w-4" /> Kalauz
-        {!seen && <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" aria-label="új" />}
       </button>
     );
   }
@@ -140,7 +132,7 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
       </header>
 
       <div className="overflow-auto p-4 text-sm">
-        {view === 'start' && <StartView onDone={() => setView('steps')} nav={{ page, go }} />}
+        {view === 'start' && <StartView onDone={() => setView('steps')} nav={nav} />}
 
         {view === 'steps' && (
           <>
@@ -238,12 +230,12 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
 }
 
 /** Üdvözlő nézet: új ügyfél indítása, bemutató, vagy folytatás ott, ahol abbahagytad. */
-function StartView({ onDone, nav }: { onDone: () => void; nav: Nav }) {
+function StartView({ onDone, nav }: { onDone: () => void; nav: Nav | null }) {
   const { projects } = useProjects();
   const [creating, setCreating] = useState(false);
   const recent = projects
     .filter((p) => !p.isDemo)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .sort(byRecent)
     .slice(0, 3);
   return (
     <div className="space-y-3">
@@ -260,7 +252,7 @@ function StartView({ onDone, nav }: { onDone: () => void; nav: Nav }) {
           onCancel={() => setCreating(false)}
           onCreate={(input) => {
             createProject(input);
-            if (nav.page !== 'adatok') nav.go('adatok');
+            if (nav && nav.page !== 'adatok') nav.go('adatok');
             onDone();
           }}
         />

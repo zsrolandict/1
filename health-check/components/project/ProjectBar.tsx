@@ -16,16 +16,15 @@ import {
   parseBackup,
   resetDemo,
 } from '@/lib/projects';
-import { createProject, openDemo, type ProjectMeta } from '@/lib/risk/store';
+import { byRecent, createProject, openDemo, type ProjectMeta } from '@/lib/risk/store';
 import { SCENARIOS } from '@/lib/scenarios';
-import ConfirmDialog from '../ConfirmDialog';
+import { useConfirm } from '../ConfirmDialog';
+import { useOutside } from '../useDismiss';
 import { browserDownload, slug, type SaveFile } from '../report/ExportPdfButton';
 import { useNav } from '../Nav';
 import { openProject } from './openProject';
 import ProjectsOverview from './ProjectsOverview';
 import { useProjects } from './useProjects';
-
-type Pending = { type: 'delete' | 'reset'; project: ProjectMeta } | null;
 
 /**
  * A felső sáv projektkezelője: projektváltás, új projekt, bemutató minták,
@@ -37,11 +36,11 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
   const [overview, setOverview] = useState(false);
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [pending, setPending] = useState<Pending>(null);
+  const [confirmDialog, ask] = useConfirm();
   const ref = useRef<HTMLDivElement>(null);
   useOutside(ref, () => setOpen(false), open);
 
-  const own = projects.filter((p) => !p.isDemo).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const own = projects.filter((p) => !p.isDemo).sort(byRecent);
   const demos = projects.filter((p) => p.isDemo);
   const active = projects.find((p) => p.id === activeId);
   const activeDemo = SCENARIOS.find((s) => s.id === activeId);
@@ -52,6 +51,26 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
     fn();
     setOpen(false);
     setCreating(false);
+  };
+
+  const confirmDelete = async (p: ProjectMeta) => {
+    const ok = await ask({
+      title: 'Törlöd a projektet?',
+      confirmLabel: 'Végleges törlés',
+      danger: true,
+      body: `A(z) „${p.companyName || 'Névtelen projekt'}” projekt minden adata (mátrix, adatgyűjtés, interjúk, időkeret) törlődik ebből a böngészőből. Ha kellhet még, előbb mentsd fájlba.`,
+    });
+    if (ok) deleteProject(p.id);
+  };
+
+  const confirmReset = async (p: ProjectMeta) => {
+    const ok = await ask({
+      title: 'Visszaállítod a bemutatót?',
+      confirmLabel: 'Igen, visszaállítom',
+      danger: true,
+      body: `Biztosan? A(z) „${p.companyName}” bemutatón végzett minden módosítás elvész (mátrix, adatgyűjtés, interjúk, időkeret), és a minta kiinduló állapota tér vissza.`,
+    });
+    if (ok) choose(() => resetDemo(p.id));
   };
 
   return (
@@ -102,7 +121,7 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
                     p={p}
                     active={p.id === activeId}
                     onOpen={() => choose(() => openProject(p.id, nav))}
-                    onDelete={() => setPending({ type: 'delete', project: p })}
+                    onDelete={() => confirmDelete(p)}
                   />
                 ))}
               </ul>
@@ -128,7 +147,7 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
                     </button>
                     {opened && (
                       <button
-                        onClick={() => setPending({ type: 'reset', project: opened })}
+                        onClick={() => confirmReset(opened)}
                         title="Visszaállítás a minta kiinduló állapotára"
                         aria-label={`${s.label} visszaállítása`}
                         className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
@@ -158,35 +177,7 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
       {overview && <ProjectsOverview onClose={() => setOverview(false)} allowNewTab={allowNewTab} />}
       <SaveStatus projectId={activeId} meta={active} companyName={label} saveFile={saveFile} />
 
-      <ConfirmDialog
-        open={pending?.type === 'delete'}
-        title="Törlöd a projektet?"
-        confirmLabel="Végleges törlés"
-        danger
-        onCancel={() => setPending(null)}
-        onConfirm={() => {
-          if (pending) deleteProject(pending.project.id);
-          setPending(null);
-        }}
-      >
-        A(z) „{pending?.project.companyName || 'Névtelen projekt'}” projekt minden adata (mátrix, adatgyűjtés, interjúk, időkeret) törlődik ebből a böngészőből.
-        Ha kellhet még, előbb mentsd fájlba.
-      </ConfirmDialog>
-      <ConfirmDialog
-        open={pending?.type === 'reset'}
-        title="Visszaállítod a bemutatót?"
-        confirmLabel="Igen, visszaállítom"
-        danger
-        onCancel={() => setPending(null)}
-        onConfirm={() => {
-          if (pending) resetDemo(pending.project.id);
-          setPending(null);
-          setOpen(false);
-        }}
-      >
-        Biztosan? A(z) „{pending?.project.companyName}” bemutatón végzett minden módosítás elvész (mátrix, adatgyűjtés, interjúk, időkeret), és a minta kiinduló
-        állapota tér vissza.
-      </ConfirmDialog>
+      {confirmDialog}
     </div>
   );
 }
@@ -307,7 +298,7 @@ function SaveStatus({ projectId, meta, companyName, saveFile }: { projectId: str
   }, []);
   const saved = lastSaved();
   const backupAt = projectId ? lastBackup(projectId) : null;
-  const due = projectId ? backupDue(meta, backupAt, Date.now(), projectHasContent(projectId)) : false;
+  const due = projectId ? backupDue(meta, backupAt, Date.now(), () => projectHasContent(projectId)) : false;
 
   const backup = async () => {
     setNote(null);
@@ -360,22 +351,4 @@ function SaveStatus({ projectId, meta, companyName, saveFile }: { projectId: str
       )}
     </div>
   );
-}
-
-function useOutside(ref: React.RefObject<HTMLElement | null>, onOutside: () => void, active: boolean) {
-  useEffect(() => {
-    if (!active) return;
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onOutside();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onOutside();
-    };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [ref, onOutside, active]);
 }

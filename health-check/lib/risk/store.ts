@@ -1,6 +1,8 @@
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { SuggestedRedFlag } from '@/lib/interview/types';
+import type { PageId } from '@/lib/guide';
 import { markSaved } from '@/lib/localSave';
+import { readJson as read, readRaw, removeKey, writeJson as write } from '@/lib/storage';
 import { BLANK, getScenario, GYARTO, isDemoScenario, type Scenario } from '@/lib/scenarios';
 import { catalogDefault, PILLAR_LABEL } from './catalog';
 import type { RiskItem, Scale5 } from './types';
@@ -67,24 +69,6 @@ export function workspaceFromScenario(s: Scenario, projectId: string = s.id): Wo
 
 export const DEFAULT_WORKSPACE: Workspace = workspaceFromScenario(GYARTO);
 
-function read<T>(key: string): T | null {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
-  } catch {
-    return null;
-  }
-}
-
-function write(key: string, value: unknown): boolean {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-    return true;
-  } catch {
-    return false; /* privát mód vagy betelt tárhely */
-  }
-}
-
 function normalize(saved: Partial<Workspace>, projectId: string): Workspace {
   const scenarioId = saved.scenarioId === BLANK.id ? BLANK.id : getScenario(saved.scenarioId ?? projectId).id;
   const base = getScenario(scenarioId);
@@ -116,11 +100,20 @@ function metaFor(ws: Workspace, prev: ProjectMeta | undefined, now: string): Pro
  * bemutató projekt lesz, ugyanazzal az azonosítóval, így a hozzá tartozó
  * adatgyűjtés, interjúk és időkeret is megmarad.
  */
+// A lista minden renderelésnél és mentésnél kell: csak akkor dolgozzuk fel újra, ha a tárolt szöveg változott.
+let indexCache: { raw: string; list: ProjectMeta[] } | null = null;
+const NO_PROJECTS: ProjectMeta[] = [];
+
 export function listProjects(): ProjectMeta[] {
+  const raw = readRaw(INDEX_KEY);
+  if (raw && indexCache?.raw === raw) return indexCache.list;
   const list = read<ProjectMeta[]>(INDEX_KEY);
-  if (Array.isArray(list)) return list;
+  if (raw && Array.isArray(list)) {
+    indexCache = { raw, list };
+    return list;
+  }
   const legacy = read<Partial<Workspace>>(STORAGE_KEY) ?? read<Partial<Workspace>>(LEGACY_KEY);
-  if (!legacy) return [];
+  if (!legacy) return NO_PROJECTS; // állandó tömb: a változásfigyelés azonosság alapján hasonlít
   const id = getScenario(legacy.scenarioId).id;
   const ws = normalize({ ...legacy, scenarioId: id }, id);
   const meta = metaFor(ws, undefined, new Date().toISOString());
@@ -153,12 +146,9 @@ function tabSet(id: string): void {
   }
 }
 
-function exists(id: string): boolean {
-  return isDemoScenario(id) || listProjects().some((p) => p.id === id);
-}
-
 export function activeProjectId(): string {
-  listProjects(); // migráció, ha kell
+  const list = listProjects(); // egyben migráció, ha kell
+  const exists = (id: string) => isDemoScenario(id) || list.some((p) => p.id === id);
   const tab = tabGet();
   if (tab && exists(tab)) return tab;
   const id = read<string>(ACTIVE_KEY);
@@ -173,7 +163,7 @@ export function setActiveProject(id: string): void {
 
 // ── Hol tartottál: projektenként az utoljára nyitott oldal ─────────
 const LAST_PAGE_KEY = 'ict-hc:last-page:v1';
-export type ProjectPage = 'adatok' | 'interjuk' | 'matrix' | 'projekt';
+export type ProjectPage = PageId;
 
 export function rememberPage(projectId: string, page: ProjectPage): void {
   const map = read<Record<string, ProjectPage>>(LAST_PAGE_KEY) ?? {};
@@ -218,18 +208,33 @@ export function hydrateItem(item: RiskItem): RiskItem {
   return { ...item, reasoning: item.reasoning ?? def.reasoning, valuation };
 }
 
-export function saveWorkspace(ws: Workspace): void {
+/** A „módosítva” időpontot legfeljebb percenként írjuk a listába (gépelésnél ne írjuk újra minden billentyűre). */
+const UPDATED_AT_RESOLUTION_MS = 60_000;
+
+export function saveWorkspace(ws: Workspace, now = Date.now()): void {
   if (!write(wsKey(ws.projectId), ws)) return; // privát mód – a munkamenet végéig memóriában marad
   const list = listProjects();
   const prev = list.find((p) => p.id === ws.projectId);
-  const meta = metaFor(ws, prev, new Date().toISOString());
-  write(INDEX_KEY, prev ? list.map((p) => (p.id === ws.projectId ? meta : p)) : [meta, ...list]);
+  const unchanged =
+    prev &&
+    prev.companyName === ws.companyName &&
+    prev.kind === ws.kind &&
+    prev.scenarioId === ws.scenarioId &&
+    now - Date.parse(prev.updatedAt) < UPDATED_AT_RESOLUTION_MS;
+  if (!unchanged) {
+    const meta = metaFor(ws, prev, new Date(now).toISOString());
+    write(INDEX_KEY, prev ? list.map((p) => (p.id === ws.projectId ? meta : p)) : [meta, ...list]);
+  }
   markSaved();
+}
+
+export function newProjectId(now = Date.now()): string {
+  return `p-${now.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
 /** Új, saját projekt az üres mintából; ez lesz az aktív. */
 export function createProject(input: { companyName: string; kind: EngagementKind; materialityHuf?: number }, now = Date.now()): Workspace {
-  const id = `p-${now.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const id = newProjectId(now);
   const ws: Workspace = {
     ...workspaceFromScenario(BLANK, id),
     companyName: input.companyName.trim(),
@@ -249,19 +254,16 @@ export function openDemo(scenarioId: string): void {
 
 /** A projekt munkaállapotának és listabejegyzésének törlése (a modulok adatait a projects.ts törli). */
 export function removeProjectWorkspace(id: string): void {
-  try {
-    localStorage.removeItem(wsKey(id));
-  } catch {
-    /* ignore */
-  }
+  removeKey(wsKey(id));
   write(
     INDEX_KEY,
     listProjects().filter((p) => p.id !== id),
   );
 }
 
-export function projectStorageKey(id: string): string {
-  return wsKey(id);
+/** Legutóbb módosított elöl (projektválasztó, kalauz, törlés utáni következő projekt). */
+export function byRecent(a: ProjectMeta, b: ProjectMeta): number {
+  return b.updatedAt.localeCompare(a.updatedAt);
 }
 
 const clamp5 = (n: number): Scale5 => Math.min(5, Math.max(1, Math.round(n))) as Scale5;

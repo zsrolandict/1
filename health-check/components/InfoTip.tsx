@@ -8,10 +8,9 @@ import { GLOSSARY, type GlossaryKey } from '@/lib/glossary';
  * Kis ⓘ ikon egymondatos magyarázattal. Egérrel rámutatva, billentyűzettel
  * fókuszálva vagy kattintásra jelenik meg; képernyőolvasó is felolvassa.
  */
-export default function InfoTip({ term, text, label }: { term?: GlossaryKey; text?: string; label?: string }) {
+export default function InfoTip({ term, label }: { term: GlossaryKey; label?: string }) {
   const id = useId();
   const [pinned, setPinned] = useState(false);
-  const body = text ?? (term ? GLOSSARY[term] : '');
   return (
     <span className="group relative inline-flex align-middle print:hidden">
       <button
@@ -35,7 +34,7 @@ export default function InfoTip({ term, text, label }: { term?: GlossaryKey; tex
           pinned ? 'visible' : 'invisible group-hover:visible group-focus-within:visible'
         }`}
       >
-        {body}
+        {GLOSSARY[term]}
       </span>
     </span>
   );

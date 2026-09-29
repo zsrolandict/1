@@ -48,11 +48,12 @@ export const EMPTY_INTAKE: IntakeState = {
   dismissed: [],
 };
 
-const key = (scenarioId: string) => `ict-hc:intake:v1:${scenarioId}`;
+/** Tárolási kulcs projektenként (a projektszintű műveletek – törlés, mentés fájlba – is ezt használják). */
+export const intakeKey = (scenarioId: string) => `ict-hc:intake:v1:${scenarioId}`;
 
 export function loadIntake(scenarioId: string): IntakeState {
   try {
-    const raw = localStorage.getItem(key(scenarioId));
+    const raw = localStorage.getItem(intakeKey(scenarioId));
     if (!raw) return EMPTY_INTAKE;
     const saved = JSON.parse(raw) as Partial<IntakeState>;
     return { ...EMPTY_INTAKE, ...saved, profile: normalizeProfile(saved.profile ?? {}) };
@@ -63,7 +64,7 @@ export function loadIntake(scenarioId: string): IntakeState {
 
 export function saveIntake(scenarioId: string, state: IntakeState): void {
   try {
-    localStorage.setItem(key(scenarioId), JSON.stringify(state));
+    localStorage.setItem(intakeKey(scenarioId), JSON.stringify(state));
     markSaved();
   } catch {
     /* privát mód – a munkamenet végéig memóriában marad */
@@ -72,7 +73,7 @@ export function saveIntake(scenarioId: string, state: IntakeState): void {
 
 export function clearIntake(scenarioId: string): void {
   try {
-    localStorage.removeItem(key(scenarioId));
+    localStorage.removeItem(intakeKey(scenarioId));
   } catch {
     /* ignore */
   }

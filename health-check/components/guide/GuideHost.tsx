@@ -9,5 +9,5 @@ export default function GuideHost() {
   const path = usePathname();
   const nav = useNav();
   if (path === '/login' || !nav) return null;
-  return <Guide page={nav.page} go={nav.go} />;
+  return <Guide />;
 }

@@ -149,6 +149,15 @@ describe('projektek', () => {
     expect(lastPageOf(a.projectId)).toBe('interjuk');
   });
 
+  it('a projektlista változatlan tárolónál ugyanaz a tömb (a felület változásfigyelése erre épül)', () => {
+    expect(listProjects()).toBe(listProjects()); // üres tároló
+    const a = createProject({ companyName: 'A Kft.', kind: 'HEALTH_CHECK' });
+    const first = listProjects();
+    expect(listProjects()).toBe(first);
+    saveWorkspace({ ...loadProject(a.projectId), companyName: 'A Kft. új név' });
+    expect(listProjects()).not.toBe(first);
+  });
+
   it('hibás fájl visszautasítása', () => {
     expect(() => parseBackup('nem json')).toThrow(BackupError);
     expect(() => parseBackup('{"format":"mas"}')).toThrow('Ez nem');

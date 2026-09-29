@@ -18,18 +18,14 @@ export class ZipTooLargeError extends UserFacingError {
 
 export function safeUnzip(bytes: Uint8Array, want: (name: string) => boolean, maxBytes = MAX_UNZIPPED_BYTES): Record<string, Uint8Array> {
   let total = 0;
-  let tooLarge = false;
   const filter = (f: UnzipFileInfo) => {
     if (!want(f.name)) return false;
     total += f.originalSize;
-    if (total > maxBytes || (f.size > 0 && f.originalSize / f.size > MAX_RATIO && f.originalSize > 1024 * 1024)) {
-      tooLarge = true;
-      return false;
-    }
+    // Azonnal megállunk (kivétel a szűrőből), mielőtt bármit kibontanánk.
+    if (total > maxBytes || (f.size > 0 && f.originalSize / f.size > MAX_RATIO && f.originalSize > 1024 * 1024)) throw new ZipTooLargeError();
     return true;
   };
   const files = unzipSync(bytes, { filter });
-  if (tooLarge) throw new ZipTooLargeError();
   // A fejlécben megadott méret hazudhat: a ténylegesen kibontott méretet is ellenőrizzük.
   if (Object.values(files).reduce((n, f) => n + f.length, 0) > maxBytes) throw new ZipTooLargeError();
   return files;

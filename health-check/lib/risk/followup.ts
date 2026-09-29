@@ -124,11 +124,12 @@ export function compare(snapshot: Snapshot, items: RiskItem[], opts: Partial<Eng
   return { snapshot, now: nowAssessment.totals, changes, counts };
 }
 
-const key = (scenarioId: string) => `ict-hc:snapshots:v1:${scenarioId}`;
+/** Tárolási kulcs projektenként (a projektszintű műveletek – törlés, mentés fájlba – is ezt használják). */
+export const snapshotsKey = (scenarioId: string) => `ict-hc:snapshots:v1:${scenarioId}`;
 
 export function loadSnapshots(scenarioId: string): Snapshot[] {
   try {
-    const raw = localStorage.getItem(key(scenarioId));
+    const raw = localStorage.getItem(snapshotsKey(scenarioId));
     return raw ? (JSON.parse(raw) as Snapshot[]) : [];
   } catch {
     return [];
@@ -137,7 +138,7 @@ export function loadSnapshots(scenarioId: string): Snapshot[] {
 
 export function saveSnapshots(scenarioId: string, list: Snapshot[]): void {
   try {
-    localStorage.setItem(key(scenarioId), JSON.stringify(list));
+    localStorage.setItem(snapshotsKey(scenarioId), JSON.stringify(list));
     markSaved();
   } catch {
     /* privát mód */

@@ -123,11 +123,12 @@ export function removeEntry(state: TimesheetState, id: string): TimesheetState {
   return { ...state, entries: state.entries.filter((e) => e.id !== id) };
 }
 
-const key = (scenarioId: string) => `ict-hc:timesheet:v1:${scenarioId}`;
+/** Tárolási kulcs projektenként (a projektszintű műveletek – törlés, mentés fájlba – is ezt használják). */
+export const timesheetKey = (scenarioId: string) => `ict-hc:timesheet:v1:${scenarioId}`;
 
 export function loadTimesheet(scenarioId: string): TimesheetState {
   try {
-    const raw = localStorage.getItem(key(scenarioId));
+    const raw = localStorage.getItem(timesheetKey(scenarioId));
     if (!raw) return EMPTY_TIMESHEET;
     const s = JSON.parse(raw) as Partial<TimesheetState>;
     return {
@@ -142,7 +143,7 @@ export function loadTimesheet(scenarioId: string): TimesheetState {
 
 export function saveTimesheet(scenarioId: string, s: TimesheetState): void {
   try {
-    localStorage.setItem(key(scenarioId), JSON.stringify(s));
+    localStorage.setItem(timesheetKey(scenarioId), JSON.stringify(s));
     markSaved();
   } catch {
     /* privát mód */

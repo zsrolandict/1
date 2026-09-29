@@ -1,10 +1,10 @@
-import { markSaved } from '@/lib/localSave';
 import {
   activeProjectId,
   DEFAULT_WORKSPACE,
   listProjects,
+  byRecent,
   loadProject,
-  projectStorageKey,
+  newProjectId,
   reloadProject,
   removeProjectWorkspace,
   saveWorkspace,
@@ -14,7 +14,11 @@ import {
   type Workspace,
 } from '@/lib/risk/store';
 import { getScenario } from '@/lib/scenarios';
-import { loadIntake, saveIntake } from '@/lib/intake/state';
+import { intakeKey, loadIntake, saveIntake } from '@/lib/intake/state';
+import { interviewsKey, loadRecords } from '@/lib/interview/records';
+import { loadSnapshots, snapshotsKey } from '@/lib/risk/followup';
+import { loadTimesheet, timesheetKey } from '@/lib/timesheet/timesheet';
+import { readJson, removeKey, writeJson } from '@/lib/storage';
 import { SAMPLE_PROFILES } from '@/lib/intake/samples/profiles';
 import { missingSectorRisks } from '@/lib/risk/sectorRisks';
 
@@ -24,24 +28,18 @@ import { missingSectorRisks } from '@/lib/risk/sectorRisks';
  * modulok saját kulcsai alatt vannak; ez a lista fogja össze őket.
  */
 
-/** A projekthez tartozó modul-kulcsok (a munkaállapoton kívül). */
+/** A projekthez tartozó modul-kulcsok (a munkaállapoton kívül) – a modulok saját kulcsfüggvényei. */
 export const MODULE_KEYS = {
-  intake: (id: string) => `ict-hc:intake:v1:${id}`,
-  interviews: (id: string) => `ict-hc:interviews:v1:${id}`,
-  snapshots: (id: string) => `ict-hc:snapshots:v1:${id}`,
-  timesheet: (id: string) => `ict-hc:timesheet:v1:${id}`,
+  intake: intakeKey,
+  interviews: interviewsKey,
+  snapshots: snapshotsKey,
+  timesheet: timesheetKey,
 } as const;
 
 type ModuleKey = keyof typeof MODULE_KEYS;
 
 function removeModuleData(id: string): void {
-  for (const k of Object.values(MODULE_KEYS)) {
-    try {
-      localStorage.removeItem(k(id));
-    } catch {
-      /* ignore */
-    }
-  }
+  for (const k of Object.values(MODULE_KEYS)) removeKey(k(id));
 }
 
 /** Projekt végleges törlése minden moduladatával. Az aktív projekt helyére a legutóbbi másik kerül. */
@@ -50,7 +48,7 @@ export function deleteProject(id: string): void {
   removeModuleData(id);
   removeProjectWorkspace(id);
   if (wasActive) {
-    const next = [...listProjects()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+    const next = [...listProjects()].sort(byRecent)[0];
     setActiveProject(next?.id ?? DEFAULT_WORKSPACE.projectId);
   }
 }
@@ -60,6 +58,8 @@ export function resetDemo(id: string): void {
   removeModuleData(id);
   saveWorkspace(workspaceFromScenario(getScenario(id), id));
   setActiveProject(id);
+  // Ha éppen ez a projekt van nyitva, a projektazonosító nem változik: a nyitott oldal töltse újra.
+  reloadProject();
 }
 
 /**
@@ -95,12 +95,8 @@ const backupKey = (id: string) => `ict-hc:backup:v1:${id}`;
 export function exportProject(id: string, now = new Date()): ProjectBackup {
   const modules: ProjectBackup['modules'] = {};
   for (const [name, k] of Object.entries(MODULE_KEYS) as [ModuleKey, (id: string) => string][]) {
-    try {
-      const raw = localStorage.getItem(k(id));
-      if (raw) modules[name] = JSON.parse(raw);
-    } catch {
-      /* sérült modul-adat: kimarad */
-    }
+    const value = readJson<unknown>(k(id)); // sérült modul-adat: kimarad
+    if (value != null) modules[name] = value;
   }
   return {
     format: BACKUP_FORMAT,
@@ -135,15 +131,7 @@ export function projectHasContent(id: string): boolean {
   if (loadProject(id).items.some((r) => r.identified)) return true;
   const intake = loadIntake(id);
   if (Object.keys(intake.answers).length || intake.documents.length || Object.keys(intake.tables).length || intake.profile.narrative.trim()) return true;
-  for (const k of [MODULE_KEYS.interviews, MODULE_KEYS.timesheet, MODULE_KEYS.snapshots]) {
-    try {
-      const raw = localStorage.getItem(k(id));
-      if (raw && raw !== '{}' && raw !== '[]' && !raw.startsWith('{"entries":[]')) return true;
-    } catch {
-      /* ignore */
-    }
-  }
-  return false;
+  return Object.keys(loadRecords(id)).length > 0 || loadTimesheet(id).entries.length > 0 || loadSnapshots(id).length > 0;
 }
 
 const DAY = 86_400_000;
@@ -153,11 +141,11 @@ const DAY = 86_400_000;
  * benne munka, és: még nem volt mentés, de a projekt egy napnál régebbi;
  * vagy az utolsó mentés 7 napnál régebbi, és azóta módosult.
  */
-export function backupDue(meta: ProjectMeta | undefined, backupAt: number | null, now = Date.now(), hasContent = true): boolean {
-  if (!meta || meta.isDemo || !hasContent) return false;
-  const updated = Date.parse(meta.updatedAt);
-  if (backupAt == null) return now - Date.parse(meta.createdAt) > DAY;
-  return updated > backupAt && now - backupAt > 7 * DAY;
+export function backupDue(meta: ProjectMeta | undefined, backupAt: number | null, now = Date.now(), hasContent: boolean | (() => boolean) = true): boolean {
+  if (!meta || meta.isDemo) return false;
+  const byTime = backupAt == null ? now - Date.parse(meta.createdAt) > DAY : Date.parse(meta.updatedAt) > backupAt && now - backupAt > 7 * DAY;
+  // A tartalom-ellenőrzés a drága rész (a projekt adatait olvassa): csak akkor fut, ha az idő alapján figyelmeztetnénk.
+  return byTime && (typeof hasContent === 'function' ? hasContent() : hasContent);
 }
 
 export class BackupError extends Error {}
@@ -183,21 +171,13 @@ export function parseBackup(text: string): ProjectBackup {
 export function importProject(backup: ProjectBackup, now = Date.now()): string {
   const taken = new Set(listProjects().map((p) => p.id));
   const original = backup.workspace.projectId;
-  const id = original && !taken.has(original) ? original : `p-${now.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const id = original && !taken.has(original) ? original : newProjectId(now);
   const suffix = id === original ? '' : ' (visszatöltve)';
   for (const [name, value] of Object.entries(backup.modules ?? {}) as [ModuleKey, unknown][]) {
-    if (!(name in MODULE_KEYS)) continue;
-    try {
-      localStorage.setItem(MODULE_KEYS[name](id), JSON.stringify(value));
-    } catch {
-      /* betelt tárhely */
-    }
+    if (name in MODULE_KEYS) writeJson(MODULE_KEYS[name](id), value);
   }
   saveWorkspace({ ...backup.workspace, projectId: id, companyName: `${backup.workspace.companyName}${suffix}` });
-  markSaved();
   markBackedUp(id, now);
   setActiveProject(id);
   return id;
 }
-
-export { projectStorageKey };
