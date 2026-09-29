@@ -7,6 +7,8 @@ import ProjectWorkspace from '@/components/project/ProjectWorkspace';
 import type { SaveFile } from '@/components/report/ExportPdfButton';
 import { AiBackendProvider } from '@/components/AiBackendContext';
 import Guide from '@/components/guide/Guide';
+import ProjectBar from '@/components/project/ProjectBar';
+import ProjectScope from '@/components/project/ProjectScope';
 import { useModules } from '@/components/useModules';
 import { INTAKE_MODULES, PROJECT_MODULES, type ModuleId } from '@/lib/modules';
 import { sampleBackend } from './sampleBackend';
@@ -68,7 +70,7 @@ function App() {
       <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs text-amber-900">
         <b>Prototípus, csak kitalált tesztanyaggal.</b> Az AI-elemzés élő (interjú-jegyzet, saját Word/PDF/szöveg dokumentum): a claude.ai
         AI-ja fut a te fiókodon, első használatkor engedélyt kér. Hangfájl itt nem dolgozható fel, azt a saját gépes változat tudja.
-        A módosítások csak ebben a böngészőben maradnak meg.
+        A módosítások csak ebben a böngészőben maradnak meg; a projektet a jobb felső sarokban fájlba mentheted.
       </div>
       <nav className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-6 px-4 sm:px-6 lg:px-8">
@@ -94,13 +96,18 @@ function App() {
               {label}
             </button>
           ))}
+          <div className="ml-auto py-2">
+            <ProjectBar saveFile={savePdf} />
+          </div>
         </div>
       </nav>
       <main>
+        <ProjectScope>
         {tab === 'matrix' && <RedFlagMatrix savePdf={savePdf} fontBase={fontBase} showPrint={false} />}
         {tab === 'adatok' && <IntakeWorkspace onOpenMatrix={() => go('matrix')} />}
         {tab === 'interjuk' && <InterviewWorkspace showPrint={false} />}
         {tab === 'projekt' && <ProjectWorkspace />}
+        </ProjectScope>
       </main>
       <Guide page={tab} go={go} />
     </>

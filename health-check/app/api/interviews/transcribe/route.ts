@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { MAX_AUDIO_BYTES } from '@/lib/interview/schemas';
 import { transcriptionProvider } from '@/lib/interview/transcribe.server';
-import { requireStaff } from '@/lib/auth/guard.server';
+import { requireAi } from '@/lib/auth/guard.server';
 import { errorResponse } from '../../_errors';
 
 export const maxDuration = 300;
@@ -11,7 +11,7 @@ export const maxDuration = 300;
  * és a hangot nem tároljuk: csak a leirat megy vissza a kliensnek.
  */
 export async function POST(req: Request) {
-  const access = await requireStaff();
+  const access = await requireAi(req, 'transcribe');
   if (!access.ok) return access.response;
   const provider = transcriptionProvider();
   if (!provider) {

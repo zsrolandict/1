@@ -1,4 +1,5 @@
-import { strFromU8, unzipSync } from 'fflate';
+import { strFromU8 } from 'fflate';
+import { safeUnzip, ZipTooLargeError } from '../safeUnzip';
 
 /**
  * Táblázatok beolvasása a böngészőben: CSV (magyar Excel-exporttal is) és XLSX.
@@ -77,8 +78,9 @@ function colIndex(ref: string): number {
 export function parseXlsx(bytes: Uint8Array): Grid {
   let files: Record<string, Uint8Array>;
   try {
-    files = unzipSync(bytes, { filter: (f) => f.name.startsWith('xl/') });
-  } catch {
+    files = safeUnzip(bytes, (name) => name === 'xl/sharedStrings.xml' || /^xl\/worksheets\/sheet\d+\.xml$/.test(name));
+  } catch (e) {
+    if (e instanceof ZipTooLargeError) throw e;
     throw new Error('A fájl nem érvényes XLSX.');
   }
   const shared = files['xl/sharedStrings.xml']

@@ -24,7 +24,7 @@ import {
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 import { buildInterviewGuide, estimateMinutes } from '@/lib/interview/guide';
 import { ROLE_LABEL } from '@/lib/interview/questionBank';
-import { getScenario, SCENARIOS } from '@/lib/scenarios';
+import { getScenario } from '@/lib/scenarios';
 import { buildInterviewPlan } from '@/lib/interview/plan';
 import { emptyRecord, isAnalysisStale, loadRecords, saveRecords, type InterviewRecord, type InterviewRecords } from '@/lib/interview/records';
 import InterviewPlanPanel from './InterviewPlanPanel';
@@ -42,19 +42,19 @@ import { PILLAR_LABEL } from '@/lib/risk/catalog';
 import type { AiStatus } from '@/lib/ai/backend';
 import { useAiBackend } from '@/components/AiBackendContext';
 import { PILLARS } from '@/lib/risk/engine';
-import { applySuggestion, DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario, type Workspace } from '@/lib/risk/store';
+import { applySuggestion, DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, type Workspace } from '@/lib/risk/store';
 import type { Pillar } from '@/lib/risk/types';
 import { intakeFacts, loadIntake, missingRequests } from '@/lib/intake/state';
 
 /** A mintaeset tényei + az adatgyűjtésből (kérdőív, táblák, dokumentumok) jövő tények. */
-function factsFor(scenarioId: string, kind: EngagementKind): KnownFact[] {
-  return [...getScenario(scenarioId).facts, ...intakeFacts(loadIntake(scenarioId), kind)];
+function factsFor(ws: Pick<Workspace, 'projectId' | 'scenarioId'>, kind: EngagementKind): KnownFact[] {
+  return [...getScenario(ws.scenarioId).facts, ...intakeFacts(loadIntake(ws.projectId), kind)];
 }
 
 /** Hiányzó iratok: a mintaeset listája + az Adatgyűjtésben „Hiányzik”-ra állítottak. */
-function missingFor(scenarioId: string, kind: EngagementKind): { title: string; pillar: Pillar }[] {
+function missingFor(ws: Pick<Workspace, 'projectId' | 'scenarioId'>, kind: EngagementKind): { title: string; pillar: Pillar }[] {
   const seen = new Set<string>();
-  return [...getScenario(scenarioId).missingDocuments, ...missingRequests(loadIntake(scenarioId), kind)].filter((d) =>
+  return [...getScenario(ws.scenarioId).missingDocuments, ...missingRequests(loadIntake(ws.projectId), kind)].filter((d) =>
     seen.has(d.title) ? false : (seen.add(d.title), true),
   );
 }
@@ -89,9 +89,10 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
 
   const [facts, setFacts] = useState<KnownFact[]>(getScenario(DEFAULT_WORKSPACE.scenarioId).facts);
   const scenario = getScenario(ws.scenarioId);
+  const sample = scenario.interview ?? null;
   const missingDocuments = useMemo(
-    () => (hydrated ? missingFor(ws.scenarioId, ws.kind) : scenario.missingDocuments),
-    [hydrated, ws.scenarioId, ws.kind, scenario],
+    () => (hydrated ? missingFor(ws, ws.kind) : scenario.missingDocuments),
+    [hydrated, ws, scenario],
   );
   const [aiQuestions, setAiQuestions] = useState<InterviewQuestion[]>([]);
   const [consent, setConsent] = useState(false);
@@ -108,7 +109,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
     setRecords((prev) => {
       const cur = prev[forRole] ?? emptyRecord(forRole);
       const next = { ...prev, [forRole]: { ...cur, ...patch } };
-      saveRecords(ws.scenarioId, next);
+      saveRecords(ws.projectId, next);
       return next;
     });
   const [busy, setBusy] = useState<null | 'ai-questions' | 'transcribe' | 'analyze'>(null);
@@ -117,8 +118,8 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   useEffect(() => {
     const loaded = loadWorkspace();
     setWs(loaded);
-    setFacts(factsFor(loaded.scenarioId, loaded.kind));
-    setRecords(loadRecords(loaded.scenarioId));
+    setFacts(factsFor(loaded, loaded.kind));
+    setRecords(loadRecords(loaded.projectId));
     setHydrated(true);
     backend.status().then(setStatus);
   }, []);
@@ -193,11 +194,12 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
 
   /** A mintaeset interjúja mindig a hozzá tartozó interjúalanyhoz kötődik. */
   const loadSample = () => {
-    const sampleRole = scenario.interview.role;
+    if (!sample) return;
+    const sampleRole = sample.role;
     updateRec(
       {
-        notes: scenario.interview.notes,
-        transcript: notesToTranscript(scenario.interview.notes),
+        notes: sample.notes,
+        transcript: notesToTranscript(sample.notes),
         speakerNames: {},
         analysis: null,
         heldAt: today(),
@@ -216,8 +218,8 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
     });
 
   const showSampleAnalysis = () => {
-    if (!namedTranscript) return;
-    updateRec({ analysis: verifyAnalysis(scenario.interview.analysis, namedTranscript, facts), analysisIsSample: true, analysisKind: null, accepted: [] });
+    if (!namedTranscript || !sample) return;
+    updateRec({ analysis: verifyAnalysis(sample.analysis, namedTranscript, facts), analysisIsSample: true, analysisKind: null, accepted: [] });
     setTab('analysis');
   };
 
@@ -228,17 +230,8 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
     updateRec({ accepted: [...rec.accepted, key] });
   };
 
-  const isSampleTranscript = notes === scenario.interview.notes && transcript?.origin === 'NOTES' && role === scenario.interview.role;
+  const isSampleTranscript = Boolean(sample) && notes === sample?.notes && transcript?.origin === 'NOTES' && role === sample?.role;
 
-  const switchScenario = (id: string) => {
-    const sc = getScenario(id);
-    updateWs(workspaceFromScenario(sc));
-    setFacts(factsFor(sc.id, sc.kind));
-    setAiQuestions([]);
-    setRecords(loadRecords(sc.id));
-    setRole(sc.interview.role);
-    setTab('plan');
-  };
   const speakerLabels = transcript ? [...new Set(transcript.segments.map((s) => s.speaker))] : [];
 
   const modules = useModules();
@@ -253,18 +246,9 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
             {ENGAGEMENT_KINDS[ws.kind].label} · Interjúk
           </p>
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">Interjú-előkészítés és elemzés</h1>
-          <p className="mt-1 text-sm text-slate-500">{ws.companyName} · {scenario.situation}</p>
+          <p className="mt-1 text-sm text-slate-500">{ws.companyName || 'Névtelen projekt'}{scenario.situation ? ` · ${scenario.situation}` : ''}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <select
-            value={ws.scenarioId}
-            onChange={(e) => switchScenario(e.target.value)}
-            aria-label="Mintaeset"
-            title="Mintaeset betöltése (a jelenlegi módosítások elvesznek)"
-            className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm text-indigo-900"
-          >
-            {SCENARIOS.map((sc) => <option key={sc.id} value={sc.id}>Minta: {sc.label}</option>)}
-          </select>
           <select
             value={ws.kind}
             onChange={(e) => updateWs({ ...ws, kind: e.target.value as EngagementKind })}
@@ -369,7 +353,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
           plan={plan}
           records={records}
           kind={ws.kind}
-          sampleRole={scenario.interview.role}
+          sampleRole={sample?.role ?? null}
           onOpen={openFromPlan}
         />
       )}
@@ -447,9 +431,11 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
                 <button onClick={useNotes} className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
                   Jegyzet feldolgozása
                 </button>
-                <button onClick={loadSample} className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
-                  Minta interjú betöltése
-                </button>
+                {sample && (
+                  <button onClick={loadSample} className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+                    Minta interjú betöltése
+                  </button>
+                )}
               </div>
             </Card>
           </div>

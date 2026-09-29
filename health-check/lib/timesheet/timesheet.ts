@@ -1,6 +1,7 @@
 import { ENGAGEMENT_KINDS, hourSplit, PM_HOURS, type EngagementKind } from '@/lib/engagement/kinds';
 import { AUDIT_FEE_HUF } from '@/lib/risk/engine';
 import type { Pillar } from '@/lib/risk/types';
+import { markSaved } from '@/lib/localSave';
 
 /**
  * Óraszám-követés: a ráfordított idő pillérenként a típus keretéhez mérve,
@@ -142,6 +143,7 @@ export function loadTimesheet(scenarioId: string): TimesheetState {
 export function saveTimesheet(scenarioId: string, s: TimesheetState): void {
   try {
     localStorage.setItem(key(scenarioId), JSON.stringify(s));
+    markSaved();
   } catch {
     /* privát mód */
   }

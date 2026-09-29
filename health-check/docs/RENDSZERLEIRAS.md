@@ -120,6 +120,7 @@ A jogosultságokat az adatbázis érvényesíti sorszintű szabályokkal, ezt te
 | **Időkeret-követés** | Órarögzítés pillérenként, 80%/100% riasztás, költség és fedezet | ✅ · óraköltségek jóváhagyása 🟡 |
 | **Tudástár** | Anonim tapasztalatok a lezárt projektekből, „itt nincs jelölve” jelzés, katalógus-kalibrálás | ✅ |
 | **Kalauz és modulkapcsolók** | Következő lépés, haladás, tippek; modulok ki-be kapcsolása | ✅ |
+| **Projektkezelés** | Új projekt, bemutató minták külön, projektenkénti tárolás, mentés fájlba és visszatöltés, „Helyben mentve” jelzés | ✅ · szerveres mentés 🟡 |
 | **Bejelentkezés** | Céges Microsoft-fiók vagy meghívásos e-mail link | ✅ kód · élesítéshez Supabase-projekt kell |
 | **Adatmentés szerverre** | Projektek, kockázatok mentése adatbázisba | 🟡 (a prototípus a böngészőben tárol) |
 | **Excel-export** | Összefoglaló, kockázatok, akcióterv, ajánlat, pillérek (+ vevői kérdések) | ✅ |
@@ -218,13 +219,13 @@ A prototípusban négy mintaeset választható („Minta:” menü a mátrix és
 - **Adatbázis és bejelentkezés:** Supabase (PostgreSQL, EU régió), sorszintű jogosultságkezelés, audit napló; belépés céges Microsoft-fiókkal vagy meghívásos e-mail linkkel.
 - **AI (szolgáltató-független):** Claude API vagy Google Gemini az interjú- és dokumentumelemzéshez; Azure AI Speech vagy Gemini a leirathoz (Gemini videót is fogad). A választás egy beállítás (`AI_PROVIDER`, `TRANSCRIBE_PROVIDER`); az idézet-ellenőrzés és a szabályok szolgáltatótól függetlenek. Mind csak a szerveren, bejelentkezés után érhető el.
 - **Riport:** böngészőben generált PDF (react-pdf, Inter betűkészlet).
-- **Tesztek:** 178 automatikus teszt (számítás, kérdőív-szabályok, táblabeolvasás, maszkolás, idézet-ellenőrzés, PDF-generálás, jogosultság, mintaesetek) és adatbázis-tesztek.
+- **Tesztek:** 192 automatikus teszt (számítás, kérdőív-szabályok, táblabeolvasás, maszkolás, idézet-ellenőrzés, PDF-generálás, jogosultság, mintaesetek) és adatbázis-tesztek.
 
 ---
 
 ## 12. Ami kipróbálható az előnézetben
 
-- Mintaeset kiválasztása (építőipar, könyvelő, IT, gyártó).
+- Projektválasztó (jobb felső sarok): új, üres projekt létrehozása, vagy bemutató mintaeset (építőipar, könyvelő, IT, gyártó); a projekt mentése fájlba és visszatöltése.
 - **Adatgyűjtés:**
   - „Minta-válaszok betöltése” a kérdőívben, és a javaslatok elfogadása;
   - „Mintatábla” a négy táblatípushoz, vagy **saját CSV/XLSX** (a böngészőben marad);

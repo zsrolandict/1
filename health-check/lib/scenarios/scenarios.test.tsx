@@ -13,11 +13,11 @@ import { SCENARIOS } from './index';
 registerReportFonts(path.resolve(import.meta.dirname, '../../public/fonts'));
 
 describe.each(SCENARIOS.filter((s) => s.id !== 'gyarto'))('mintaeset: $label', (sc) => {
-  const transcript = notesToTranscript(sc.interview.notes);
+  const transcript = notesToTranscript(sc.interview!.notes);
 
   it('az interjú időbélyeges, minden elemzési idézet szó szerint megvan', () => {
     expect(transcript.timed).toBe(true);
-    const res = verifyAnalysis(sc.interview.analysis, transcript, sc.facts);
+    const res = verifyAnalysis(sc.interview!.analysis, transcript, sc.facts);
     expect(res.discardedUnverified).toBe(0);
     expect(res.contradictions.length).toBeGreaterThanOrEqual(2);
     expect(res.contradictions.every((c) => c.startMs != null)).toBe(true);
@@ -27,7 +27,7 @@ describe.each(SCENARIOS.filter((s) => s.id !== 'gyarto'))('mintaeset: $label', (
     const codes = new Set(sc.items.map((r) => r.code));
     expect(new Set(sc.items.map((r) => r.id)).size).toBe(sc.items.length);
     let items = sc.items;
-    for (const f of sc.interview.analysis.suggestedRedFlags) {
+    for (const f of sc.interview!.analysis.suggestedRedFlags) {
       expect(f.templateCode && codes.has(f.templateCode)).toBe(true);
       items = applySuggestion(items, f, f.quote, sc.company);
     }
@@ -42,7 +42,7 @@ describe.each(SCENARIOS.filter((s) => s.id !== 'gyarto'))('mintaeset: $label', (
 
   it('a kérdéslista a dokumentum-tényekre és a hiányzó dokumentumokra is kérdez', () => {
     const qs = buildInterviewGuide({
-      kind: sc.kind, role: sc.interview.role, risks: sc.items, missingDocuments: sc.missingDocuments, facts: sc.facts,
+      kind: sc.kind, role: sc.interview!.role, risks: sc.items, missingDocuments: sc.missingDocuments, facts: sc.facts,
     });
     expect(qs.some((q) => q.source.type === 'DOCUMENT_FINDING')).toBe(true);
     expect(qs.some((q) => q.source.type === 'MISSING_DOCUMENT')).toBe(true);

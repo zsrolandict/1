@@ -47,9 +47,9 @@ import { detectColumns, missingColumns, TABLE_KINDS, TABLE_SPECS, type ColumnKey
 import { ORIGIN_LABEL, type CompanySuggestion, type IntakeResult, type IntakeSuggestion } from '@/lib/intake/types';
 import { PILLAR_LABEL } from '@/lib/risk/catalog';
 import { formatHufShort, PILLARS, ragFromScore } from '@/lib/risk/engine';
-import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario, type Workspace } from '@/lib/risk/store';
+import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, type Workspace } from '@/lib/risk/store';
 import type { Rag } from '@/lib/risk/types';
-import { getScenario, SCENARIOS } from '@/lib/scenarios';
+import { getScenario } from '@/lib/scenarios';
 import { useAiBackend } from '@/components/AiBackendContext';
 
 type Tab = 'case' | 'checklist' | 'tables' | 'documents' | 'overview';
@@ -100,7 +100,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
   useEffect(() => {
     const loaded = loadWorkspace();
     setWs(loaded);
-    setIntake(loadIntake(loaded.scenarioId));
+    setIntake(loadIntake(loaded.projectId));
     setHydrated(true);
     backend.status().then((s) => setAiReady(s.documents));
   }, []);
@@ -113,13 +113,13 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
   const updateIntake = (patch: Partial<IntakeState>) =>
     setIntake((prev) => {
       const next = { ...prev, ...patch };
-      saveIntake(ws.scenarioId, next);
+      saveIntake(ws.projectId, next);
       return next;
     });
 
   const baseResults = useMemo(() => intakeResults(intake, ws.kind), [intake, ws.kind]);
   // Összkép: keresztellenőrzés + AI-szintézis (az interjúk is forrásai)
-  const records = useMemo(() => (hydrated ? loadRecords(ws.scenarioId) : {}), [hydrated, ws.scenarioId, tab]);
+  const records = useMemo(() => (hydrated ? loadRecords(ws.projectId) : {}), [hydrated, ws.projectId, tab]);
   const allFacts = useMemo(
     () => [...scenario.facts, ...baseResults.documents.facts, ...baseResults.tables.facts, ...baseResults.checklist.facts],
     [scenario, baseResults],
@@ -160,14 +160,6 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
   const acceptCompany = (s: CompanySuggestion) => {
     updateWs({ ...ws, company: applyCompanySuggestion(ws.company, s) });
     updateIntake({ accepted: [...intake.accepted, s.key] });
-  };
-
-  const switchScenario = (id: string) => {
-    const sc = getScenario(id);
-    updateWs(workspaceFromScenario(sc));
-    setIntake(loadIntake(sc.id));
-    setRaw({});
-    setError(null);
   };
 
   // ── Táblák ──────────────────────────────────────────────────────
@@ -255,18 +247,9 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">{ENGAGEMENT_KINDS[ws.kind].label} · Adatgyűjtés</p>
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">Adatgyűjtés és előjelölés</h1>
-          <p className="mt-1 text-sm text-slate-500">{ws.companyName} · {scenario.situation}</p>
+          <p className="mt-1 text-sm text-slate-500">{ws.companyName || 'Névtelen projekt'}{scenario.situation ? ` · ${scenario.situation}` : ''}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={ws.scenarioId}
-            onChange={(e) => switchScenario(e.target.value)}
-            aria-label="Mintaeset"
-            title="Mintaeset betöltése (a jelenlegi módosítások elvesznek)"
-            className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm text-indigo-900"
-          >
-            {SCENARIOS.map((sc) => <option key={sc.id} value={sc.id}>Minta: {sc.label}</option>)}
-          </select>
           <select
             value={ws.kind}
             onChange={(e) => updateWs({ ...ws, kind: e.target.value as EngagementKind })}

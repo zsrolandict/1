@@ -29,7 +29,8 @@ import { assess, scoreRisk, AUDIT_FEE_HUF, DIVISIONS, formatHuf, formatHufShort,
 import { catalogDefault, DEFAULT_CATALOG, DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
 import type { Division, Pillar, Rag, RiskItem, RiskSource, Scale5, ScoredRisk } from '@/lib/risk/types';
 import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario } from '@/lib/risk/store';
-import { getScenario, SCENARIOS } from '@/lib/scenarios';
+import ConfirmDialog from '../ConfirmDialog';
+import { getScenario, isDemoScenario } from '@/lib/scenarios';
 import { loadIntake } from '@/lib/intake/state';
 import { SECTOR_LABEL } from '@/lib/intake/requests';
 import { missingSectorRisks } from '@/lib/risk/sectorRisks';
@@ -99,6 +100,8 @@ export default function RedFlagMatrix({
 }: Props) {
   const [items, setItems] = useState<RiskItem[]>(initialItems);
   const [scenarioId, setScenarioId] = useState(DEFAULT_WORKSPACE.scenarioId);
+  const [projectId, setProjectId] = useState(DEFAULT_WORKSPACE.projectId);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [companyName, setCompanyName] = useState(initialName);
   const [company, setCompany] = useState<CompanyProfile>(DEFAULT_WORKSPACE.company);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -122,17 +125,19 @@ export default function RedFlagMatrix({
     setCompanyName(ws.companyName);
     setCompany(ws.company);
     setScenarioId(ws.scenarioId);
+    setProjectId(ws.projectId);
     setHydrated(true);
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
-    saveWorkspace({ scenarioId, companyName, company, kind, materialityHuf, items });
+    saveWorkspace({ projectId, scenarioId, companyName, company, kind, materialityHuf, items });
     onChangeRef.current?.(items);
-  }, [items, materialityHuf, kind, companyName, company, scenarioId, hydrated]);
+  }, [items, materialityHuf, kind, companyName, company, scenarioId, projectId, hydrated]);
 
+  /** A mátrix visszaállítása a kiinduló mintára (saját projektnél: üres katalógus). */
   const applyWorkspace = (id: string) => {
-    const ws = workspaceFromScenario(getScenario(id));
+    const ws = workspaceFromScenario(getScenario(id), projectId);
     setScenarioId(ws.scenarioId);
     setItems(ws.items);
     setCompanyName(ws.companyName);
@@ -157,8 +162,8 @@ export default function RedFlagMatrix({
   const kindExtras = KIND_RISKS[kind].filter((k) => !items.some((r) => r.code === k.code));
   // Ágazat: a tényállásban választott ágazat(ok) + a mintacég ágazata.
   const sectors = useMemo(
-    () => (hydrated ? [...new Set([...loadIntake(scenarioId).profile.sectors, ...(getScenario(scenarioId).sectors ?? [])])] : []),
-    [hydrated, scenarioId],
+    () => (hydrated ? [...new Set([...loadIntake(projectId).profile.sectors, ...(getScenario(scenarioId).sectors ?? [])])] : []),
+    [hydrated, projectId, scenarioId],
   );
   const sectorExtras = missingSectorRisks(sectors, items);
   const addKindRisk = (code: string) => {
@@ -201,8 +206,8 @@ export default function RedFlagMatrix({
     ]);
   };
 
-  /** A kiválasztott mintaeset kiinduló állapota. */
-  const reset = () => applyWorkspace(scenarioId);
+  /** A kiinduló állapot – csak megerősítés után (a mátrix módosításai elvesznek). */
+  const reset = () => setConfirmReset(true);
 
   const saveFile = savePdf ?? browserDownload;
   const fileBase = `${slug(companyName)}-${new Date().toISOString().slice(0, 10)}`;
@@ -255,19 +260,10 @@ export default function RedFlagMatrix({
             <span className="hidden print:inline">{companyName}</span>
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
-            {getScenario(scenarioId).sector} · {getScenario(scenarioId).situation}
+            {isDemoScenario(scenarioId) ? `${getScenario(scenarioId).sector} · ${getScenario(scenarioId).situation}` : 'Saját projekt'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <select
-            value={scenarioId}
-            onChange={(e) => applyWorkspace(e.target.value)}
-            aria-label="Mintaeset"
-            title="Mintaeset betöltése (a jelenlegi módosítások elvesznek)"
-            className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm text-indigo-900"
-          >
-            {SCENARIOS.map((sc) => <option key={sc.id} value={sc.id}>Minta: {sc.label}</option>)}
-          </select>
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value as EngagementKind)}
@@ -314,6 +310,22 @@ export default function RedFlagMatrix({
           {fileNote && <p className="w-full text-right text-xs text-red-700">{fileNote}</p>}
         </div>
       </header>
+
+      <ConfirmDialog
+        open={confirmReset}
+        title="Visszaállítod a mátrixot?"
+        confirmLabel="Igen, visszaállítom"
+        danger
+        onCancel={() => setConfirmReset(false)}
+        onConfirm={() => {
+          setConfirmReset(false);
+          applyWorkspace(scenarioId);
+        }}
+      >
+        Biztosan? A mátrixban végzett módosítások (pipálások, pontszámok, egyedi tételek, cégadatok) elvesznek.
+        {isDemoScenario(scenarioId) ? ' A bemutató minta kiinduló állapota tér vissza.' : ' A projekt üres katalógussal indul újra.'} Az
+        adatgyűjtés, az interjúk és az időkeret megmarad.
+      </ConfirmDialog>
 
       {/* ── Cégadatok a forintosításhoz ─────────────────────────── */}
       <section className="flex flex-wrap items-end gap-x-5 gap-y-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm print:hidden">
@@ -601,7 +613,7 @@ export default function RedFlagMatrix({
       </section>
 
       {/* ── Mi lenne, ha…? ──────────────────────────────────────── */}
-      {modules.isOn('WHATIF') && <WhatIfPanel key={scenarioId} items={items} opts={engineOpts} result={result} />}
+      {modules.isOn('WHATIF') && <WhatIfPanel key={projectId} items={items} opts={engineOpts} result={result} />}
 
       {/* ── Várható vevői kérdések ───────────────────────────────── */}
       {modules.isOn('BUYER_QUESTIONS') && <BuyerQuestionsPanel companyName={companyName} result={result} highlighted={kind === 'VENDOR_DD' || kind === 'BUY_SIDE_DD'} />}
@@ -609,7 +621,7 @@ export default function RedFlagMatrix({
       {/* ── Utókövetés ─────────────────────────────────────────── */}
       {modules.isOn('FOLLOWUP') && (
         <FollowUpPanel
-          scenarioId={scenarioId}
+          scenarioId={projectId}
           kind={kind}
           items={items}
           opts={engineOpts}

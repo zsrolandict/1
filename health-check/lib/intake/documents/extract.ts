@@ -1,4 +1,5 @@
-import { strFromU8, unzipSync } from 'fflate';
+import { strFromU8 } from 'fflate';
+import { safeUnzip, ZipTooLargeError } from '../safeUnzip';
 import { decodeText } from '../tables/parse';
 import type { DocumentPage, ExtractedDocument } from './types';
 
@@ -34,8 +35,9 @@ const unescape = (s: string) =>
 export function docxToText(bytes: Uint8Array): string {
   let files: Record<string, Uint8Array>;
   try {
-    files = unzipSync(bytes, { filter: (f) => f.name === 'word/document.xml' });
-  } catch {
+    files = safeUnzip(bytes, (name) => name === 'word/document.xml');
+  } catch (e) {
+    if (e instanceof ZipTooLargeError) throw e;
     throw new Error('A fájl nem érvényes Word (.docx) dokumentum.');
   }
   const xml = files['word/document.xml'];

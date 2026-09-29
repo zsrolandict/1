@@ -1,0 +1,119 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { lastSaved } from './localSave';
+import { backupDue, BackupError, deleteProject, exportProject, importProject, MODULE_KEYS, parseBackup, resetDemo } from './projects';
+import { saveIntake, loadIntake, EMPTY_INTAKE } from './intake/state';
+import { saveTimesheet, loadTimesheet, EMPTY_TIMESHEET } from './timesheet/timesheet';
+import { activeProjectId, createProject, listProjects, loadProject, loadWorkspace, openDemo, saveWorkspace, STORAGE_KEY } from './risk/store';
+
+// Böngésző nélküli tesztkörnyezet: egyszerű memóriabeli localStorage.
+class MemoryStorage {
+  private m = new Map<string, string>();
+  getItem(k: string) {
+    return this.m.has(k) ? this.m.get(k)! : null;
+  }
+  setItem(k: string, v: string) {
+    this.m.set(k, String(v));
+  }
+  removeItem(k: string) {
+    this.m.delete(k);
+  }
+  clear() {
+    this.m.clear();
+  }
+  keys() {
+    return [...this.m.keys()];
+  }
+}
+const store = new MemoryStorage();
+(globalThis as { localStorage?: unknown }).localStorage = store;
+
+beforeEach(() => store.clear());
+
+describe('projektek', () => {
+  it('új projekt: üres katalógus, saját azonosító, ez lesz az aktív', () => {
+    const ws = createProject({ companyName: '  Példa Kft. ', kind: 'SUCCESSION' });
+    expect(ws.projectId).toMatch(/^p-/);
+    expect(ws.scenarioId).toBe('ures');
+    expect(ws.companyName).toBe('Példa Kft.');
+    expect(ws.items.some((r) => r.identified)).toBe(false);
+    expect(activeProjectId()).toBe(ws.projectId);
+    expect(loadWorkspace().companyName).toBe('Példa Kft.');
+    const meta = listProjects().find((p) => p.id === ws.projectId)!;
+    expect(meta.isDemo).toBe(false);
+    expect(meta.kind).toBe('SUCCESSION');
+    expect(lastSaved()).not.toBeNull();
+  });
+
+  it('projektváltás nem írja felül a másik projekt adatait', () => {
+    const a = createProject({ companyName: 'A Kft.', kind: 'HEALTH_CHECK' });
+    saveIntake(a.projectId, { ...EMPTY_INTAKE, answers: { Q01: true } });
+    saveWorkspace({ ...a, items: a.items.map((r, i) => (i === 0 ? { ...r, identified: true } : r)) });
+    const b = createProject({ companyName: 'B Kft.', kind: 'VENDOR_DD' });
+    expect(loadIntake(b.projectId).answers).toEqual({});
+    openDemo('gyarto');
+    expect(loadWorkspace().scenarioId).toBe('gyarto');
+    expect(loadProject(a.projectId).items[0].identified).toBe(true);
+    expect(loadIntake(a.projectId).answers).toEqual({ Q01: true });
+  });
+
+  it('a korábbi, egyprojektes mentés bemutató projektként megmarad', () => {
+    store.setItem(STORAGE_KEY, JSON.stringify({ scenarioId: 'konyvelo', companyName: 'Átírt név', kind: 'SUCCESSION', items: [] }));
+    const list = listProjects();
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ id: 'konyvelo', isDemo: true, companyName: 'Átírt név' });
+    expect(loadWorkspace().companyName).toBe('Átírt név');
+  });
+
+  it('törlés minden moduladatot visz, az aktív projekt átkerül', () => {
+    const a = createProject({ companyName: 'A Kft.', kind: 'HEALTH_CHECK' });
+    const b = createProject({ companyName: 'B Kft.', kind: 'HEALTH_CHECK' });
+    saveTimesheet(b.projectId, { ...EMPTY_TIMESHEET, feeHuf: 1 });
+    deleteProject(b.projectId);
+    expect(listProjects().map((p) => p.id)).toEqual([a.projectId]);
+    expect(activeProjectId()).toBe(a.projectId);
+    expect(store.keys().some((k) => k.includes(b.projectId))).toBe(false);
+  });
+
+  it('bemutató visszaállítása a minta kiinduló állapotára', () => {
+    openDemo('gyarto');
+    saveWorkspace({ ...loadWorkspace(), companyName: 'Módosított' });
+    saveIntake('gyarto', { ...EMPTY_INTAKE, answers: { Q01: true } });
+    resetDemo('gyarto');
+    expect(loadWorkspace().companyName).toBe('Minta Gyártó Kft.');
+    expect(loadIntake('gyarto').answers).toEqual({});
+  });
+
+  it('mentés fájlba és visszatöltés új projektként, a meglévő felülírása nélkül', () => {
+    const a = createProject({ companyName: 'A Kft.', kind: 'HEALTH_CHECK' });
+    saveIntake(a.projectId, { ...EMPTY_INTAKE, answers: { Q02: false } });
+    saveTimesheet(a.projectId, { ...EMPTY_TIMESHEET, feeHuf: 999 });
+    const backup = parseBackup(JSON.stringify(exportProject(a.projectId)));
+    expect(Object.keys(backup.modules).sort()).toEqual(['intake', 'timesheet']);
+
+    const id = importProject(backup);
+    expect(id).not.toBe(a.projectId);
+    expect(loadProject(id).companyName).toBe('A Kft. (visszatöltve)');
+    expect(loadIntake(id).answers).toEqual({ Q02: false });
+    expect(loadTimesheet(id).feeHuf).toBe(999);
+    expect(activeProjectId()).toBe(id);
+
+    // Törlés után ugyanazzal az azonosítóval jön vissza.
+    deleteProject(a.projectId);
+    expect(importProject(backup)).toBe(a.projectId);
+    expect(Object.keys(MODULE_KEYS)).toHaveLength(4);
+  });
+
+  it('hibás fájl visszautasítása', () => {
+    expect(() => parseBackup('nem json')).toThrow(BackupError);
+    expect(() => parseBackup('{"format":"mas"}')).toThrow('Ez nem');
+  });
+
+  it('figyelmeztetés, ha régóta nincs mentés fájlba', () => {
+    const meta = { id: 'p', companyName: 'x', kind: 'HEALTH_CHECK' as const, scenarioId: 'ures', isDemo: false, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-03-01T00:00:00Z' };
+    const now = Date.parse('2026-03-02T00:00:00Z');
+    expect(backupDue(meta, null, now)).toBe(true);
+    expect(backupDue(meta, Date.parse('2026-02-28T00:00:00Z'), now)).toBe(false); // 2 napos
+    expect(backupDue(meta, Date.parse('2026-02-01T00:00:00Z'), now)).toBe(true);
+    expect(backupDue({ ...meta, isDemo: true }, null, now)).toBe(false);
+  });
+});

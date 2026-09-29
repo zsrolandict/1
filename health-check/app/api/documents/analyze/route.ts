@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAiConfigured, parseStructured } from '@/lib/ai/client.server';
-import { requireStaff } from '@/lib/auth/guard.server';
+import { requireAi } from '@/lib/auth/guard.server';
 import { extractDocument } from '@/lib/intake/documents/extract.server';
 import { analyzeExtracted } from '@/lib/intake/documents/pipeline';
 import { errorResponse } from '../../_errors';
@@ -20,7 +20,7 @@ const Kind = z.enum(['HEALTH_CHECK', 'VENDOR_DD', 'BUY_SIDE_DD', 'FINANCING_READ
  * személyes azonosítókat, és csak az ellenőrzött eredmény megy vissza.
  */
 export async function POST(req: Request) {
-  const access = await requireStaff();
+  const access = await requireAi(req, 'ai');
   if (!access.ok) return access.response;
   if (!isAiConfigured()) {
     return NextResponse.json({ error: 'Az AI nincs beállítva (ANTHROPIC_API_KEY vagy GEMINI_API_KEY).' }, { status: 503 });

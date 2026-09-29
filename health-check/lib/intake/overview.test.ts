@@ -60,9 +60,9 @@ describe('keresztellenőrzés', () => {
   it('az interjúk AI-ellentmondásai is egy helyen, a tény szövegével', () => {
     const sc = getScenario('it-fejleszto');
     const rec = { role: 'OWNER_CEO' as const, alias: 'Ügyvezető', heldAt: null, notes: '', transcript: null, speakerNames: {}, analysisIsSample: true, accepted: [], asked: [],
-      analysis: { ...sc.interview.analysis, discardedUnverified: 0 } };
+      analysis: { ...sc.interview!.analysis, discardedUnverified: 0 } };
     const c = crossChecks(EMPTY_INTAKE, 'VENDOR_DD', { OWNER_CEO: rec }, sc.facts).conflicts.filter((x) => x.origin === 'AI_INTERVIEW');
-    expect(c.length).toBe(sc.interview.analysis.contradictions.length);
+    expect(c.length).toBe(sc.interview!.analysis.contradictions.length);
     expect(c[0].b.statement).not.toMatch(/^F\d$/);
   });
 });

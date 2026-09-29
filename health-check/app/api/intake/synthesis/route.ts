@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAiConfigured, parseStructured } from '@/lib/ai/client.server';
-import { requireStaff } from '@/lib/auth/guard.server';
+import { requireAi } from '@/lib/auth/guard.server';
 import { runSynthesis } from '@/lib/intake/synthesis';
 import { RiskItemSchema } from '@/lib/interview/schemas';
 import { errorResponse } from '../../_errors';
@@ -26,7 +26,7 @@ const RequestSchema = z.object({
 
 /** Összkép: a források együttes olvasása, idézettel igazolt új kockázatok. */
 export async function POST(req: Request) {
-  const access = await requireStaff();
+  const access = await requireAi(req, 'ai');
   if (!access.ok) return access.response;
   if (!isAiConfigured()) {
     return NextResponse.json({ error: 'Az AI nincs beállítva (ANTHROPIC_API_KEY vagy GEMINI_API_KEY).' }, { status: 503 });

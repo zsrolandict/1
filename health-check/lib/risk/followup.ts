@@ -1,6 +1,7 @@
 import { assess, type EngineOptions } from './engine';
 import { applyFixes } from './simulate';
 import type { Rag, RemediationStatus, RiskAssessment, RiskItem } from './types';
+import { markSaved } from '@/lib/localSave';
 
 /**
  * Utókövetés: a kiinduló állapot (pillanatkép) és a mostani összevetése.
@@ -121,6 +122,7 @@ export function loadSnapshots(scenarioId: string): Snapshot[] {
 export function saveSnapshots(scenarioId: string, list: Snapshot[]): void {
   try {
     localStorage.setItem(key(scenarioId), JSON.stringify(list));
+    markSaved();
   } catch {
     /* privát mód */
   }

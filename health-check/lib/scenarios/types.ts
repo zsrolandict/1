@@ -26,7 +26,8 @@ export interface Scenario {
   /** Dokumentumokból (AI-előszűrés / szakértő) ismert tények. */
   facts: KnownFact[];
   missingDocuments: { title: string; pillar: Pillar }[];
-  interview: {
+  /** Kitalált minta-interjú; üres (saját) projektnél nincs. */
+  interview?: {
     role: IntervieweeRole;
     notes: string;
     /** Előre elkészített elemzés – NEM élő AI-hívás; a felület „Minta” címkével mutatja. */

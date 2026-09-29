@@ -1,5 +1,6 @@
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { InterviewAnalysis, IntervieweeRole, Transcript } from './types';
+import { markSaved } from '@/lib/localSave';
 
 /**
  * Egy interjúalanyhoz tartozó interjú: az interjúterv egy sora ehhez kötődik.
@@ -61,6 +62,7 @@ export function loadRecords(scenarioId: string): InterviewRecords {
 export function saveRecords(scenarioId: string, records: InterviewRecords): void {
   try {
     localStorage.setItem(key(scenarioId), JSON.stringify(records));
+    markSaved();
   } catch {
     /* privát mód – a munkamenet végéig memóriában marad */
   }

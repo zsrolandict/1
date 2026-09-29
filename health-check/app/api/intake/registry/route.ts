@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAiConfigured, parseStructured } from '@/lib/ai/client.server';
-import { requireStaff } from '@/lib/auth/guard.server';
+import { requireAi } from '@/lib/auth/guard.server';
 import { runRegistryExtraction } from '@/lib/intake/registry';
 import { errorResponse } from '../../_errors';
 
@@ -9,7 +9,7 @@ export const maxDuration = 120;
 
 /** Cégkivonat szövege → ellenőrzött cégadatok (idézet-ellenőrzéssel). */
 export async function POST(req: Request) {
-  const access = await requireStaff();
+  const access = await requireAi(req, 'ai');
   if (!access.ok) return access.response;
   if (!isAiConfigured()) {
     return NextResponse.json({ error: 'Az AI nincs beállítva (ANTHROPIC_API_KEY vagy GEMINI_API_KEY).' }, { status: 503 });

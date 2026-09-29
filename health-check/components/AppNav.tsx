@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { INTAKE_MODULES, PROJECT_MODULES, type ModuleId } from '@/lib/modules';
 import { useModules } from './useModules';
+import ProjectBar from './project/ProjectBar';
 
 const LINKS: { href: string; label: string; modules: ModuleId[] | null }[] = [
   { href: '/adatok', label: 'Adatgyűjtés', modules: INTAKE_MODULES },
@@ -19,7 +20,7 @@ export default function AppNav() {
   const links = LINKS.filter((l) => !l.modules || l.modules.some(isOn));
   return (
     <nav className="border-b border-slate-200 bg-white print:hidden">
-      <div className="mx-auto flex max-w-[1400px] items-center gap-6 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-6 px-4 sm:px-6 lg:px-8">
         <span className="py-3 text-sm font-semibold tracking-tight text-slate-900">ICT Health Check</span>
         {links.map((l) => (
           <Link
@@ -32,7 +33,10 @@ export default function AppNav() {
             {l.label}
           </Link>
         ))}
-        <Link href="/login" className="ml-auto py-3 text-sm text-slate-500 hover:text-slate-800">
+        <div className="ml-auto py-2">
+          <ProjectBar />
+        </div>
+        <Link href="/login" className="py-3 text-sm text-slate-500 hover:text-slate-800">
           Belépés
         </Link>
       </div>

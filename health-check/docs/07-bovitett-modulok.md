@@ -16,6 +16,7 @@ Jelmagyarázat: **Kézi** = szabályalapú, AI nélkül. **AI** = a modell javas
 | Időkeret | Projekt oldal | Kézi | `lib/timesheet/timesheet.ts` |
 | Tudástár | Projekt oldal | Kézi | `lib/learning/benchmark.ts` |
 | Kalauz és modulkapcsolók | Jobb alsó sarok, minden oldalon | Kézi | `lib/guide.ts`, `lib/modules.ts`, `components/guide/` |
+| Projektkezelés és mentés | Felső sáv, jobbra | Kézi | `lib/risk/store.ts`, `lib/projects.ts`, `components/project/ProjectBar.tsx` |
 
 ## Tényállás és iratbekérés
 
@@ -85,3 +86,19 @@ Minden piros és sárga tételhez elkészíti a várható vevői kérdéseket, e
   - Semmit nem módosít, csak vezet.
 - **Modulkapcsolók:** a kikapcsolt modul kimarad a menüből, az oldalról és a kalauz lépései közül. Az adatai megmaradnak: visszakapcsolva újra látszanak. Ha egy oldal minden modulja ki van kapcsolva, az oldal is eltűnik a menüből.
 - **Tárolás:** a prototípus a böngészőben tárolja a kapcsolókat; élesben projektenként az `engagements.disabled_modules` oszlopban lesznek (0009).
+
+## Projektkezelés és mentés
+
+- **Új projekt:** a felső sáv projektválasztójában („Új projekt”): cégnév és átvilágítás-típus. Üres katalógussal indul: semmi nincs bejelölve, mintaadat (tények, minta-interjú, minta-gombok) nincs benne.
+- **Bemutató:** a négy kitalált cég külön csoportban. A rajtuk végzett módosítás megmarad; a visszaállítás (↺) csak megerősítés után történik.
+- **Projektenkénti tárolás:** minden modul (mátrix, adatgyűjtés, interjúk, pillanatképek, időkeret) a projekt azonosítója alatt ment, így a projektváltás semmit nem ír felül. A korábbi, egyprojektes mentés első induláskor automatikusan bemutató projektté alakul, adatvesztés nélkül.
+- **Megerősítés:** a mátrix „Alaphelyzet” gombja, a projekt törlése és a bemutató visszaállítása külön ablakban kérdez rá (nem a böngésző `confirm()`-ja, mert az beágyazott keretben tiltva lehet).
+- **Mentésjelző:** „Helyben mentve – 2 perce”. Kattintásra elmagyarázza, hogy az adatok csak ebben a böngészőben vannak, és innen menthető a projekt fájlba (JSON). Saját projektnél sárga jelzés, ha még nem volt fájlba mentés, vagy 7 napnál régebbi és azóta módosult. Visszatöltés: projektválasztó › „Projekt visszatöltése fájlból…” – mindig új projektként, meglévőt nem ír felül.
+- **Kalauz:** bemutató projektnél a „Tényállás rögzítése” lépésnél „Minta tényállás betöltése” gomb.
+- **Órarögzítés:** a rögzítő a bejelentkezett felhasználó (Supabase-profil neve és szerepköre). Bejelentkezés nélkül (fejlesztői gép, előnézet) a felhasználó egyszer megadja a nevét, ez a böngészőben megmarad.
+
+## Szerveroldali védelmek
+
+- **Adatkezelési kapcsoló:** éles buildben (`NODE_ENV=production`) az AI-végpontok zárva vannak, amíg az üzemeltető be nem állítja az `AI_DPA_CONFIRMED=1` értéket, vagyis azt, hogy a beállított AI-szolgáltatóval adatfeldolgozói szerződés van, fizetős, EU-s adatkezeléssel. Ingyenes Gemini-kulccsal ezt nem szabad beállítani. Fejlesztői gépen (`npm run dev`) nincs korlát.
+- **Hívásszám-korlát:** felhasználónként óránként 40 AI-hívás és 10 leiratkészítés (felülírható: `AI_RATE_LIMIT_PER_HOUR`, `TRANSCRIBE_RATE_LIMIT_PER_HOUR`). Túllépéskor 429-es válasz, `Retry-After` fejléccel. A számláló egy szerverpéldányon belül érvényes; több példánynál közös tár kell.
+- **Tömörítési bomba elleni védelem:** DOCX és XLSX kicsomagolása legfeljebb 80 MB-ig, és gyanúsan nagy tömörítési arány (200× felett, 1 MB feletti fájlnál) esetén elutasítás (`lib/intake/safeUnzip.ts`).

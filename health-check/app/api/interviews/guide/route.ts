@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { isAiConfigured, suggestExtraQuestions } from '@/lib/interview/ai.server';
 import { buildInterviewGuide } from '@/lib/interview/guide';
 import { GuideRequestSchema } from '@/lib/interview/schemas';
-import { requireStaff } from '@/lib/auth/guard.server';
+import { requireAi } from '@/lib/auth/guard.server';
 import { errorResponse } from '../../_errors';
 
 /**
@@ -10,7 +10,7 @@ import { errorResponse } from '../../_errors';
  * AI-bővítés csak kérésre és beállított kulccsal.
  */
 export async function POST(req: Request) {
-  const access = await requireStaff();
+  const access = await requireAi(req, 'ai');
   if (!access.ok) return access.response;
   const parsed = GuideRequestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'Hibás kérés.' }, { status: 400 });

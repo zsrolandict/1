@@ -8,7 +8,10 @@ import { loadRecords } from '@/lib/interview/records';
 import { loadBenchmark } from '@/lib/learning/benchmark';
 import { MODULES, type ModuleArea } from '@/lib/modules';
 import { loadSnapshots } from '@/lib/risk/followup';
-import { loadWorkspace } from '@/lib/risk/store';
+import { SAMPLE_PROFILES } from '@/lib/intake/samples/profiles';
+import { SAVED_EVENT } from '@/lib/localSave';
+import { applySampleProfile } from '@/lib/projects';
+import { loadWorkspace, PROJECT_EVENT } from '@/lib/risk/store';
 import { loadTimesheet } from '@/lib/timesheet/timesheet';
 import { useModules } from '../useModules';
 
@@ -17,7 +20,7 @@ const AREAS: ModuleArea[] = ['Adatgyűjtés', 'Interjúk', 'Red Flag mátrix', '
 
 function readSteps(disabled: Parameters<typeof guideSteps>[0]['disabled']): GuideStep[] {
   const ws = loadWorkspace();
-  const id = ws.scenarioId;
+  const id = ws.projectId;
   return guideSteps({
     intake: loadIntake(id),
     interviews: loadRecords(id),
@@ -48,9 +51,32 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
       /* ignore */
     }
   }, []);
+  const [note, setNote] = useState<string | null>(null);
+  const [hasSample, setHasSample] = useState(false);
   useEffect(() => {
-    if (open) setSteps(readSteps(disabled));
+    if (!open) return;
+    const refresh = () => {
+      setSteps(readSteps(disabled));
+      setHasSample(Boolean(SAMPLE_PROFILES[loadWorkspace().scenarioId]));
+    };
+    refresh();
+    // Mentéskor és projektváltáskor frissül (pl. kitöltötted a tényállást).
+    window.addEventListener(SAVED_EVENT, refresh);
+    window.addEventListener(PROJECT_EVENT, refresh);
+    return () => {
+      window.removeEventListener(SAVED_EVENT, refresh);
+      window.removeEventListener(PROJECT_EVENT, refresh);
+    };
   }, [open, disabled, page]);
+
+  /** Bemutatónál a minta-tényállás egy kattintással (a tényállás lépés így nem akad el). */
+  const loadSampleProfile = () => {
+    const added = applySampleProfile(loadWorkspace());
+    if (added == null) return;
+    setNote(`Minta tényállás betöltve${added ? `, ${added} ágazati tétel a mátrixba került (pipálatlanul)` : ''}.`);
+    requestIntakeTab('case');
+    if (page !== 'adatok') go('adatok');
+  };
 
   const openPanel = () => {
     setOpen(true);
@@ -110,13 +136,24 @@ export default function Guide({ page, go }: { page: PageId; go: (page: PageId) =
                 <p className="text-[11px] uppercase tracking-wide text-slate-300">Következő lépés</p>
                 <p className="mt-0.5 font-semibold">{next.title}</p>
                 <p className="mt-1 text-xs text-slate-200">{next.how}</p>
-                <button onClick={() => jump(next)} className="mt-2 inline-flex items-center gap-1 rounded bg-white px-2.5 py-1 text-xs font-medium text-slate-900 hover:bg-slate-100">
-                  Odaviszlek <ChevronRight className="h-3.5 w-3.5" />
-                </button>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button onClick={() => jump(next)} className="inline-flex items-center gap-1 rounded bg-white px-2.5 py-1 text-xs font-medium text-slate-900 hover:bg-slate-100">
+                    Odaviszlek <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                  {next.id === 'case' && hasSample && (
+                    <button onClick={loadSampleProfile} className="rounded border border-white/40 px-2.5 py-1 text-xs font-medium text-white hover:bg-white/10">
+                      Minta tényállás betöltése
+                    </button>
+                  )}
+                </div>
+                {next.id === 'case' && hasSample && (
+                  <p className="mt-1.5 text-[11px] text-slate-300">Ez egy kitalált bemutató cég: a minta-tényállással rögtön továbbléphetsz.</p>
+                )}
               </div>
             ) : (
               <p className="rounded-lg bg-emerald-50 p-3 text-emerald-800">Minden lépés kész. Szép munka!</p>
             )}
+            {note && <p className="mt-2 rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-800">{note}</p>}
 
             <p className="mt-4 text-xs text-slate-500">
               Haladás: {doneCount}/{steps.length} lépés

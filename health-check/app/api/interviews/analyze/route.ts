@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { analyzeInterview, isAiConfigured } from '@/lib/interview/ai.server';
 import { AnalyzeRequestSchema, MAX_TRANSCRIPT_CHARS } from '@/lib/interview/schemas';
-import { requireStaff } from '@/lib/auth/guard.server';
+import { requireAi } from '@/lib/auth/guard.server';
 import { errorResponse } from '../../_errors';
 
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
-  const access = await requireStaff();
+  const access = await requireAi(req, 'ai');
   if (!access.ok) return access.response;
   if (!isAiConfigured()) {
     return NextResponse.json({ error: 'Az AI nincs beállítva (ANTHROPIC_API_KEY vagy GEMINI_API_KEY).' }, { status: 503 });

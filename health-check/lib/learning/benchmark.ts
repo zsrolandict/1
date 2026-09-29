@@ -5,6 +5,7 @@ import type { Sector } from '@/lib/intake/requests';
 import { assess } from '@/lib/risk/engine';
 import type { Pillar, Rag, RiskAssessment } from '@/lib/risk/types';
 import { SCENARIOS } from '@/lib/scenarios';
+import { markSaved } from '@/lib/localSave';
 
 /**
  * Tudástár: a lezárt projektek ANONIMIZÁLT összesítője. Cégnév, adószám,
@@ -227,6 +228,7 @@ export function loadBenchmark(): BenchmarkRecord[] {
 export function saveBenchmark(list: BenchmarkRecord[]): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(list.filter((r) => r.source === 'PROJECT')));
+    markSaved();
   } catch {
     /* privát mód */
   }

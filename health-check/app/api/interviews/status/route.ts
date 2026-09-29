@@ -3,6 +3,7 @@ import { isAiConfigured } from '@/lib/interview/ai.server';
 import { transcriptionProvider } from '@/lib/interview/transcribe.server';
 import { aiProvider } from '@/lib/ai/client.server';
 import { authMode } from '@/lib/auth/mode';
+import { dataPolicy } from '@/lib/ai/policy';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,8 @@ export const dynamic = 'force-dynamic';
 export function GET() {
   // Zárt módban a felület a funkciókat kikapcsoltként mutatja.
   const mode = authMode();
-  const open = mode !== 'LOCKED';
+  // Éles módban DPA-megerősítés nélkül az AI zárva (lásd lib/ai/policy.ts).
+  const open = mode !== 'LOCKED' && dataPolicy().ok;
   const t = open ? transcriptionProvider() : null;
   return NextResponse.json({
     ai: open && isAiConfigured(),

@@ -27,6 +27,29 @@ export const GYARTO: Scenario = {
 
 export const SCENARIOS: Scenario[] = [GYARTO, EPITOIPAR, KONYVELO, IT_FEJLESZTO];
 
+/**
+ * Saját (valós) projekt kiindulópontja: a teljes katalógus, egyetlen
+ * azonosított tétel nélkül, mintaadatok (tények, interjú) nélkül.
+ */
+export const BLANK: Scenario = {
+  id: 'ures',
+  label: 'Üres projekt',
+  sector: '',
+  situation: '',
+  companyName: '',
+  kind: 'HEALTH_CHECK',
+  company: DEFAULT_COMPANY,
+  materialityHuf: 50_000_000,
+  items: DEFAULT_CATALOG.map((r) => ({ ...r, identified: false })),
+  facts: [],
+  missingDocuments: [],
+};
+
+export function isDemoScenario(id: string | undefined): boolean {
+  return SCENARIOS.some((s) => s.id === id);
+}
+
 export function getScenario(id: string | undefined): Scenario {
+  if (id === BLANK.id) return BLANK;
   return SCENARIOS.find((s) => s.id === id) ?? GYARTO;
 }

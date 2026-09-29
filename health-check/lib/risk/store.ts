@@ -1,6 +1,7 @@
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { SuggestedRedFlag } from '@/lib/interview/types';
-import { getScenario, GYARTO, type Scenario } from '@/lib/scenarios';
+import { markSaved } from '@/lib/localSave';
+import { BLANK, getScenario, GYARTO, isDemoScenario, type Scenario } from '@/lib/scenarios';
 import { catalogDefault, PILLAR_LABEL } from './catalog';
 import type { RiskItem, Scale5 } from './types';
 import { DEFAULT_COMPANY, resolveExposure, type CompanyProfile } from './valuation';
@@ -9,9 +10,15 @@ import { DEFAULT_COMPANY, resolveExposure, type CompanyProfile } from './valuati
  * MVP munkaállapot (egy projekt) a böngészőben. Élesben ugyanez a forma
  * a Supabase `engagements` + `red_flags` sorokból áll elő; a komponensek
  * csak ezen a modulon keresztül olvasnak/írnak, így a csere egy helyen történik.
+ *
+ * Több projekt: minden projektnek saját azonosítója (`projectId`) van, ez a
+ * tárolási kulcs minden modulban (adatgyűjtés, interjú, időkeret…). A
+ * `scenarioId` csak azt mondja meg, melyik mintából indult (mintaadatok,
+ * minta-gombok); saját projektnél ez az üres minta.
  */
 export interface Workspace {
-  /** Melyik mintaesetből indult (dokumentum-tények, interjú-minta). */
+  projectId: string;
+  /** Melyik mintaesetből indult (dokumentum-tények, interjú-minta); saját projektnél 'ures'. */
   scenarioId: string;
   companyName: string;
   company: CompanyProfile;
@@ -20,12 +27,35 @@ export interface Workspace {
   items: RiskItem[];
 }
 
+export interface ProjectMeta {
+  id: string;
+  companyName: string;
+  kind: EngagementKind;
+  scenarioId: string;
+  /** Bemutató (kitalált mintacég) projekt. */
+  isDemo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const INDEX_KEY = 'ict-hc:projects:v1';
+const ACTIVE_KEY = 'ict-hc:active-project:v1';
+const wsKey = (id: string) => `ict-hc:workspace:v3:${id}`;
+/** A korábbi, egyprojektes tárolás (migráláshoz). */
 export const STORAGE_KEY = 'ict-hc:workspace:v2';
 const LEGACY_KEY = 'ict-hc:red-flag-matrix:v1';
+export const PROJECT_EVENT = 'ict-hc:project';
+/** Az aktív projekt adatai kívülről (pl. a kalauzból) változtak: a nyitott oldal töltse újra. */
+export const RELOAD_EVENT = 'ict-hc:reload';
+
+export function reloadProject(): void {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(RELOAD_EVENT));
+}
 
 /** Mintaesetből induló, friss munkaállapot. */
-export function workspaceFromScenario(s: Scenario): Workspace {
+export function workspaceFromScenario(s: Scenario, projectId: string = s.id): Workspace {
   return {
+    projectId,
     scenarioId: s.id,
     companyName: s.companyName,
     company: s.company,
@@ -37,19 +67,91 @@ export function workspaceFromScenario(s: Scenario): Workspace {
 
 export const DEFAULT_WORKSPACE: Workspace = workspaceFromScenario(GYARTO);
 
+function read<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+function write(key: string, value: unknown): boolean {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch {
+    return false; /* privát mód vagy betelt tárhely */
+  }
+}
+
+function normalize(saved: Partial<Workspace>, projectId: string): Workspace {
+  const scenarioId = saved.scenarioId === BLANK.id ? BLANK.id : getScenario(saved.scenarioId ?? projectId).id;
+  const base = getScenario(scenarioId);
+  return {
+    projectId,
+    scenarioId,
+    companyName: typeof saved.companyName === 'string' ? saved.companyName : base.companyName,
+    company: { ...DEFAULT_COMPANY, ...(saved.company ?? {}) },
+    kind: saved.kind ?? base.kind,
+    materialityHuf: typeof saved.materialityHuf === 'number' ? saved.materialityHuf : base.materialityHuf,
+    items: Array.isArray(saved.items) ? saved.items.map(hydrateItem) : base.items,
+  };
+}
+
+function metaFor(ws: Workspace, prev: ProjectMeta | undefined, now: string): ProjectMeta {
+  return {
+    id: ws.projectId,
+    companyName: ws.companyName,
+    kind: ws.kind,
+    scenarioId: ws.scenarioId,
+    isDemo: prev?.isDemo ?? isDemoScenario(ws.projectId),
+    createdAt: prev?.createdAt ?? now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * A projektlista. Első futáskor a korábbi (egyprojektes) mentésből
+ * bemutató projekt lesz, ugyanazzal az azonosítóval, így a hozzá tartozó
+ * adatgyűjtés, interjúk és időkeret is megmarad.
+ */
+export function listProjects(): ProjectMeta[] {
+  const list = read<ProjectMeta[]>(INDEX_KEY);
+  if (Array.isArray(list)) return list;
+  const legacy = read<Partial<Workspace>>(STORAGE_KEY) ?? read<Partial<Workspace>>(LEGACY_KEY);
+  if (!legacy) return [];
+  const id = getScenario(legacy.scenarioId).id;
+  const ws = normalize({ ...legacy, scenarioId: id }, id);
+  const meta = metaFor(ws, undefined, new Date().toISOString());
+  write(wsKey(id), ws);
+  write(INDEX_KEY, [meta]);
+  write(ACTIVE_KEY, id);
+  return [meta];
+}
+
+export function activeProjectId(): string {
+  listProjects(); // migráció, ha kell
+  const id = read<string>(ACTIVE_KEY);
+  return typeof id === 'string' && id ? id : DEFAULT_WORKSPACE.projectId;
+}
+
+export function setActiveProject(id: string): void {
+  write(ACTIVE_KEY, id);
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(PROJECT_EVENT));
+}
+
+export function loadProject(id: string): Workspace {
+  const saved = read<Partial<Workspace>>(wsKey(id));
+  if (saved) return normalize(saved, id);
+  // Még nem mentett bemutató projekt: a minta kiinduló állapota.
+  return workspaceFromScenario(getScenario(isDemoScenario(id) ? id : GYARTO.id), id);
+}
+
+/** Az aktív projekt munkaállapota. */
 export function loadWorkspace(): Workspace {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_KEY);
-    if (!raw) return DEFAULT_WORKSPACE;
-    const saved = JSON.parse(raw) as Partial<Workspace>;
-    return {
-      scenarioId: getScenario(saved.scenarioId).id,
-      companyName: typeof saved.companyName === 'string' ? saved.companyName : DEFAULT_WORKSPACE.companyName,
-      company: { ...DEFAULT_COMPANY, ...(saved.company ?? {}) },
-      kind: saved.kind ?? DEFAULT_WORKSPACE.kind,
-      materialityHuf: typeof saved.materialityHuf === 'number' ? saved.materialityHuf : DEFAULT_WORKSPACE.materialityHuf,
-      items: Array.isArray(saved.items) ? saved.items.map(hydrateItem) : DEFAULT_WORKSPACE.items,
-    };
+    return loadProject(activeProjectId());
   } catch {
     return DEFAULT_WORKSPACE;
   }
@@ -71,11 +173,46 @@ export function hydrateItem(item: RiskItem): RiskItem {
 }
 
 export function saveWorkspace(ws: Workspace): void {
+  if (!write(wsKey(ws.projectId), ws)) return; // privát mód – a munkamenet végéig memóriában marad
+  const list = listProjects();
+  const prev = list.find((p) => p.id === ws.projectId);
+  const meta = metaFor(ws, prev, new Date().toISOString());
+  write(INDEX_KEY, prev ? list.map((p) => (p.id === ws.projectId ? meta : p)) : [meta, ...list]);
+  markSaved();
+}
+
+/** Új, saját projekt az üres mintából; ez lesz az aktív. */
+export function createProject(input: { companyName: string; kind: EngagementKind; materialityHuf?: number }, now = Date.now()): Workspace {
+  const id = `p-${now.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const ws: Workspace = {
+    ...workspaceFromScenario(BLANK, id),
+    companyName: input.companyName.trim(),
+    kind: input.kind,
+    materialityHuf: input.materialityHuf ?? BLANK.materialityHuf,
+  };
+  saveWorkspace(ws);
+  setActiveProject(id);
+  return ws;
+}
+
+/** Bemutató projekt megnyitása: ha már dolgoztál rajta, a mentett állapot jön vissza. */
+export function openDemo(scenarioId: string): void {
+  if (!read(wsKey(scenarioId))) saveWorkspace(workspaceFromScenario(getScenario(scenarioId)));
+  setActiveProject(scenarioId);
+}
+
+/** A projekt munkaállapotának és listabejegyzésének törlése (a modulok adatait a projects.ts törli). */
+export function removeProjectWorkspace(id: string): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(ws));
+    localStorage.removeItem(wsKey(id));
   } catch {
-    /* privát mód – a munkamenet végéig memóriában marad */
+    /* ignore */
   }
+  write(INDEX_KEY, listProjects().filter((p) => p.id !== id));
+}
+
+export function projectStorageKey(id: string): string {
+  return wsKey(id);
 }
 
 const clamp5 = (n: number): Scale5 => Math.min(5, Math.max(1, Math.round(n))) as Scale5;

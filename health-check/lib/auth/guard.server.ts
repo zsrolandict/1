@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { dataPolicy, limitFor, RateLimiter, type LimitKind } from '@/lib/ai/policy';
 import { authMode, isStaffRole, type AuthMode } from './mode';
 
 export type Access =
@@ -51,4 +52,29 @@ export async function requireStaff(): Promise<Access> {
     return { ok: false, response: NextResponse.json({ error: 'Ehhez a funkcióhoz nincs jogosultsága.' }, { status: 403 }) };
   }
   return { ok: true, mode, userId: data.user.id, role: profile.role };
+}
+
+const limiter = new RateLimiter();
+
+/**
+ * AI-végpontok őre: belső felhasználó + adatkezelési szabály (DPA éles
+ * módban) + hívásszám-korlát felhasználónként.
+ */
+export async function requireAi(req: Request, kind: LimitKind = 'ai'): Promise<Access> {
+  const access = await requireStaff();
+  if (!access.ok) return access;
+  const policy = dataPolicy();
+  if (!policy.ok) return { ok: false, response: NextResponse.json({ error: policy.error }, { status: policy.status }) };
+  const who = access.userId ?? req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local';
+  const hit = limiter.hit(`${kind}:${who}`, limitFor(kind));
+  if (!hit.ok) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: `Túl sok AI-kérés egy órán belül. Próbálja újra ${Math.ceil(hit.retryAfterSec / 60)} perc múlva.` },
+        { status: 429, headers: { 'Retry-After': String(hit.retryAfterSec) } },
+      ),
+    };
+  }
+  return access;
 }

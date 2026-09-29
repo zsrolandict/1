@@ -28,7 +28,7 @@ export default function InterviewPlanPanel({
   records: InterviewRecords;
   kind: EngagementKind;
   /** Melyik interjúalanyhoz van minta-interjú a mintaesetben. */
-  sampleRole: IntervieweeRole;
+  sampleRole: IntervieweeRole | null;
   onOpen: (role: IntervieweeRole, tab: 'guide' | 'process' | 'analysis') => void;
 }) {
   const profile = ENGAGEMENT_KINDS[kind];

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import ModuleOff from '../ModuleOff';
 import { useModules } from '../useModules';
+import { useIdentity } from '../Identity';
 import { PROJECT_MODULES } from '@/lib/modules';
 import { BookOpen, Clock, Plus, Trash2 } from 'lucide-react';
 import { adjustmentsFor } from '@/lib/engagement/adjustments';
@@ -61,7 +62,7 @@ export default function ProjectWorkspace() {
   useEffect(() => {
     const w = loadWorkspace();
     setWs(w);
-    setSectors([...new Set([...loadIntake(w.scenarioId).profile.sectors, ...(getScenario(w.scenarioId).sectors ?? [])])]);
+    setSectors([...new Set([...loadIntake(w.projectId).profile.sectors, ...(getScenario(w.scenarioId).sectors ?? [])])]);
     setHydrated(true);
   }, []);
 
@@ -73,31 +74,42 @@ export default function ProjectWorkspace() {
           {ws.companyName} · {ENGAGEMENT_KINDS[ws.kind].label}. Az időkeret és a tudástár a Red Flag mátrixban kiválasztott projekthez tartozik.
         </p>
       </header>
-      {hydrated && isOn('TIMESHEET') && <TimesheetSection key={ws.scenarioId} scenarioId={ws.scenarioId} kind={ws.kind} />}
+      {hydrated && isOn('TIMESHEET') && <TimesheetSection key={ws.projectId} projectId={ws.projectId} kind={ws.kind} />}
       {!PROJECT_MODULES.some(isOn) && <ModuleOff ids={PROJECT_MODULES} />}
       {hydrated && isOn('KNOWLEDGE') && <KnowledgeSection ws={ws} sectors={sectors} />}
     </div>
   );
 }
 
-function TimesheetSection({ scenarioId, kind }: { scenarioId: string; kind: EngagementKind }) {
+function TimesheetSection({ projectId, kind }: { projectId: string; kind: EngagementKind }) {
   const [state, setState] = useState<TimesheetState>(EMPTY_TIMESHEET);
   const [loaded, setLoaded] = useState(false);
-  const [draft, setDraft] = useState({ date: today(), bucket: 'FINANCE' as Bucket, role: 'SENIOR' as Role, person: '', hours: '1', note: '' });
+  const [draft, setDraft] = useState({ date: today(), bucket: 'FINANCE' as Bucket, role: 'SENIOR' as Role, hours: '1', note: '' });
+  // A rögzítő mindig az aktuális felhasználó (bejelentkezve a profilja, különben az egyszer megadott név).
+  const me = useIdentity();
+  const [nameDraft, setNameDraft] = useState('');
+  const [editingName, setEditingName] = useState(false);
+  useEffect(() => {
+    if (me.role) setDraft((d) => ({ ...d, role: me.role! }));
+  }, [me.role]);
   const [error, setError] = useState<string | null>(null);
   const [showRates, setShowRates] = useState(false);
   useEffect(() => {
-    setState(loadTimesheet(scenarioId));
+    setState(loadTimesheet(projectId));
     setLoaded(true);
-  }, [scenarioId]);
+  }, [projectId]);
   useEffect(() => {
-    if (loaded) saveTimesheet(scenarioId, state);
-  }, [state, scenarioId, loaded]);
+    if (loaded) saveTimesheet(projectId, state);
+  }, [state, projectId, loaded]);
 
   const sum = useMemo(() => summarize(state, kind, BUCKET_LABEL), [state, kind]);
 
   const add = () => {
-    const entry = { ...draft, hours: Number(draft.hours.replace(',', '.')), person: draft.person.trim(), note: draft.note.trim() };
+    if (!me.name) {
+      setError('Előbb add meg a neved (egyszer kell).');
+      return;
+    }
+    const entry = { ...draft, hours: Number(draft.hours.replace(',', '.')), person: me.name, note: draft.note.trim() };
     const err = validateEntry(entry);
     setError(err);
     if (err) return;
@@ -129,6 +141,9 @@ function TimesheetSection({ scenarioId, kind }: { scenarioId: string; kind: Enga
             <div className="mt-1 h-1.5 overflow-hidden rounded bg-slate-200">
               <div className={`h-full ${BAR[b.level]}`} style={{ width: `${Math.min(100, b.ratio * 100)}%` }} />
             </div>
+            {b.level !== 'OK' && (
+              <p className={`mt-0.5 text-[10px] font-medium ${b.level === 'OVER' ? 'text-red-700' : 'text-amber-700'}`}>{b.level === 'OVER' ? 'Túllépés' : '80% felett'}</p>
+            )}
           </div>
         ))}
       </div>
@@ -152,8 +167,48 @@ function TimesheetSection({ scenarioId, kind }: { scenarioId: string; kind: Enga
             {(Object.keys(ROLE_LABEL) as Role[]).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
           </select>
         </Labeled>
-        <Labeled label="Ki">
-          <input value={draft.person} onChange={(e) => setDraft({ ...draft, person: e.target.value })} placeholder="név" className="w-28 rounded border border-slate-200 px-2 py-1" />
+        <Labeled label="Rögzítő">
+          {me.name && !editingName ? (
+            <span className="flex items-center gap-1 py-1 text-slate-800">
+              {me.name}
+              {me.source === 'login' ? (
+                <span className="text-[10px] text-slate-400">(bejelentkezve)</span>
+              ) : (
+                <button
+                  onClick={() => {
+                    setNameDraft(me.name ?? '');
+                    setEditingName(true);
+                  }}
+                  className="text-[10px] text-slate-400 underline hover:text-slate-700"
+                >
+                  módosít
+                </button>
+              )}
+            </span>
+          ) : me.source === 'local' ? (
+            <span className="flex gap-1">
+              <input
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                placeholder="a neved"
+                aria-label="A neved"
+                className="w-32 rounded border border-amber-300 bg-amber-50 px-2 py-1"
+              />
+              <button
+                onClick={() => {
+                  if (nameDraft.trim().length < 2) return;
+                  me.setLocalName?.(nameDraft);
+                  setEditingName(false);
+                  setError(null);
+                }}
+                className="rounded border border-slate-200 px-2 text-slate-700 hover:bg-slate-50"
+              >
+                OK
+              </button>
+            </span>
+          ) : (
+            <span className="py-1 text-slate-400">…</span>
+          )}
         </Labeled>
         <Labeled label="Óra">
           <input value={draft.hours} onChange={(e) => setDraft({ ...draft, hours: e.target.value })} inputMode="decimal" className="w-16 rounded border border-slate-200 px-2 py-1" />
@@ -199,7 +254,7 @@ function TimesheetSection({ scenarioId, kind }: { scenarioId: string; kind: Enga
             <tr>
               <th className="py-1">Dátum</th>
               <th>Terület</th>
-              <th>Ki</th>
+              <th>Rögzítő</th>
               <th>Szerepkör</th>
               <th className="text-right">Óra</th>
               <th className="pl-3">Tevékenység</th>
@@ -250,7 +305,7 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
   const missing = commonButMissing(s, current.risks.map((r) => r.code));
 
   const record = () => {
-    const rec = anonymize(current, { ref: ws.scenarioId, kind: ws.kind, sectors, revenueHuf: ws.company.revenueHuf });
+    const rec = anonymize(current, { ref: ws.projectId, kind: ws.kind, sectors, revenueHuf: ws.company.revenueHuf });
     const list = upsertRecord(own, rec);
     setOwn(list);
     saveBenchmark(list);

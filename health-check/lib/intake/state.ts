@@ -9,6 +9,7 @@ import { registryFindings, type RegistryRecord } from './registry';
 import type { TableAnalysis } from './tables/metrics';
 import type { TableKind } from './tables/spec';
 import type { IntakeResult } from './types';
+import { markSaved } from '@/lib/localSave';
 
 /**
  * Adatgyűjtés munkaállapota egy projekthez. Élesben a `checklist_responses`,
@@ -54,6 +55,7 @@ export function loadIntake(scenarioId: string): IntakeState {
 export function saveIntake(scenarioId: string, state: IntakeState): void {
   try {
     localStorage.setItem(key(scenarioId), JSON.stringify(state));
+    markSaved();
   } catch {
     /* privát mód – a munkamenet végéig memóriában marad */
   }
