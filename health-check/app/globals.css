@@ -1,13 +1,38 @@
 @import 'tailwindcss';
+@import './theme.css';
+
+@font-face {
+  font-family: 'Inter';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/Inter_400Regular.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+  src: url('/fonts/Inter_400Regular_Italic.ttf') format('truetype');
+}
+/* Közepes vastagság nincs külön fájlban: a félkövér áll be helyette. */
+@font-face {
+  font-family: 'Inter';
+  font-weight: 500 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/Inter_600SemiBold.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/Inter_700Bold.ttf') format('truetype');
+}
 
 :root {
   color-scheme: light;
-}
-
-body {
-  background: #f8fafc;
-  color: #0f172a;
-  font-feature-settings: 'tnum' 0;
 }
 
 @media print {

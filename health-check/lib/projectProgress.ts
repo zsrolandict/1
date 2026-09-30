@@ -12,18 +12,22 @@ export function benchmarkedRefs(): Set<string> {
   return new Set(loadBenchmark().map((r) => r.ref));
 }
 
-/** Egy (már betöltött) projekt kalauz-lépései. */
-export function stepsFor(ws: Workspace, disabled: ModuleId[] = [], benchmarked: Set<string> = benchmarkedRefs()): GuideStep[] {
-  const id = ws.projectId;
+/** Egy projekt kalauz-lépései az azonosított kockázatok számából (a mátrix a saját, élő állapotával hívja). */
+export function stepsForProject(id: string, identified: number, disabled: ModuleId[] = [], benchmarked: Set<string> = benchmarkedRefs()): GuideStep[] {
   return guideSteps({
     intake: loadIntake(id),
     interviews: loadRecords(id),
-    identified: ws.items.filter((r) => r.identified).length,
+    identified,
     snapshots: loadSnapshots(id).length,
     hoursLogged: loadTimesheet(id).entries.reduce((a, e) => a + e.hours, 0),
     benchmarked: benchmarked.has(id),
     disabled,
   });
+}
+
+/** Egy (már betöltött) projekt kalauz-lépései. */
+export function stepsFor(ws: Workspace, disabled: ModuleId[] = [], benchmarked: Set<string> = benchmarkedRefs()): GuideStep[] {
+  return stepsForProject(ws.projectId, ws.items.filter((r) => r.identified).length, disabled, benchmarked);
 }
 
 export function projectSteps(projectId: string, disabled: ModuleId[] = []): GuideStep[] {

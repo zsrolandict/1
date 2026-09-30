@@ -26,6 +26,9 @@ import {
   Zap,
   ArrowRight,
   ClipboardList,
+  AlertTriangle,
+  Lightbulb,
+  Sparkles,
 } from 'lucide-react';
 import { assess, scoreRisk, AUDIT_FEE_HUF, DIVISIONS, formatHuf, formatHufShort, PILLARS, ragFromScore, WINDOWS } from '@/lib/risk/engine';
 import { catalogDefault, DEFAULT_CATALOG, DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
@@ -43,6 +46,10 @@ import { SECTOR_LABEL } from '@/lib/intake/requests';
 import { missingSectorRisks } from '@/lib/risk/sectorRisks';
 import { EXPERT_PARAMETERS } from '@/lib/risk/parameters';
 import { computeFormula, resolveExposure, type CompanyProfile, type Formula } from '@/lib/risk/valuation';
+import { projectStages } from '@/lib/projectStages';
+import { stepsForProject } from '@/lib/projectProgress';
+import { Badge, BTN_PRIMARY, BTN_SECONDARY, BTN_TOOL, Card, IconBox, KpiTile, type Tone } from '../ui/primitives';
+import StepBar from '../ui/StepBar';
 import WhatIfPanel from './WhatIfPanel';
 import FollowUpPanel from './FollowUpPanel';
 import { useModules } from '../useModules';
@@ -61,6 +68,9 @@ const SOURCE_LABEL: Partial<Record<RiskSource, string>> = {
   AI_INTERVIEW: 'AI · interjú',
 };
 const SCALE: Scale5[] = [1, 2, 3, 4, 5];
+
+const RAG_TONE: Record<Rag, Tone> = { GREEN: 'green', AMBER: 'amber', RED: 'red' };
+const AI_SOURCES = new Set<RiskSource>(['AI_SYNTHESIS', 'AI_DOCUMENT', 'AI_INTERVIEW']);
 
 const RAG_STYLE: Record<Rag, { dot: string; badge: string; cell: string; ring: string }> = {
   GREEN: {
@@ -287,14 +297,22 @@ export default function RedFlagMatrix({
   const missingRevenue = !hasRevenue(company);
   const noAssessment = totals.identified === 0;
   const settingsOpen = settingsPref ?? missingRevenue;
+  // A projekt szakaszai a folyamatsávhoz (a többi modul adatát a tárolóból olvassa).
+  const stages = useMemo(
+    () => (hydrated ? projectStages(stepsForProject(projectId, totals.identified, modules.disabled)) : []),
+    [hydrated, projectId, totals.identified, modules.disabled],
+  );
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[1400px] space-y-5 px-6 py-7 lg:px-8">
       {/* ── Fejléc ─────────────────────────────────────────────── */}
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-            {ENGAGEMENT_KINDS[kind].label} · Red Flag Mátrix <InfoTip term="redFlag" label="Red Flag mátrix" />
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2">
+            <Badge tone="brand">{ENGAGEMENT_KINDS[kind].label}</Badge>
+            <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Red Flag mátrix <InfoTip term="redFlag" label="Red Flag mátrix" />
+            </span>
           </p>
           {editingName ? (
             <input
@@ -304,16 +322,16 @@ export default function RedFlagMatrix({
               onBlur={() => setEditingName(false)}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === 'Escape') && setEditingName(false)}
               aria-label="Cégnév"
-              className="mt-1 w-full min-w-[280px] rounded bg-white text-2xl font-semibold text-slate-900 outline-none ring-2 ring-slate-300"
+              className="mt-2 w-full min-w-[280px] rounded-lg bg-white px-1 text-[28px] font-bold tracking-tight text-slate-900 outline-none ring-2 ring-brand-200"
             />
           ) : (
-            <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold text-slate-900">
+            <h1 className="mt-2 flex items-center gap-2 text-[28px] font-bold leading-tight tracking-tight text-slate-900">
               {companyName || 'Névtelen projekt'}
               <button
                 onClick={() => setEditingName(true)}
                 aria-label="Cégnév szerkesztése"
                 title="Cégnév szerkesztése"
-                className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800 print:hidden"
+                className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-800 print:hidden"
               >
                 <Pencil className="h-4 w-4" />
               </button>
@@ -328,7 +346,7 @@ export default function RedFlagMatrix({
             value={kind}
             onChange={(e) => setKind(e.target.value as EngagementKind)}
             aria-label="Átvilágítás típusa"
-            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-xs"
           >
             {ENGAGEMENT_KIND_LIST.map((k) => (
               <option key={k.kind} value={k.kind}>
@@ -336,14 +354,14 @@ export default function RedFlagMatrix({
               </option>
             ))}
           </select>
-          <ToolbarButton onClick={reset} icon={<RotateCcw className="h-4 w-4" />}>
+          <ToolbarButton onClick={reset} icon={<RotateCcw className="h-3.5 w-3.5" />}>
             Alaphelyzet
           </ToolbarButton>
-          <ToolbarButton onClick={exportExcel} icon={<FileSpreadsheet className="h-4 w-4" />}>
+          <ToolbarButton onClick={exportExcel} icon={<FileSpreadsheet className="h-3.5 w-3.5" />}>
             Excel
           </ToolbarButton>
           {showPrint && (
-            <ToolbarButton onClick={async () => (await confirmEmptyExport()) && window.print()} icon={<Printer className="h-4 w-4" />}>
+            <ToolbarButton onClick={async () => (await confirmEmptyExport()) && window.print()} icon={<Printer className="h-3.5 w-3.5" />}>
               Nyomtatás
             </ToolbarButton>
           )}
@@ -356,17 +374,17 @@ export default function RedFlagMatrix({
           <details className="relative">
             <summary
               aria-label="További műveletek"
-              className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 [&::-webkit-details-marker]:hidden"
+              className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-xs hover:bg-slate-50 [&::-webkit-details-marker]:hidden"
             >
               <MoreHorizontal className="h-4 w-4" />
             </summary>
-            <div className="absolute right-0 z-20 mt-1 w-64 rounded-md border border-slate-200 bg-white p-1 text-sm shadow-lg">
+            <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border border-slate-200 bg-white p-1 text-sm shadow-lg">
               <button
                 onClick={(e) => {
                   (e.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open');
                   exportJson();
                 }}
-                className="flex w-full items-start gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-50"
+                className="flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-slate-50"
               >
                 <Download className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
                 <span>
@@ -382,69 +400,93 @@ export default function RedFlagMatrix({
         </div>
       </header>
 
+      {/* ── A projekt szakaszai ─────────────────────────────────── */}
+      {stages.length > 0 && (
+        <Card className="px-3 py-2.5 print:hidden">
+          <StepBar stages={stages} current="matrix" onGo={nav?.go} />
+        </Card>
+      )}
+
       {confirmDialog}
 
       {/* ── Még nincs értékelés ─────────────────────────────────── */}
       {noAssessment ? (
-        <section className="rounded-lg border-2 border-dashed border-slate-300 bg-white p-6 text-center">
-          <ClipboardList className="mx-auto h-8 w-8 text-slate-500" aria-hidden />
-          <h2 className="mt-2 text-lg font-semibold text-slate-900">Még nincs értékelés</h2>
+        <Card className="border-2 border-dashed border-slate-300 p-8 text-center">
+          <span className="inline-flex">
+            <IconBox tone="brand">
+              <ClipboardList className="h-5 w-5" />
+            </IconBox>
+          </span>
+          <h2 className="mt-3 text-lg font-bold text-slate-900">Még nincs értékelés</h2>
           <p className="mx-auto mt-1 max-w-xl text-sm text-slate-600">
             Egyetlen kockázat sincs bepipálva, ezért itt még nincs eredmény (se státusz, se Health Score). Kezdd az adatgyűjtéssel: a kérdőív, a táblázatok és a
             dokumentumok javaslatokat adnak, amiket elfogadva a tételek ide kerülnek. Vagy pipáld be lent közvetlenül a talált kockázatokat.
           </p>
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
             {nav && (
-              <button
-                onClick={() => nav.go('adatok')}
-                className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
-              >
+              <button onClick={() => nav.go('adatok')} className={BTN_PRIMARY}>
                 Adatgyűjtés indítása <ArrowRight className="h-4 w-4" />
               </button>
             )}
-            <button
-              onClick={() => document.getElementById('kockazati-tetelek')?.scrollIntoView({ behavior: 'smooth' })}
-              className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-            >
+            <button onClick={() => document.getElementById('kockazati-tetelek')?.scrollIntoView({ behavior: 'smooth' })} className={BTN_SECONDARY}>
               Tételek kézi bepipálása
             </button>
           </div>
-        </section>
+        </Card>
       ) : (
         <>
           {/* ── KPI sáv ─────────────────────────────────────────────── */}
-          <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <Kpi label="Összesített státusz" term="status" icon={<ShieldAlert className="h-4 w-4" />}>
+          <section className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+            <KpiTile
+              tone={RAG_TONE[totals.rag]}
+              icon={<ShieldAlert className="h-5 w-5" />}
+              label="Összesített státusz"
+              extra={<InfoTip term="status" label="Összesített státusz" />}
+            >
               <span className="flex items-center gap-2">
-                <span className={`h-3 w-3 rounded-full ${RAG_STYLE[totals.rag].dot}`} aria-hidden />
+                <span className={`h-2.5 w-2.5 rounded-full ${RAG_STYLE[totals.rag].dot}`} aria-hidden />
                 {RAG_LABEL[totals.rag]}
               </span>
-            </Kpi>
-            <Kpi label="Health Score" term="healthScore" icon={<Gauge className="h-4 w-4" />}>
+            </KpiTile>
+            <KpiTile tone="brand" icon={<Gauge className="h-5 w-5" />} label="Health Score" extra={<InfoTip term="healthScore" label="Health Score" />}>
               {totals.healthScore}
-              <span className="text-base font-normal text-slate-500"> / 100</span>
-            </Kpi>
-            <Kpi label="Bruttó kitettség" term="grossExposure" icon={<Banknote className="h-4 w-4" />} hint={formatHuf(totals.grossExposureHuf)}>
+              <span className="text-sm font-semibold text-slate-400"> / 100</span>
+            </KpiTile>
+            <KpiTile
+              tone="amber"
+              icon={<Banknote className="h-5 w-5" />}
+              label="Bruttó kitettség"
+              hint={formatHuf(totals.grossExposureHuf)}
+              extra={<InfoTip term="grossExposure" label="Bruttó kitettség" />}
+            >
               {formatHufShort(totals.grossExposureHuf)}
-            </Kpi>
-            <Kpi label="Várható veszteség" term="expectedLoss" icon={<TrendingDown className="h-4 w-4" />}>
+            </KpiTile>
+            <KpiTile
+              tone="red"
+              icon={<TrendingDown className="h-5 w-5" />}
+              label="Várható veszteség"
+              extra={<InfoTip term="expectedLoss" label="Várható veszteség" />}
+            >
               {formatHufShort(totals.expectedLossHuf)}
-            </Kpi>
-            <Kpi label="Azonosított tételek" icon={<Filter className="h-4 w-4" />} className="col-span-2 lg:col-span-1">
-              <span className="flex items-baseline gap-3">
-                {totals.identified}
-                <span className="flex gap-2 text-sm font-medium">
-                  <span className="text-red-700">{totals.red} piros</span>
-                  <span className="text-amber-700">{totals.amber} sárga</span>
+            </KpiTile>
+            <KpiTile
+              tone="slate"
+              icon={<Filter className="h-5 w-5" />}
+              className="col-span-2 lg:col-span-1"
+              label={
+                <span>
+                  Azonosított · <span className="text-red-700">{totals.red} piros</span> · <span className="text-amber-700">{totals.amber} sárga</span> ·{' '}
                   <span className="text-emerald-700">{totals.green} zöld</span>
                 </span>
-              </span>
-            </Kpi>
+              }
+            >
+              {totals.identified}
+            </KpiTile>
           </section>
 
           {/* ── Pillérek + hőtérkép ─────────────────────────────────── */}
           <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
-            <div className="grid grid-cols-2 content-start gap-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 content-start gap-4">
               {PILLARS.map((p) => {
                 const s = pillars[p];
                 const active = pillarFilter === p;
@@ -452,35 +494,34 @@ export default function RedFlagMatrix({
                   <button
                     key={p}
                     onClick={() => setPillarFilter(active ? 'ALL' : p)}
-                    className={`rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-slate-300 ${
-                      active ? `ring-2 ${RAG_STYLE[s.rag].ring} border-transparent` : 'border-slate-200'
+                    aria-pressed={active}
+                    className={`rounded-xl border bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:border-brand-300 ${
+                      active ? 'border-brand-500 ring-1 ring-brand-500' : 'border-slate-200/80'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-slate-600">
-                        {PILLAR_LABEL[p]} <span className="text-xs font-normal text-slate-500">· súly {Math.round(profile.weights[p] * 100)}%</span>
-                      </span>
-                      <span className="flex items-center gap-1 text-xs text-slate-600">
-                        <span className={`h-2.5 w-2.5 rounded-full ${RAG_STYLE[s.rag].dot}`} aria-hidden />
-                        {RAG_LABEL[s.rag]}
-                      </span>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">{PILLAR_LABEL[p]}</span>
+                      <Badge tone={RAG_TONE[s.rag]}>{RAG_LABEL[s.rag]}</Badge>
                     </div>
-                    <div className="mt-3 text-3xl font-semibold tabular-nums text-slate-900">{s.healthScore}</div>
-                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                      <div className={`h-full ${RAG_STYLE[s.rag].dot}`} style={{ width: `${s.healthScore}%` }} />
+                    <div className="mt-3 flex items-baseline gap-1.5">
+                      <span className="text-3xl font-bold tracking-tight tabular-nums text-slate-900">{s.healthScore}</span>
+                      <span className="text-xs font-medium text-slate-400">súly {Math.round(profile.weights[p] * 100)}%</span>
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div className={`h-full rounded-full ${RAG_STYLE[s.rag].dot}`} style={{ width: `${s.healthScore}%` }} />
                     </div>
                     <dl className="mt-3 space-y-1 text-xs text-slate-500">
                       <div className="flex justify-between">
                         <dt>Tételek</dt>
-                        <dd className="tabular-nums text-slate-700">{s.identified}</dd>
+                        <dd className="font-semibold tabular-nums text-slate-800">{s.identified}</dd>
                       </div>
                       <div className="flex justify-between">
                         <dt>Kitettség</dt>
-                        <dd className="tabular-nums text-slate-700">{formatHufShort(s.grossExposureHuf)}</dd>
+                        <dd className="font-semibold tabular-nums text-slate-800">{formatHufShort(s.grossExposureHuf)}</dd>
                       </div>
                       <div className="flex justify-between">
                         <dt>Várható</dt>
-                        <dd className="tabular-nums text-slate-700">{formatHufShort(s.expectedLossHuf)}</dd>
+                        <dd className="font-semibold tabular-nums text-slate-800">{formatHufShort(s.expectedLossHuf)}</dd>
                       </div>
                     </dl>
                   </button>
@@ -495,70 +536,69 @@ export default function RedFlagMatrix({
 
       {/* ── Javasolt további tételek (típus, ágazat) ───────────── */}
       {(kindExtras.length > 0 || sectorExtras.length > 0) && (
-        <section aria-label="Javasolt további tételek" className="rounded-lg border border-indigo-100 bg-indigo-50/40 px-4 py-3 shadow-sm print:hidden">
-          <p className="mb-2 text-xs text-slate-600">Egy kattintással a listába kerülnek (pipálatlanul); utána döntöd el, fennáll-e.</p>
-          {kindExtras.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 text-xs [&+&]:mt-2 [&+&]:border-t [&+&]:border-slate-100 [&+&]:pt-2">
-              <span className="font-medium text-slate-700">Ehhez az átvilágítás-típushoz érdemes megvizsgálni:</span>
-              {kindExtras.map((k) => (
+        <Card aria-label="Javasolt további tételek" role="region" className="flex gap-3 p-4 print:hidden">
+          <IconBox tone="violet" size="sm">
+            <Lightbulb className="h-4 w-4" />
+          </IconBox>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-slate-900">Javasolt további tételek</p>
+            <p className="mb-3 text-xs text-slate-500">Egy kattintással a listába kerülnek (pipálatlanul); utána döntöd el, fennáll-e.</p>
+            {kindExtras.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 text-xs [&+&]:mt-3 [&+&]:border-t [&+&]:border-slate-100 [&+&]:pt-3">
+                <span className="font-medium text-slate-700">Ehhez az átvilágítás-típushoz érdemes megvizsgálni:</span>
+                {kindExtras.map((k) => (
+                  <SuggestChip key={k.code} title={k.description} onClick={() => addKindRisk(k.code)}>
+                    {k.title}
+                  </SuggestChip>
+                ))}
+              </div>
+            )}
+            {sectorExtras.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 text-xs [&+&]:mt-3 [&+&]:border-t [&+&]:border-slate-100 [&+&]:pt-3">
+                <span className="font-medium text-slate-700">Az ágazatban ({sectors.map((x) => SECTOR_LABEL[x]).join(', ')}) gyakori kockázatok:</span>
                 <button
-                  key={k.code}
-                  onClick={() => addKindRisk(k.code)}
-                  title={k.description}
-                  className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-indigo-800 hover:bg-indigo-100"
+                  onClick={() => setItems((xs) => [...xs, ...sectorExtras])}
+                  className="rounded-full bg-brand-600 px-3 py-1 font-semibold text-white shadow-sm hover:bg-brand-700"
                 >
-                  <Plus className="h-3 w-3" /> {k.title}
+                  Mind a {sectorExtras.length} felvétele
                 </button>
-              ))}
-            </div>
-          )}
-          {sectorExtras.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 text-xs [&+&]:mt-2 [&+&]:border-t [&+&]:border-slate-100 [&+&]:pt-2">
-              <span className="font-medium text-slate-700">Az ágazatban ({sectors.map((x) => SECTOR_LABEL[x]).join(', ')}) gyakori kockázatok:</span>
-              <button
-                onClick={() => setItems((xs) => [...xs, ...sectorExtras])}
-                className="rounded-full bg-indigo-700 px-2.5 py-0.5 font-medium text-white hover:bg-indigo-800"
-              >
-                Mind a {sectorExtras.length} felvétele
-              </button>
-              {sectorExtras.map((k) => (
-                <button
-                  key={k.code}
-                  onClick={() => setItems((xs) => [...xs, k])}
-                  title={k.description}
-                  className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-indigo-800 hover:bg-indigo-100"
-                >
-                  <Plus className="h-3 w-3" /> {k.title}
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
+                {sectorExtras.map((k) => (
+                  <SuggestChip key={k.code} title={k.description} onClick={() => setItems((xs) => [...xs, k])}>
+                    {k.title}
+                  </SuggestChip>
+                ))}
+              </div>
+            )}
+          </div>
+        </Card>
       )}
 
       {/* ── Beállítások: cégadatok + átvilágítás-típus (összecsukható) ── */}
       <details
         open={settingsOpen}
         onToggle={(e) => setSettingsPref((e.currentTarget as HTMLDetailsElement).open)}
-        className={`rounded-lg border shadow-sm print:hidden ${missingRevenue ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'}`}
+        className={`rounded-xl border shadow-[0_1px_2px_rgba(15,23,42,0.04)] print:hidden ${missingRevenue ? 'border-amber-300 bg-amber-50' : 'border-slate-200/80 bg-white'}`}
       >
         <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-sm [&::-webkit-details-marker]:hidden">
-          <span className="flex items-center gap-1.5 font-semibold text-slate-800">
-            <Calculator className="h-4 w-4" /> Cégadatok és átvilágítás-típus
+          <span className="flex items-center gap-2.5 font-semibold text-slate-900">
+            <IconBox tone={missingRevenue ? 'amber' : 'slate'} size="sm">
+              {missingRevenue ? <AlertTriangle className="h-4 w-4" /> : <Calculator className="h-4 w-4" />}
+            </IconBox>
+            Cégadatok és átvilágítás-típus
           </span>
           {missingRevenue ? (
             <span role="status" className="font-medium text-amber-900">
               Add meg az éves árbevételt: enélkül a kockázatok forintösszege nem számolható.
             </span>
           ) : (
-            <span className="text-xs text-slate-600">
+            <span className="text-xs text-slate-500">
               Árbevétel {formatHufShort(company.revenueHuf)} · fedezet {Math.round(company.grossMarginPct * 100)}% · küszöb {formatHufShort(materialityHuf)} ·{' '}
               {profile.label}, {profile.hourBudget} óra
             </span>
           )}
           <ChevronDown className={`ml-auto h-4 w-4 text-slate-500 transition ${settingsOpen ? 'rotate-180' : ''}`} aria-hidden />
         </summary>
-        <div className="space-y-3 border-t border-slate-200/70 px-4 pb-4 pt-3">
+        <div className="space-y-4 border-t border-slate-200/70 px-4 pb-4 pt-4">
           <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
             <Field label="Éves árbevétel (Ft)" term="revenue">
               <HufInput
@@ -566,7 +606,7 @@ export default function RedFlagMatrix({
                 placeholder="pl. 800 000 000"
                 emptyWhenZero
                 onChange={(v) => setCompany((c) => ({ ...c, revenueHuf: v }))}
-                className="w-40 rounded border border-slate-200 px-2 py-1 text-right tabular-nums"
+                className="w-40 rounded-lg border border-slate-200 px-2.5 py-1.5 text-right tabular-nums"
               />
             </Field>
             <Field label="Fedezeti hányad (%)" term="grossMargin">
@@ -583,12 +623,12 @@ export default function RedFlagMatrix({
               <HufInput
                 value={materialityHuf}
                 onChange={setMaterialityHuf}
-                className="w-36 rounded border border-slate-200 px-2 py-1 text-right tabular-nums"
+                className="w-36 rounded-lg border border-slate-200 px-2.5 py-1.5 text-right tabular-nums"
               />
             </Field>
-            <p className="ml-auto max-w-xs self-center text-xs text-slate-600">A képletek kiinduló becslést adnak; tételenként felülírhatók.</p>
+            <p className="ml-auto max-w-xs self-center text-xs text-slate-500">A képletek kiinduló becslést adnak; tételenként felülírhatók.</p>
           </div>
-          <div className="rounded-md bg-white/70 text-sm">
+          <div className="rounded-lg border border-slate-200/70 bg-white/80 p-3 text-sm">
             <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
               <span className="font-semibold text-slate-900">{profile.label}</span>
               <span className="text-slate-500">Címzett: {profile.audience}</span>
@@ -599,11 +639,11 @@ export default function RedFlagMatrix({
                 Keret: <b className="text-slate-800">{profile.hourBudget} óra</b>
               </span>
               {hourSplit(kind).map((h) => (
-                <span key={h.pillar} className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">
+                <span key={h.pillar} className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-slate-700">
                   {PILLAR_LABEL[h.pillar]} {h.hours} óra · súly {Math.round(profile.weights[h.pillar] * 100)}%
                 </span>
               ))}
-              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">Projektvezetés {PM_HOURS} óra</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-slate-700">Projektvezetés {PM_HOURS} óra</span>
               <InfoTip term="weight" label="súly" />
             </div>
             <p className="mt-2 text-xs text-slate-600">
@@ -622,69 +662,74 @@ export default function RedFlagMatrix({
       </details>
 
       {/* ── Kockázati tételek ───────────────────────────────────── */}
-      <section id="kockazati-tetelek" className="scroll-mt-4 rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 p-3 print:hidden">
-          <div className="flex rounded-md bg-slate-100 p-0.5 text-sm">
+      <Card id="kockazati-tetelek" className="scroll-mt-20 overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-200/80 px-4 py-3 print:hidden">
+          <h2 className="mr-1 flex items-center gap-2 text-base font-bold text-slate-900">
+            Kockázati tételek
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-600">{visible.length}</span>
+          </h2>
+          <div className="flex rounded-lg bg-slate-100 p-1 text-sm">
             {(['ALL', ...PILLARS] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => setPillarFilter(p)}
-                className={`rounded px-3 py-1 ${pillarFilter === p ? 'bg-white font-medium text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                aria-pressed={pillarFilter === p}
+                className={`rounded-md px-3 py-1 ${
+                  pillarFilter === p ? 'bg-white font-semibold text-slate-900 shadow-sm' : 'font-medium text-slate-600 hover:text-slate-900'
+                }`}
               >
                 {p === 'ALL' ? 'Mind' : PILLAR_LABEL[p]}
               </button>
             ))}
           </div>
           <label className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-slate-500" />
+            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Keresés…"
-              className="w-48 rounded-md border border-slate-200 py-1.5 pl-8 pr-2 text-sm outline-none focus:border-slate-400"
+              aria-label="Keresés a tételek között"
+              className="w-52 rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-2 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
             />
           </label>
           <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
-            <input type="checkbox" checked={onlyIdentified} onChange={(e) => setOnlyIdentified(e.target.checked)} className="accent-slate-900" />
+            <input type="checkbox" checked={onlyIdentified} onChange={(e) => setOnlyIdentified(e.target.checked)} className="h-4 w-4 accent-brand-600" />
             Csak azonosítottak
           </label>
           {cell && (
-            <button onClick={() => setCell(null)} className="rounded-full bg-slate-900 px-3 py-1 text-xs text-white">
+            <button onClick={() => setCell(null)} className="rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white hover:bg-brand-700">
               Mátrix szűrő: V{cell.l} × H{cell.i} ✕
             </button>
           )}
-          <button
-            onClick={addCustom}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
+          <button onClick={addCustom} className={`ml-auto ${BTN_SECONDARY}`}>
             <Plus className="h-4 w-4" /> Egyedi kockázat
           </button>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1100px] text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200/80 bg-slate-50/80 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
               <tr>
-                <th className="w-16 px-3 py-2" />
-                <th className="px-3 py-2">Kockázat</th>
-                <th className="px-2 py-2 text-center" title="Valószínűség 1–5">
+                <th className="w-16 px-3 py-2.5" />
+                <th className="px-3 py-2.5">Kockázat</th>
+                <th className="px-2 py-2.5 text-center" title="Valószínűség 1–5">
                   Valósz.
                 </th>
-                <th className="px-2 py-2 text-center" title="Hatás 1–5">
+                <th className="px-2 py-2.5 text-center" title="Hatás 1–5">
                   Hatás
                 </th>
-                <th className="px-2 py-2 text-center">
+                <th className="px-2 py-2.5 text-center">
                   Pont <InfoTip term="score" label="pontszám" />
                 </th>
-                <th className="px-2 py-2 text-right">
+                <th className="px-2 py-2.5 text-right">
                   Kitettség (Ft) <InfoTip term="grossExposure" label="kitettség" />
                 </th>
-                <th className="px-2 py-2 text-right">
+                <th className="px-2 py-2.5 text-right">
                   Várható <InfoTip term="expectedLoss" label="várható veszteség" />
                 </th>
-                <th className="px-2 py-2 text-center">Munkanap</th>
-                <th className="px-2 py-2">Divízió / díj</th>
-                <th className="w-10 px-2 py-2" />
+                <th className="px-2 py-2.5 text-center">Munkanap</th>
+                <th className="px-2 py-2.5">Divízió / díj</th>
+                <th className="w-10 px-2 py-2.5" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -720,45 +765,47 @@ export default function RedFlagMatrix({
             </tbody>
           </table>
         </div>
-      </section>
+      </Card>
 
       {/* ── 90 napos akcióterv ──────────────────────────────────── */}
-      <section>
-        <SectionTitle icon={<CalendarClock className="h-5 w-5" />} title="90 napos Prioritási Akcióterv" />
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <section className="pt-2">
+        <SectionTitle icon={<CalendarClock className="h-4 w-4" />} title="90 napos prioritási akcióterv" />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {WINDOWS.map((w) => (
-            <div key={w} className={`rounded-lg border border-slate-200 p-3 ${w === 'BACKLOG' ? 'bg-slate-50' : 'bg-white'}`}>
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-800">{WINDOW_LABEL[w]}</h3>
-                <span className="rounded-full bg-slate-100 px-2 text-xs tabular-nums text-slate-600">{actionPlan[w].length}</span>
+            <Card key={w} className={`p-3 ${w === 'BACKLOG' ? 'bg-slate-50/80' : ''}`}>
+              <div className="mb-3 flex items-center justify-between px-1">
+                <h3 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-600">{WINDOW_LABEL[w]}</h3>
+                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-bold tabular-nums text-brand-700">{actionPlan[w].length}</span>
               </div>
               <ol className="space-y-2">
                 {actionPlan[w].map((r, idx) => (
-                  <li key={r.id} className="rounded-md border border-slate-100 bg-white p-2.5 shadow-xs">
+                  <li key={r.id} className="rounded-lg border border-slate-200/80 bg-white p-3 shadow-xs">
                     <div className="flex items-start gap-2">
-                      <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${RAG_STYLE[r.rag].dot}`} />
+                      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${RAG_STYLE[r.rag].dot}`} />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium leading-snug text-slate-900">
+                        <p className="text-sm font-semibold leading-snug text-slate-900">
                           {idx + 1}. {r.title}
                         </p>
                         <p className="mt-0.5 text-xs text-slate-500">{r.remediation || 'Javaslat kitöltendő.'}</p>
-                        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
                           {r.quickWin && (
-                            <span className="inline-flex items-center gap-0.5 font-medium text-indigo-600">
-                              <Zap className="h-3 w-3" /> Quick win
-                            </span>
+                            <Badge tone="brand" icon={<Zap className="h-3 w-3" />}>
+                              Quick win
+                            </Badge>
                           )}
                           <span>{PILLAR_LABEL[r.pillar]}</span>
+                          <span aria-hidden>·</span>
                           <span>{r.remediationDays} nap</span>
+                          <span aria-hidden>·</span>
                           <span>{formatHufShort(r.expectedLossHuf)} várható</span>
                         </div>
                       </div>
                     </div>
                   </li>
                 ))}
-                {actionPlan[w].length === 0 && <li className="py-4 text-center text-xs text-slate-500">—</li>}
+                {actionPlan[w].length === 0 && <li className="py-4 text-center text-xs text-slate-400">Nincs tétel</li>}
               </ol>
-            </div>
+            </Card>
           ))}
         </div>
       </section>
@@ -785,43 +832,43 @@ export default function RedFlagMatrix({
 
       {/* ── Keresztértékesítés + kredit ─────────────────────────── */}
       <section className="grid gap-4 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <SectionTitle icon={<BriefcaseBusiness className="h-5 w-5" />} title="Remediation pipeline divíziónként" compact />
-          <div className="space-y-2">
+        <Card className="p-5">
+          <SectionTitle icon={<BriefcaseBusiness className="h-4 w-4" />} title="Remediation pipeline divíziónként" compact />
+          <div className="space-y-3">
             {DIVISIONS.map((d) => {
               const v = pipeline.byDivision[d];
               const pct = pipeline.totalFeeHuf ? (v.feeHuf / pipeline.totalFeeHuf) * 100 : 0;
               return (
                 <div key={d} className="grid grid-cols-[120px_1fr_110px] items-center gap-3 text-sm">
-                  <span className="text-slate-600">{DIVISION_LABEL[d]}</span>
+                  <span className="font-medium text-slate-600">{DIVISION_LABEL[d]}</span>
                   <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full rounded-full bg-slate-800" style={{ width: `${pct}%` }} />
+                    <div className="h-full rounded-full bg-brand-600" style={{ width: `${pct}%` }} />
                   </div>
-                  <span className="text-right tabular-nums text-slate-900">
-                    {formatHufShort(v.feeHuf)} <span className="text-xs text-slate-500">({v.count})</span>
+                  <span className="text-right font-semibold tabular-nums text-slate-900">
+                    {formatHufShort(v.feeHuf)} <span className="text-xs font-normal text-slate-500">({v.count})</span>
                   </span>
                 </div>
               );
             })}
           </div>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-slate-900 p-4 text-white shadow-sm">
-          <h3 className="text-sm font-medium text-slate-300">Beszámítási egyenleg</h3>
+        </Card>
+        <div className="rounded-xl bg-navy-900 p-5 text-white shadow-sm">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Beszámítási egyenleg</h3>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between">
-              <dt className="text-slate-500">Javasolt remediáció</dt>
+              <dt className="text-slate-400">Javasolt remediáció</dt>
               <dd className="tabular-nums">{formatHuf(pipeline.totalFeeHuf)}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-slate-500">Audit díj kredit (100%)</dt>
+              <dt className="text-slate-400">Audit díj kredit (100%)</dt>
               <dd className="tabular-nums text-emerald-400">− {formatHuf(pipeline.creditHuf)}</dd>
             </div>
-            <div className="flex justify-between border-t border-slate-700 pt-2 text-base font-semibold">
+            <div className="flex justify-between border-t border-white/10 pt-2 text-base font-bold">
               <dt>Nettó ügyfélnek</dt>
               <dd className="tabular-nums">{formatHuf(pipeline.netAfterCreditHuf)}</dd>
             </div>
           </dl>
-          <p className="mt-3 text-xs text-slate-500">
+          <p className="mt-3 text-xs text-slate-400">
             Csak sárga és piros tételekből képződik lead. A kredit a befizetett {formatHufShort(AUDIT_FEE_HUF)} audit díjig számolható el.
           </p>
         </div>
@@ -865,7 +912,7 @@ function RiskRow({
 
   return (
     <Fragment>
-      <tr className={r.identified ? 'bg-white' : 'bg-white text-slate-500'}>
+      <tr className={`transition-colors hover:bg-slate-50/60 ${r.identified ? '' : 'text-slate-500'}`}>
         <td className="px-3 py-2 align-top">
           <div className="flex items-center gap-1">
             <button
@@ -881,7 +928,7 @@ function RiskRow({
               aria-label={r.identified ? 'Kockázat kivétele' : 'Kockázat azonosítva'}
               className="mt-0.5 text-slate-700 hover:text-slate-900"
             >
-              {r.identified ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5 text-slate-300" />}
+              {r.identified ? <CheckSquare className="h-5 w-5 text-brand-600" /> : <Square className="h-5 w-5 text-slate-300" />}
             </button>
           </div>
         </td>
@@ -904,14 +951,18 @@ function RiskRow({
               <span className="text-xs text-slate-500">{PILLAR_LABEL[r.pillar]}</span>
             )}
             {focus && (
-              <span className="rounded bg-slate-900 px-1.5 text-xs font-medium text-white" title="Ennél az átvilágítás-típusnál mindig érdemes megvizsgálni">
+              <Badge tone="dark" title="Ennél az átvilágítás-típusnál mindig érdemes megvizsgálni">
                 Kiemelt
-              </span>
+              </Badge>
             )}
             {r.source && SOURCE_LABEL[r.source] && (
-              <span className="rounded bg-indigo-50 px-1.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/20" title={r.evidence}>
+              <Badge
+                tone={AI_SOURCES.has(r.source) ? 'violet' : 'brand'}
+                icon={AI_SOURCES.has(r.source) ? <Sparkles className="h-3 w-3" /> : undefined}
+                title={r.evidence}
+              >
                 {SOURCE_LABEL[r.source]}
-              </span>
+              </Badge>
             )}
           </div>
           {isCustom ? (
@@ -931,9 +982,9 @@ function RiskRow({
             </>
           ) : (
             <>
-              <p className={`font-medium ${r.identified ? 'text-slate-900' : ''}`}>{r.title}</p>
+              <p className={`mt-0.5 font-semibold ${r.identified ? 'text-slate-900' : ''}`}>{r.title}</p>
               <p className="text-xs text-slate-500">{r.description}</p>
-              {r.evidence && <p className="mt-1 text-xs italic text-indigo-700">{r.evidence}</p>}
+              {r.evidence && <p className="mt-1 text-xs italic text-brand-700">{r.evidence}</p>}
             </>
           )}
         </td>
@@ -945,7 +996,7 @@ function RiskRow({
         </td>
         <td className="px-2 py-2 text-center align-top">
           <span
-            className={`inline-flex min-w-[64px] items-center justify-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
+            className={`inline-flex min-w-[72px] items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-bold ring-1 ring-inset ${
               r.identified ? RAG_STYLE[rag].badge : 'bg-slate-50 text-slate-500 ring-slate-200'
             }`}
             title={eff.materialityOverride ? 'A várható veszteség eléri a lényegességi küszöböt' : undefined}
@@ -966,7 +1017,7 @@ function RiskRow({
           <HufInput value={exposure.valueHuf} onChange={setExposure} className="w-36 rounded border border-slate-200 px-2 py-1 text-right tabular-nums" />
           <div className="mt-0.5 flex justify-end gap-1 text-xs" title={exposure.explanation}>
             {exposure.source === 'FORMULA' && (
-              <button onClick={onToggleExpand} className="inline-flex items-center gap-0.5 text-sky-700 hover:underline">
+              <button onClick={onToggleExpand} className="inline-flex items-center gap-0.5 text-brand-700 hover:underline">
                 <Calculator className="h-3 w-3" /> képlet{exposure.unapprovedParameter && ' · jóváhagyandó'}
               </button>
             )}
@@ -981,7 +1032,9 @@ function RiskRow({
             )}
           </div>
         </td>
-        <td className="px-2 py-2 text-right align-top tabular-nums">{scored ? formatHufShort(scored.expectedLossHuf) : '—'}</td>
+        <td className="whitespace-nowrap px-2 py-2 text-right align-top font-semibold tabular-nums text-slate-900">
+          {scored ? formatHufShort(scored.expectedLossHuf) : '—'}
+        </td>
         <td className="px-2 py-2 text-center align-top">
           <input
             type="number"
@@ -990,7 +1043,7 @@ function RiskRow({
             onChange={(e) => onChange({ remediationDays: Math.max(0, Number(e.target.value) || 0) })}
             className="w-16 rounded border border-slate-200 px-1.5 py-1 text-center tabular-nums"
           />
-          {scored?.quickWin && <Zap className="mx-auto mt-1 h-3.5 w-3.5 text-indigo-600" aria-label="Quick win" />}
+          {scored?.quickWin && <Zap className="mx-auto mt-1 h-3.5 w-3.5 text-brand-600" aria-label="Quick win" />}
         </td>
         <td className="px-2 py-2 align-top">
           <select
@@ -1019,11 +1072,11 @@ function RiskRow({
         </td>
       </tr>
       {expanded && (
-        <tr className="bg-slate-50/70">
+        <tr className="bg-canvas">
           <td />
           <td colSpan={9} className="px-3 pb-4 pt-1">
             {kindAdjustment && (
-              <label className="mb-3 flex items-start gap-2 rounded-md bg-violet-50 p-2 text-xs text-violet-900">
+              <label className="mb-3 flex items-start gap-2 rounded-lg border border-violet-100 bg-violet-50 p-2.5 text-xs text-violet-900">
                 <input
                   type="checkbox"
                   checked={!r.ignoreKindAdjustment}
@@ -1060,7 +1113,7 @@ function RiskDetails({ risk: r, company, onChange }: { risk: RiskItem; company: 
           <span className="flex items-center justify-between text-xs font-medium text-slate-600">
             Szakmai indoklás (a riportba kerül)
             {def?.reasoning && r.reasoning !== def.reasoning && (
-              <button onClick={() => onChange({ reasoning: def.reasoning })} className="font-normal text-sky-700 hover:underline">
+              <button onClick={() => onChange({ reasoning: def.reasoning })} className="font-normal text-brand-700 hover:underline">
                 alapszöveg visszaállítása
               </button>
             )}
@@ -1070,7 +1123,7 @@ function RiskDetails({ risk: r, company, onChange }: { risk: RiskItem; company: 
             onChange={(e) => onChange({ reasoning: e.target.value })}
             rows={4}
             placeholder="Miért kockázat ez az adott cégnél? 1–3 mondat."
-            className="mt-1 w-full rounded-md border border-slate-200 bg-white p-2 text-sm leading-relaxed text-slate-800 outline-none focus:border-slate-400"
+            className="mt-1 w-full rounded-md border border-slate-200 bg-white p-2 text-sm leading-relaxed text-slate-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
           />
         </label>
         <label className="block">
@@ -1079,12 +1132,12 @@ function RiskDetails({ risk: r, company, onChange }: { risk: RiskItem; company: 
             value={r.remediation}
             onChange={(e) => onChange({ remediation: e.target.value })}
             rows={2}
-            className="mt-1 w-full rounded-md border border-slate-200 bg-white p-2 text-sm text-slate-800 outline-none focus:border-slate-400"
+            className="mt-1 w-full rounded-md border border-slate-200 bg-white p-2 text-sm text-slate-800 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
           />
         </label>
       </div>
 
-      <div className="rounded-md border border-slate-200 bg-white p-3 text-sm">
+      <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
         <div className="mb-2 flex items-center justify-between">
           <span className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
             <Calculator className="h-3.5 w-3.5" /> Forintosítás
@@ -1111,7 +1164,7 @@ function RiskDetails({ risk: r, company, onChange }: { risk: RiskItem; company: 
                 type="checkbox"
                 checked={formula.marginBased}
                 onChange={(e) => setFormula({ ...formula, marginBased: e.target.checked })}
-                className="accent-slate-900"
+                className="accent-brand-600"
               />
               Veszteség = elmaradó fedezet (nem a teljes árbevétel)
             </label>
@@ -1222,8 +1275,9 @@ function HeatMap({
     byCell.set(k, [...(byCell.get(k) ?? []), r]);
   }
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-medium text-slate-600">Kockázati mátrix (valószínűség × hatás)</h3>
+    <Card className="p-4">
+      <h3 className="text-sm font-bold text-slate-900">Kockázati mátrix</h3>
+      <p className="mb-3 text-xs text-slate-500">Valószínűség × hatás; cellára kattintva szűr.</p>
       <div className="flex gap-1.5">
         <span className="rotate-180 self-center text-xs text-slate-500 [writing-mode:vertical-rl]">Valószínűség →</span>
         <div className="grid grid-rows-5 gap-1 pb-9 text-xs text-slate-500">
@@ -1246,8 +1300,8 @@ function HeatMap({
                     onClick={() => onSelect(isSel || list.length === 0 ? null : { l, i })}
                     title={list.map((r) => `${r.code} ${r.title}`).join('\n') || `V${l} × H${i}`}
                     aria-label={`Valószínűség ${l}, hatás ${i}: ${list.length} tétel, ${RAG_LABEL[rag].toLowerCase()} zóna`}
-                    className={`relative flex aspect-square items-center justify-center rounded text-xs font-semibold transition ${RAG_STYLE[rag].cell} ${
-                      isSel ? 'ring-2 ring-slate-900' : ''
+                    className={`relative flex aspect-square items-center justify-center rounded-md text-xs font-bold transition ${RAG_STYLE[rag].cell} ${
+                      isSel ? 'ring-2 ring-brand-600 ring-offset-1' : ''
                     } ${list.length ? 'cursor-pointer text-slate-900 hover:brightness-95' : 'cursor-default text-transparent'}`}
                   >
                     {list.length || '·'}
@@ -1264,7 +1318,7 @@ function HeatMap({
           <p className="text-center text-xs text-slate-500">Hatás →</p>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -1312,46 +1366,14 @@ function HufInput({
         onChange(digits ? Number(digits) : 0);
       }}
       onBlur={() => setDraft(null)}
-      className={`bg-white outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-300 ${className}`}
+      className={`bg-white outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 ${className}`}
     />
   );
 }
 
-function Kpi({
-  label,
-  icon,
-  hint,
-  term,
-  className = '',
-  children,
-}: {
-  label: string;
-  icon: ReactNode;
-  hint?: string;
-  term?: GlossaryKey;
-  className?: string;
-  children: ReactNode;
-}) {
+function ToolbarButton({ onClick, icon, children }: { onClick: () => void; icon: ReactNode; children: ReactNode }) {
   return (
-    <div className={`rounded-lg border border-slate-200 bg-white p-4 shadow-sm ${className}`} title={hint}>
-      <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-        {icon}
-        {label}
-        {term && <InfoTip term={term} label={label} />}
-      </div>
-      <div className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">{children}</div>
-    </div>
-  );
-}
-
-function ToolbarButton({ onClick, icon, primary, children }: { onClick: () => void; icon: ReactNode; primary?: boolean; children: ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-        primary ? 'bg-slate-900 text-white hover:bg-slate-800' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-      }`}
-    >
+    <button onClick={onClick} className={BTN_TOOL}>
       {icon}
       {children}
     </button>
@@ -1360,9 +1382,24 @@ function ToolbarButton({ onClick, icon, primary, children }: { onClick: () => vo
 
 function SectionTitle({ icon, title, compact }: { icon: ReactNode; title: string; compact?: boolean }) {
   return (
-    <h2 className={`flex items-center gap-2 font-semibold text-slate-900 ${compact ? 'mb-3 text-sm' : 'mb-3 text-lg'}`}>
-      {icon}
+    <h2 className={`mb-4 flex items-center gap-2.5 font-bold tracking-tight text-slate-900 ${compact ? 'text-sm' : 'text-lg'}`}>
+      <IconBox tone="brand" size="sm">
+        {icon}
+      </IconBox>
       {title}
     </h2>
+  );
+}
+
+/** Javasolt tétel felvétele: körvonalas „+” címke. */
+function SuggestChip({ title, onClick, children }: { title?: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-white px-2.5 py-1 font-medium text-brand-700 hover:border-brand-300 hover:bg-brand-50"
+    >
+      <Plus className="h-3 w-3" /> {children}
+    </button>
   );
 }

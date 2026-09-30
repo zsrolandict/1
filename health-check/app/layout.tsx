@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import AppNav from '@/components/AppNav';
+import AccountLink from '@/components/AccountLink';
+import AppShell from '@/components/shell/AppShell';
 import GuideHost from '@/components/guide/GuideHost';
+import ProjectBar from '@/components/project/ProjectBar';
 import ProjectScope from '@/components/project/ProjectScope';
 import SupabaseIdentity from '@/components/SupabaseIdentity';
 import { NextNavProvider } from '@/components/NextNav';
@@ -10,6 +12,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'ICT Health Check',
   description: 'Vállalati Health Check & Vendor Due Diligence – belső tanácsadói eszköz',
+  icons: { icon: '/icon.svg' },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -18,10 +21,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-screen antialiased">
         <NextNavProvider>
           <SupabaseIdentity>
-            <AppNav />
-            <ProjectScope>{children}</ProjectScope>
-            {/* Hely a lebegő Kalauz gombnak, hogy ne takarja a lap alját. */}
-            <div className="h-20 print:hidden" aria-hidden />
+            <AppShell project={<ProjectBar />} account={<AccountLink />}>
+              <ProjectScope>{children}</ProjectScope>
+              {/* Hely a lebegő Kalauz gombnak, hogy ne takarja a lap alját. */}
+              <div className="h-20 print:hidden" aria-hidden />
+            </AppShell>
           </SupabaseIdentity>
           <GuideHost />
         </NextNavProvider>

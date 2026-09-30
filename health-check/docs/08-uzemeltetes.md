@@ -78,3 +78,10 @@ A naplót a hosting gyűjti (pl. Vercel Log Drains, Fly.io log shipping); a rias
 - A szerver minden API-hibát `[api]` előtaggal naplóz; a felhasználó csak a szándékosan neki szánt magyar üzenetet kapja (`UserFacingError`), minden más esetben általános üzenetet.
 - `GET /api/interviews/status`: mely szolgáltatások élnek (AI, leirat), és milyen hitelesítési módban fut a szerver.
 - 429 a saját API-tól: a felhasználónkénti óránkénti korlát (`AI_RATE_LIMIT_PER_HOUR`, `TRANSCRIBE_RATE_LIMIT_PER_HOUR`); szerverpéldányonként számol.
+
+## Felület: design-alap
+
+- Színek és betű egy helyen: `app/theme.css` (Tailwind `@theme`: `brand-*` kék, `navy-*` oldalsáv, `canvas` háttér, Inter). A Next-alkalmazás és az előnézet is ezt tölti be.
+- Keret: `components/shell/AppShell.tsx` (sötét oldalsáv + felső sáv a projektválasztóval), logó: `components/ui/BrandMark.tsx`, favicon: `public/icon.svg`.
+- Közös elemek: `components/ui/primitives.tsx` (kártya, KPI-csempe, jelvény, gombstílusok), `components/ui/StepBar.tsx` (a projekt szakaszai, `lib/projectStages.ts`).
+- Az átállás oldalanként halad: elsőként a Red Flag mátrix; a többi oldal tartalma még a korábbi stílusú.

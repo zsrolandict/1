@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { FileDown, Loader2 } from 'lucide-react';
 import type { ReportInput } from '@/lib/report/model';
+import { BTN_PRIMARY } from '../ui/primitives';
 
 /** Fájl átadása a felhasználónak. Alapból böngészős letöltés; az előnézet mást adhat. */
 export type SaveFile = (blob: Blob, filename: string) => Promise<void>;
@@ -65,11 +66,7 @@ export default function ExportPdfButton({
 
   return (
     <span className="inline-flex flex-col items-end">
-      <button
-        onClick={generate}
-        disabled={busy}
-        className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-      >
+      <button onClick={generate} disabled={busy} className={BTN_PRIMARY}>
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
         PDF riport
       </button>

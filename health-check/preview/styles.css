@@ -1,11 +1,8 @@
 /* Előnézet: a teljes projekt a Tailwind forrása (komponensek, lib). */
 @import 'tailwindcss' source('..');
+@import '../app/theme.css';
 
+/* A betűkészletek @font-face szabályait a main.tsx adja (relatív útvonal a közzétett oldalhoz). */
 :root {
   color-scheme: light;
-}
-
-body {
-  background: #f8fafc;
-  color: #0f172a;
 }

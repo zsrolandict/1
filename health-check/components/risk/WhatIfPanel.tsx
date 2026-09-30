@@ -37,10 +37,16 @@ export default function WhatIfPanel({ items, opts, result }: { items: RiskItem[]
     });
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
-      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left">
-        <span className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-          <FlaskConical className="h-4 w-4" /> Mi lenne, ha…? – javítási szimuláció
+    <section className="rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 rounded-xl px-4 py-3.5 text-left hover:bg-slate-50/60"
+      >
+        <span className="flex items-center gap-2.5 text-sm font-bold text-slate-900">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600" aria-hidden>
+            <FlaskConical className="h-4 w-4" />
+          </span>{' '}
+          Mi lenne, ha…? – javítási szimuláció
         </span>
         <span className="text-xs text-slate-500">
           {open
@@ -77,7 +83,7 @@ export default function WhatIfPanel({ items, opts, result }: { items: RiskItem[]
                     onClick={() => setMode(k)}
                     aria-pressed={mode === k}
                     className={`px-2.5 py-0.5 ring-1 ring-inset first:rounded-l-md last:rounded-r-md ${
-                      mode === k ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-600 ring-slate-200'
+                      mode === k ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white text-slate-600 ring-slate-200'
                     }`}
                   >
                     {label}
@@ -85,11 +91,11 @@ export default function WhatIfPanel({ items, opts, result }: { items: RiskItem[]
                 ))}
               </span>
             </div>
-            <ul className="mt-3 max-h-80 divide-y divide-slate-100 overflow-auto rounded-md border border-slate-100 text-sm">
+            <ul className="mt-3 max-h-80 divide-y divide-slate-100 overflow-auto rounded-lg border border-slate-200/80 text-sm">
               {candidates.map((r) => (
                 <li key={r.id}>
                   <label className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-slate-50">
-                    <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} className="accent-slate-900" />
+                    <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} className="accent-brand-600" />
                     <span className="w-14 font-mono text-xs text-slate-500">{r.code}</span>
                     <span className="min-w-0 flex-1 truncate text-slate-800">{r.title}</span>
                     <span className={`text-xs ${r.rag === 'RED' ? 'text-red-700' : 'text-amber-700'}`}>{RAG_LABEL[r.rag]}</span>
@@ -101,7 +107,7 @@ export default function WhatIfPanel({ items, opts, result }: { items: RiskItem[]
               {candidates.length === 0 && <li className="px-3 py-2 text-slate-500">Nincs piros vagy sárga tétel.</li>}
             </ul>
           </div>
-          <dl className="space-y-2 rounded-md bg-slate-50 p-3 text-sm">
+          <dl className="space-y-2 rounded-lg bg-canvas p-3 text-sm">
             <Row label="Health Score" before={String(b.healthScore)} after={String(a.healthScore)} good={a.healthScore > b.healthScore} />
             <Row label="Összesített besorolás" before={RAG_LABEL[b.rag]} after={RAG_LABEL[a.rag]} good={a.rag !== b.rag} />
             <Row label="Piros / sárga tételek" before={`${b.red} / ${b.amber}`} after={`${a.red} / ${a.amber}`} good={a.red + a.amber < b.red + b.amber} />

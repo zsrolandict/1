@@ -91,7 +91,7 @@ export default function Guide() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-slate-800 print:hidden"
+        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(41,82,227,0.4)] hover:bg-brand-700 print:hidden"
       >
         <Compass className="h-4 w-4" /> Kalauz
       </button>
@@ -109,19 +109,19 @@ export default function Guide() {
         <div className="ml-auto flex gap-1 text-xs">
           <button
             onClick={() => setView('start')}
-            className={`rounded px-2 py-1 ${view === 'start' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+            className={`rounded px-2 py-1 ${view === 'start' ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
           >
             Kezdés
           </button>
           <button
             onClick={() => setView('steps')}
-            className={`rounded px-2 py-1 ${view === 'steps' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+            className={`rounded px-2 py-1 ${view === 'steps' ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
           >
             Merre tovább
           </button>
           <button
             onClick={() => setView('modules')}
-            className={`inline-flex items-center gap-1 rounded px-2 py-1 ${view === 'modules' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+            className={`inline-flex items-center gap-1 rounded px-2 py-1 ${view === 'modules' ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
           >
             <SlidersHorizontal className="h-3 w-3" /> Modulok
           </button>

@@ -65,10 +65,16 @@ export default function FollowUpPanel({
   };
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
-      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left">
-        <span className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-          <History className="h-4 w-4" /> Utókövetés – javítások állapota és összevetés
+    <section className="rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 rounded-xl px-4 py-3.5 text-left hover:bg-slate-50/60"
+      >
+        <span className="flex items-center gap-2.5 text-sm font-bold text-slate-900">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600" aria-hidden>
+            <History className="h-4 w-4" />
+          </span>{' '}
+          Utókövetés – javítások állapota és összevetés
         </span>
         <span className="text-xs text-slate-500">{open ? 'Bezár' : statusCount.map(([s, n]) => `${REMEDIATION_LABEL[s]}: ${n}`).join(' · ')}</span>
       </button>
@@ -76,7 +82,7 @@ export default function FollowUpPanel({
         <div className="grid gap-4 border-t border-slate-100 p-4 lg:grid-cols-2">
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Javítások állapota</h3>
-            <ul className="mt-2 max-h-96 divide-y divide-slate-100 overflow-auto rounded-md border border-slate-100 text-sm">
+            <ul className="mt-2 max-h-96 divide-y divide-slate-100 overflow-auto rounded-lg border border-slate-200/80 text-sm">
               {identified.map((r) => (
                 <li key={r.id} className="flex items-center gap-2 px-3 py-1.5">
                   <span className="w-14 font-mono text-xs text-slate-500">{r.code}</span>
@@ -105,7 +111,7 @@ export default function FollowUpPanel({
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={save}
-                className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
               >
                 <Camera className="h-3.5 w-3.5" /> Pillanatkép a mostani állapotról
               </button>
@@ -148,7 +154,7 @@ export default function FollowUpPanel({
                     .map((k) => `${CHANGE_LABEL[k]}: ${cmp.counts[k]}`)
                     .join(' · ')}
                 </p>
-                <ul className="mt-2 max-h-72 divide-y divide-slate-100 overflow-auto rounded-md border border-slate-100 text-sm">
+                <ul className="mt-2 max-h-72 divide-y divide-slate-100 overflow-auto rounded-lg border border-slate-200/80 text-sm">
                   {cmp.changes.map((c) => (
                     <li key={c.id} className="flex items-center gap-2 px-3 py-1.5">
                       <span className={`w-28 shrink-0 rounded px-1.5 text-center text-xs font-medium ${CHANGE_STYLE[c.change]}`}>{CHANGE_LABEL[c.change]}</span>
@@ -176,7 +182,7 @@ function Kpi({ label, before, after, lowerIsBetter, money }: { label: string; be
   const worse = lowerIsBetter ? after > before : after < before;
   const f = (n: number) => (money ? formatHufShort(n) : String(n));
   return (
-    <div className="rounded-md bg-slate-50 p-2">
+    <div className="rounded-lg bg-canvas p-2">
       <dt className="text-xs text-slate-500">{label}</dt>
       <dd className="mt-0.5 tabular-nums">
         <span className="text-slate-500">{f(before)}</span> →{' '}
