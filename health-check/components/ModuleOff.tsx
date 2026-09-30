@@ -12,7 +12,7 @@ export default function ModuleOff({ ids }: { ids: ModuleId[] }) {
       <p>{names.length === 1 ? `A(z) „${names[0].label}” modul` : 'Az oldal moduljai'} ebben a projektben ki van kapcsolva. Az adatai megmaradtak.</p>
       <div className="mt-3 flex flex-wrap justify-center gap-2">
         {names.map((m) => (
-          <button key={m.id} onClick={() => toggle(m.id)} className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
+          <button key={m.id} onClick={() => toggle(m.id)} className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700">
             {m.label} bekapcsolása
           </button>
         ))}

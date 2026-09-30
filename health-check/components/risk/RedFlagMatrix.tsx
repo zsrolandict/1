@@ -46,10 +46,8 @@ import { SECTOR_LABEL } from '@/lib/intake/requests';
 import { missingSectorRisks } from '@/lib/risk/sectorRisks';
 import { EXPERT_PARAMETERS } from '@/lib/risk/parameters';
 import { computeFormula, resolveExposure, type CompanyProfile, type Formula } from '@/lib/risk/valuation';
-import { projectStages } from '@/lib/projectStages';
-import { stepsForProject } from '@/lib/projectProgress';
 import { Badge, BTN_PRIMARY, BTN_SECONDARY, BTN_TOOL, Card, IconBox, KpiTile, type Tone } from '../ui/primitives';
-import StepBar from '../ui/StepBar';
+import ProjectStagesCard from '../ui/ProjectStagesCard';
 import WhatIfPanel from './WhatIfPanel';
 import FollowUpPanel from './FollowUpPanel';
 import { useModules } from '../useModules';
@@ -297,11 +295,6 @@ export default function RedFlagMatrix({
   const missingRevenue = !hasRevenue(company);
   const noAssessment = totals.identified === 0;
   const settingsOpen = settingsPref ?? missingRevenue;
-  // A projekt szakaszai a folyamatsávhoz (a többi modul adatát a tárolóból olvassa).
-  const stages = useMemo(
-    () => (hydrated ? projectStages(stepsForProject(projectId, totals.identified, modules.disabled)) : []),
-    [hydrated, projectId, totals.identified, modules.disabled],
-  );
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5 px-6 py-7 lg:px-8">
@@ -401,11 +394,7 @@ export default function RedFlagMatrix({
       </header>
 
       {/* ── A projekt szakaszai ─────────────────────────────────── */}
-      {stages.length > 0 && (
-        <Card className="px-3 py-2.5 print:hidden">
-          <StepBar stages={stages} current="matrix" onGo={nav?.go} />
-        </Card>
-      )}
+      {hydrated && <ProjectStagesCard projectId={projectId} identified={totals.identified} current="matrix" />}
 
       {confirmDialog}
 

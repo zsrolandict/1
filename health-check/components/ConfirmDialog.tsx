@@ -35,7 +35,7 @@ export default function ConfirmDialog({
   }, [open]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 print:hidden" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/50 p-4 print:hidden" onClick={onCancel}>
       <div
         ref={boxRef}
         role="alertdialog"
@@ -49,12 +49,12 @@ export default function ConfirmDialog({
         </h2>
         {children && <div className="mt-2 text-sm text-slate-600">{children}</div>}
         <div className="mt-5 flex justify-end gap-2">
-          <button ref={cancelRef} onClick={onCancel} className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+          <button ref={cancelRef} onClick={onCancel} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
             {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium text-white ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-900 hover:bg-slate-800'}`}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium text-white ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-brand-600 hover:bg-brand-700'}`}
           >
             {confirmLabel}
           </button>

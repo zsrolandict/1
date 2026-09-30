@@ -80,16 +80,16 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-haspopup="true"
-          className="inline-flex max-w-[16rem] items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-800 hover:bg-slate-50"
+          className="inline-flex max-w-[16rem] items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-800 hover:bg-slate-50"
         >
           <FolderOpen className="h-4 w-4 shrink-0 text-slate-500" />
           <span className="truncate">{label}</span>
-          {isDemo && <span className="shrink-0 rounded bg-indigo-100 px-1 text-xs font-medium text-indigo-800">bemutató</span>}
+          {isDemo && <span className="shrink-0 rounded bg-brand-100 px-1 text-xs font-medium text-brand-800">bemutató</span>}
           <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-500" />
         </button>
 
         {open && (
-          <div className="absolute right-0 z-40 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white p-2 text-sm shadow-xl">
+          <div className="absolute right-0 z-40 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-slate-200/80 bg-white p-2 text-sm shadow-xl">
             {creating ? (
               <NewProjectForm
                 onCancel={() => setCreating(false)}
@@ -104,13 +104,13 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
             ) : (
               <button
                 onClick={() => setCreating(true)}
-                className="flex w-full items-center gap-2 rounded-md bg-slate-900 px-3 py-2 text-left font-medium text-white hover:bg-slate-800"
+                className="flex w-full items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-left font-medium text-white hover:bg-brand-700"
               >
                 <Plus className="h-4 w-4" /> Új projekt
               </button>
             )}
 
-            <p className="mt-3 px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Saját projektek</p>
+            <p className="mt-3 px-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Saját projektek</p>
             {own.length === 0 ? (
               <p className="px-2 py-1 text-xs text-slate-500">Még nincs saját projekt. Valódi ügyfélhez hozz létre újat.</p>
             ) : (
@@ -127,7 +127,7 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
               </ul>
             )}
 
-            <p className="mt-3 px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Bemutató (kitalált cégek)</p>
+            <p className="mt-3 px-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Bemutató (kitalált cégek)</p>
             <ul>
               {SCENARIOS.map((s) => {
                 const opened = demos.find((d) => d.id === s.id);
@@ -213,7 +213,7 @@ export function NewProjectForm({ onCreate, onCancel }: { onCreate: (input: { com
         setTouched(true);
         if (!invalid) onCreate({ companyName: name, kind });
       }}
-      className="space-y-2 rounded-md bg-slate-50 p-3"
+      className="space-y-2 rounded-lg bg-slate-50 p-3"
     >
       <p className="font-medium text-slate-900">Új projekt</p>
       <label className="block text-xs text-slate-600">
@@ -243,10 +243,10 @@ export function NewProjectForm({ onCreate, onCancel }: { onCreate: (input: { com
       </label>
       <p className="text-xs text-slate-500">Üres katalógussal indul: semmi nincs bejelölve, mintaadat nincs benne. A kalauz végigvezet.</p>
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="rounded-md px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100">
+        <button type="button" onClick={onCancel} className="rounded-lg px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100">
           Mégse
         </button>
-        <button type="submit" className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800">
+        <button type="submit" className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700">
           Létrehozás
         </button>
       </div>
@@ -330,7 +330,7 @@ function SaveStatus({ projectId, meta, companyName, saveFile }: { projectId: str
       <button
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs ${
+        className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs ${
           failed
             ? 'bg-red-600 font-medium text-white hover:bg-red-700'
             : due
@@ -346,10 +346,10 @@ function SaveStatus({ projectId, meta, companyName, saveFile }: { projectId: str
         <div
           role="dialog"
           aria-label="Mentés"
-          className="absolute right-0 z-40 mt-1 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-xl"
+          className="absolute right-0 z-40 mt-1 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-slate-200/80 bg-white p-3 text-sm shadow-xl"
         >
           {failed && (
-            <div role="alert" className="mb-3 rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-900">
+            <div role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-900">
               <p className="font-semibold">A legutóbbi módosítás nem mentődött el.</p>
               <p className="mt-1">
                 Valószínűleg betelt a böngésző tárhelye (vagy privát ablakban dolgozol). A képernyőn lévő munka megvan, de bezárás vagy frissítés után elveszne.
@@ -368,7 +368,7 @@ function SaveStatus({ projectId, meta, companyName, saveFile }: { projectId: str
           </p>
           <button
             onClick={backup}
-            className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+            className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
           >
             Projekt mentése fájlba
           </button>

@@ -30,7 +30,7 @@ export default function InfoTip({ term, label }: { term: GlossaryKey; label?: st
       <span
         id={id}
         role="tooltip"
-        className={`absolute left-1/2 top-full z-30 mt-1 w-64 -translate-x-1/2 rounded-md bg-slate-900 px-2.5 py-2 text-left text-xs font-normal normal-case leading-snug tracking-normal text-white shadow-lg ${
+        className={`absolute left-1/2 top-full z-30 mt-1 w-64 -translate-x-1/2 rounded-lg bg-navy-900 px-2.5 py-2 text-left text-xs font-normal normal-case leading-snug tracking-normal text-white shadow-lg ${
           pinned ? 'visible' : 'invisible group-hover:visible group-focus-within:visible'
         }`}
       >

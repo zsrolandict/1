@@ -81,7 +81,7 @@ export default function FollowUpPanel({
       {open && (
         <div className="grid gap-4 border-t border-slate-100 p-4 lg:grid-cols-2">
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Javítások állapota</h3>
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Javítások állapota</h3>
             <ul className="mt-2 max-h-96 divide-y divide-slate-100 overflow-auto rounded-lg border border-slate-200/80 text-sm">
               {identified.map((r) => (
                 <li key={r.id} className="flex items-center gap-2 px-3 py-1.5">

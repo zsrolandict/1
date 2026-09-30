@@ -41,7 +41,7 @@ export default function ProjectsOverview({ onClose, allowNewTab = true }: { onCl
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-slate-900/40 p-4 pt-16 print:hidden" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-navy-950/50 p-4 pt-16 print:hidden" onClick={onClose}>
       <div
         ref={boxRef}
         role="dialog"
@@ -72,7 +72,7 @@ export default function ProjectsOverview({ onClose, allowNewTab = true }: { onCl
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-slate-900">{p.companyName || 'Névtelen projekt'}</span>
-                    {p.isDemo && <span className="rounded bg-indigo-100 px-1.5 text-xs font-medium text-indigo-800">bemutató</span>}
+                    {p.isDemo && <span className="rounded bg-brand-100 px-1.5 text-xs font-medium text-brand-800">bemutató</span>}
                     {p.id === activeId && <span className="rounded bg-emerald-100 px-1.5 text-xs font-medium text-emerald-800">ezen a lapon nyitva</span>}
                   </p>
                   <p className="mt-0.5 text-xs text-slate-600">
@@ -87,7 +87,7 @@ export default function ProjectsOverview({ onClose, allowNewTab = true }: { onCl
                       aria-valuenow={progress.done}
                       aria-label="Haladás"
                     >
-                      <div className="h-full bg-slate-800" style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }} />
+                      <div className="h-full rounded-full bg-brand-600" style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }} />
                     </div>
                     <span className="text-xs text-slate-600">
                       {progress.done}/{progress.total} lépés · {progress.next ? `Következő: ${progress.next.title}` : 'minden lépés kész'}
@@ -100,14 +100,14 @@ export default function ProjectsOverview({ onClose, allowNewTab = true }: { onCl
                       href={`${PAGE_PATH[page]}?projekt=${encodeURIComponent(p.id)}`}
                       target="_blank"
                       rel="noopener"
-                      className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-white"
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-white"
                     >
                       <ExternalLink className="h-3.5 w-3.5" /> Új lapon
                     </a>
                   )}
                   <button
                     onClick={() => resume(p)}
-                    className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+                    className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
                   >
                     Folytatás: {PAGE_LABEL[page]} <ArrowRight className="h-3.5 w-3.5" />
                   </button>

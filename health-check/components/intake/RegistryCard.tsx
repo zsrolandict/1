@@ -65,15 +65,18 @@ export default function RegistryCard({
   };
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-          <Building className="h-4 w-4" /> Cégkivonat (nyilvános cégadatok)
+        <h2 className="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600" aria-hidden>
+            <Building className="h-4 w-4" />
+          </span>{' '}
+          Cégkivonat (nyilvános cégadatok)
         </h2>
         {SAMPLE_REGISTRY[scenarioId] && (
           <button
             onClick={() => update({ registry: sampleRegistryRecord(scenarioId) })}
-            className="rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+            className="rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100"
           >
             Minta cégkivonat
           </button>
@@ -90,10 +93,10 @@ export default function RegistryCard({
             onChange={(e) => setText(e.target.value)}
             rows={4}
             placeholder="Cégkivonat szövege…"
-            className="mt-2 w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs"
+            className="mt-2 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
           />
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50">
               <Upload className="h-3.5 w-3.5" /> Fájl (PDF/TXT/DOCX)
               <input
                 type="file"
@@ -110,7 +113,7 @@ export default function RegistryCard({
               onClick={extract}
               disabled={!aiReady || busy || text.trim().length < 50}
               title={aiReady ? undefined : 'Az AI ebben a környezetben nem érhető el'}
-              className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Kiolvasás
             </button>
@@ -136,7 +139,7 @@ export default function RegistryCard({
             <dt className="text-slate-500">Főtevékenység</dt>
             <dd>
               {rec.data.mainActivity?.value ?? '—'}
-              {f.sector && <span className="ml-1 text-indigo-700">→ {SECTOR_LABEL[f.sector]}</span>}
+              {f.sector && <span className="ml-1 text-brand-700">→ {SECTOR_LABEL[f.sector]}</span>}
             </dd>
             <dt className="text-slate-500">Jegyzett tőke</dt>
             <dd>{rec.data.capitalHuf != null ? formatHufShort(rec.data.capitalHuf) : '—'}</dd>
@@ -169,19 +172,19 @@ export default function RegistryCard({
           ))}
           <div className="flex flex-wrap gap-2">
             {f.sector && !intake.profile.sectors.includes(f.sector) && (
-              <button onClick={() => onAddSector(f.sector!)} className="rounded-md bg-indigo-700 px-2.5 py-1 font-medium text-white">
+              <button onClick={() => onAddSector(f.sector!)} className="rounded-lg bg-brand-600 px-2.5 py-1 font-medium text-white">
                 Ágazat hozzáadása: {SECTOR_LABEL[f.sector]}
               </button>
             )}
             {f.multipleOwners && !intake.profile.flags.includes('MULTIPLE_OWNERS') && (
               <button
                 onClick={() => update({ profile: { ...intake.profile, flags: [...intake.profile.flags, 'MULTIPLE_OWNERS'] } })}
-                className="rounded-md bg-indigo-700 px-2.5 py-1 font-medium text-white"
+                className="rounded-lg bg-brand-600 px-2.5 py-1 font-medium text-white"
               >
                 „Több tulajdonos” bejelölése
               </button>
             )}
-            <button onClick={() => update({ registry: null })} className="rounded-md border border-slate-200 px-2.5 py-1 text-slate-600">
+            <button onClick={() => update({ registry: null })} className="rounded-lg border border-slate-200 px-2.5 py-1 text-slate-600">
               Másik cégkivonat
             </button>
           </div>

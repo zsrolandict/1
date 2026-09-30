@@ -101,7 +101,7 @@ export default function Guide() {
   return (
     <aside
       aria-label="Kalauz"
-      className="fixed bottom-4 right-4 z-40 flex max-h-[80vh] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl print:hidden"
+      className="fixed bottom-4 right-4 z-40 flex max-h-[80vh] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-2xl print:hidden"
     >
       <header className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
         <Compass className="h-4 w-4 text-slate-700" />
@@ -137,7 +137,7 @@ export default function Guide() {
         {view === 'steps' && (
           <>
             {next ? (
-              <div className="rounded-lg bg-slate-900 p-3 text-white">
+              <div className="rounded-xl bg-navy-900 p-4 text-white">
                 <p className="text-xs uppercase tracking-wide text-slate-300">Következő lépés</p>
                 <p className="mt-0.5 font-semibold">{next.title}</p>
                 <p className="mt-1 text-xs text-slate-200">{next.how}</p>
@@ -205,7 +205,7 @@ export default function Guide() {
             </p>
             {AREAS.map((area) => (
               <div key={area} className="mt-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{area}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">{area}</p>
                 <ul className="mt-1 space-y-1">
                   {MODULES.filter((m) => m.area === area).map((m) => (
                     <li key={m.id}>
@@ -257,7 +257,7 @@ function StartView({ onDone, nav }: { onDone: () => void; nav: Nav | null }) {
           }}
         />
       ) : (
-        <button onClick={() => setCreating(true)} className="w-full rounded-lg bg-slate-900 px-3 py-2.5 text-left text-white hover:bg-slate-800">
+        <button onClick={() => setCreating(true)} className="w-full rounded-lg bg-brand-600 px-3 py-2.5 text-left text-white hover:bg-brand-700">
           <span className="block font-medium">Új ügyfél indítása</span>
           <span className="block text-xs text-slate-300">Cégnév és átvilágítás-típus, utána az Adatgyűjtéssel kezdünk.</span>
         </button>
@@ -265,7 +265,7 @@ function StartView({ onDone, nav }: { onDone: () => void; nav: Nav | null }) {
 
       {recent.length > 0 && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Folytatás, ahol abbahagytad</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Folytatás, ahol abbahagytad</p>
           <ul className="mt-1 space-y-1">
             {recent.map((p) => (
               <li key={p.id}>
@@ -274,7 +274,7 @@ function StartView({ onDone, nav }: { onDone: () => void; nav: Nav | null }) {
                     openProject(p.id, nav);
                     onDone();
                   }}
-                  className="flex w-full items-center justify-between gap-2 rounded-md border border-slate-200 px-3 py-2 text-left hover:bg-slate-50"
+                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left hover:bg-slate-50"
                 >
                   <span className="min-w-0">
                     <span className="block truncate text-slate-900">{p.companyName || 'Névtelen projekt'}</span>

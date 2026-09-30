@@ -30,7 +30,7 @@ const FLAGS = Object.keys(FLAG_LABEL) as CaseFlag[];
 const SECTORS = Object.keys(SECTOR_LABEL) as Sector[];
 const STATUSES: RequestStatus[] = ['REQUESTED', 'RECEIVED', 'MISSING', 'NA'];
 const STATUS_STYLE: Record<RequestStatus, string> = {
-  REQUESTED: 'bg-slate-900 text-white ring-slate-900',
+  REQUESTED: 'bg-brand-600 text-white ring-brand-600',
   RECEIVED: 'bg-emerald-600 text-white ring-emerald-600',
   MISSING: 'bg-red-600 text-white ring-red-600',
   NA: 'bg-slate-400 text-white ring-slate-400',
@@ -109,16 +109,16 @@ export default function CaseTab({
     <section className="grid gap-5 lg:grid-cols-[420px_minmax(0,1fr)]">
       {/* ── Tényállás ─────────────────────────────────────── */}
       <div className="space-y-4">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-slate-900">Előzetes tényállás</h2>
+            <h2 className="text-base font-bold tracking-tight text-slate-900">Előzetes tényállás</h2>
             {SAMPLE_PROFILES[scenarioId] && (
               <button
                 onClick={() => {
                   update({ profile: SAMPLE_PROFILES[scenarioId] });
                   onSectorsChange(SAMPLE_PROFILES[scenarioId].sectors);
                 }}
-                className="rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                className="rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100"
               >
                 Minta tényállás
               </button>
@@ -138,7 +138,7 @@ export default function CaseTab({
                   onClick={() => setSectors(on ? profile.sectors.filter((x) => x !== sec) : [...profile.sectors, sec])}
                   aria-pressed={on}
                   className={`rounded-full px-2.5 py-1 text-xs ring-1 ring-inset ${
-                    on ? 'bg-indigo-700 text-white ring-indigo-700' : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
+                    on ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
                   }`}
                 >
                   {SECTOR_LABEL[sec]}
@@ -146,7 +146,7 @@ export default function CaseTab({
               );
             })}
           </div>
-          {sectorNote && <p className="mt-1 text-xs text-indigo-800">{sectorNote}</p>}
+          {sectorNote && <p className="mt-1 text-xs text-brand-800">{sectorNote}</p>}
           <label className="mt-3 flex items-center justify-between gap-2 text-xs text-slate-600">
             Létszám (fő)
             <input
@@ -154,7 +154,7 @@ export default function CaseTab({
               min={0}
               value={profile.headcount ?? ''}
               onChange={(e) => setProfile({ headcount: e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))) })}
-              className="w-28 rounded-md border border-slate-200 px-2 py-1.5 text-right text-sm"
+              className="w-28 rounded-lg border border-slate-200 px-2 py-1.5 text-right text-sm"
             />
           </label>
           <p className="mt-3 text-xs font-medium text-slate-600">Jellemzők</p>
@@ -167,7 +167,7 @@ export default function CaseTab({
                   onClick={() => toggleFlag(f)}
                   aria-pressed={on}
                   className={`rounded-full px-2.5 py-1 text-xs ring-1 ring-inset ${
-                    on ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
+                    on ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
                   }`}
                 >
                   {FLAG_LABEL[f]}
@@ -182,14 +182,14 @@ export default function CaseTab({
               onChange={(e) => setProfile({ narrative: e.target.value })}
               rows={7}
               placeholder="Pl.: Tanácsadó cég 30 munkavállalóval, generációváltás előtt. Az alapító két éven belül átadná a vezetést a fiának…"
-              className="mt-0.5 w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+              className="mt-0.5 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
             />
           </label>
           <button
             onClick={askAi}
             disabled={!aiReady || busy || profile.narrative.trim().length < 20}
             title={aiReady ? undefined : 'Az AI ebben a környezetben nem érhető el'}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
             AI-javaslat a tényállásból
@@ -208,9 +208,9 @@ export default function CaseTab({
         )}
 
         {suggestion && (
-          <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-4 text-sm shadow-sm">
-            <h3 className="font-semibold text-indigo-950">AI-javaslat</h3>
-            <p className="mt-0.5 text-xs text-indigo-900/70">
+          <div className="rounded-xl border border-brand-200 bg-brand-50/50 p-4 text-sm shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <h3 className="font-semibold text-brand-900">AI-javaslat</h3>
+            <p className="mt-0.5 text-xs text-brand-900/70">
               Csak a tényállásból szó szerint alátámasztott javaslatok maradtak meg
               {suggestion.discardedUnverified ? ` (${suggestion.discardedUnverified} nem igazolhatót kiszűrt)` : ''}. Te döntöd el, mit veszel fel.
             </p>
@@ -220,7 +220,7 @@ export default function CaseTab({
                   setSectors([...new Set([...profile.sectors, ...suggestion.sectors])]);
                   if (suggestion.headcount) setProfile({ headcount: suggestion.headcount });
                 }}
-                className="mt-2 rounded-md bg-white px-2.5 py-1 text-xs text-indigo-800 ring-1 ring-indigo-200 hover:bg-indigo-100"
+                className="mt-2 rounded-lg bg-white px-2.5 py-1 text-xs text-brand-800 ring-1 ring-brand-200 hover:bg-brand-100"
               >
                 Átvesz: {suggestion.sectors.map((x) => SECTOR_LABEL[x]).join(', ')}
                 {suggestion.headcount ? ` · ${suggestion.headcount} fő` : ''}
@@ -231,12 +231,12 @@ export default function CaseTab({
                 {suggestion.flags.map((f) => (
                   <li key={f.flag} className="flex items-start justify-between gap-2 text-xs">
                     <span>
-                      <b>{FLAG_LABEL[f.flag]}</b> <i className="text-indigo-900/70">„{f.quote}”</i>
+                      <b>{FLAG_LABEL[f.flag]}</b> <i className="text-brand-900/70">„{f.quote}”</i>
                     </span>
                     <button
                       onClick={() => !profile.flags.includes(f.flag) && toggleFlag(f.flag)}
                       disabled={profile.flags.includes(f.flag)}
-                      className="shrink-0 rounded bg-indigo-700 px-2 py-0.5 font-medium text-white disabled:bg-emerald-600"
+                      className="shrink-0 rounded bg-brand-600 px-2 py-0.5 font-medium text-white disabled:bg-emerald-600"
                     >
                       {profile.flags.includes(f.flag) ? '✓' : 'Bejelöl'}
                     </button>
@@ -249,13 +249,13 @@ export default function CaseTab({
                 {suggestion.documents.map((d) => {
                   const added = intake.extraRequests.some((x) => x.title === d.title);
                   return (
-                    <li key={d.title} className="rounded-md bg-white p-2 text-xs ring-1 ring-indigo-100">
+                    <li key={d.title} className="rounded-lg bg-white p-2 text-xs ring-1 ring-brand-100">
                       <div className="flex items-start justify-between gap-2">
                         <b className="text-slate-900">{d.title}</b>
                         <button
                           onClick={() => !added && addExtra({ title: d.title, pillar: d.pillar, why: [d.why], source: 'AI', priority: 'RECOMMENDED' })}
                           disabled={added}
-                          className="shrink-0 rounded bg-indigo-700 px-2 py-0.5 font-medium text-white disabled:bg-emerald-600"
+                          className="shrink-0 rounded bg-brand-600 px-2 py-0.5 font-medium text-white disabled:bg-emerald-600"
                         >
                           {added ? '✓ Felvéve' : 'Felvesz'}
                         </button>
@@ -267,14 +267,14 @@ export default function CaseTab({
                 })}
               </ul>
             )}
-            {!suggestion.flags.length && !suggestion.documents.length && <p className="mt-2 text-xs text-indigo-900/70">Nincs további javaslat.</p>}
+            {!suggestion.flags.length && !suggestion.documents.length && <p className="mt-2 text-xs text-brand-900/70">Nincs további javaslat.</p>}
           </div>
         )}
       </div>
 
       {/* ── Iratlista ─────────────────────────────────────── */}
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="text-sm">
             <b className="text-slate-900">Iratbekérési lista: {list.length} tétel</b>
             <span className="ml-2 text-xs text-slate-500">{counts.map(([s, n]) => `${STATUS_LABEL[s]}: ${n}`).join(' · ')}</span>
@@ -282,11 +282,11 @@ export default function CaseTab({
           <div className="flex gap-2">
             <button
               onClick={copy}
-              className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
             >
               <ClipboardCopy className="h-3.5 w-3.5" /> {copied ? 'Másolva' : 'Lista az ügyfélnek (másolás)'}
             </button>
-            <button onClick={() => setShowText((v) => !v)} className="rounded-md border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50">
+            <button onClick={() => setShowText((v) => !v)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50">
               {showText ? 'Szöveg elrejtése' : 'Szöveg mutatása'}
             </button>
           </div>
@@ -296,7 +296,7 @@ export default function CaseTab({
               value={text}
               rows={12}
               onFocus={(e) => e.target.select()}
-              className="w-full rounded-md border border-slate-200 p-2 font-mono text-xs"
+              className="w-full rounded-lg border border-slate-200 p-2 font-mono text-xs"
             />
           )}
         </div>
@@ -305,7 +305,7 @@ export default function CaseTab({
           const items = list.filter((d) => d.pillar === p);
           if (!items.length) return null;
           return (
-            <div key={p} className="rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div key={p} className="rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
               <h3 className="border-b border-slate-100 px-4 py-2 text-sm font-semibold text-slate-900">{PILLAR_LABEL[p]}</h3>
               <ul className="divide-y divide-slate-100">
                 {items.map((d) => {
@@ -316,11 +316,15 @@ export default function CaseTab({
                       <div className="min-w-0 flex-1 basis-72">
                         <p className="text-sm text-slate-900">
                           {d.title}
-                          {d.priority === 'REQUIRED' && <span className="ml-1.5 rounded bg-slate-900 px-1.5 text-xs font-medium text-white">Kötelező</span>}
+                          {d.priority === 'REQUIRED' && (
+                            <span className="ml-1.5 rounded-lg bg-navy-900 px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-white">
+                              Kötelező
+                            </span>
+                          )}
                           <span className="ml-1.5 rounded bg-slate-100 px-1.5 text-xs font-medium text-slate-600">{SOURCE_LABEL[d.source]}</span>
                         </p>
                         <p className="mt-0.5 text-xs text-slate-500">{d.why.join(' · ')}</p>
-                        {d.table && <p className="mt-0.5 text-xs text-indigo-700">Beérkezés után: Adattáblák → {TABLE_SPECS[d.table].label}</p>}
+                        {d.table && <p className="mt-0.5 text-xs text-brand-700">Beérkezés után: Adattáblák → {TABLE_SPECS[d.table].label}</p>}
                       </div>
                       <div className="flex items-center gap-1.5">
                         <div className="inline-flex" role="group" aria-label={`Állapot: ${d.title}`}>
@@ -360,9 +364,9 @@ export default function CaseTab({
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             placeholder="Egyedi irat hozzáadása…"
-            className="min-w-0 flex-1 rounded-md border border-slate-200 px-2 py-1 text-sm"
+            className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2 py-1 text-sm"
           />
-          <select value={newPillar} onChange={(e) => setNewPillar(e.target.value as Pillar)} className="rounded-md border border-slate-200 px-2 text-sm">
+          <select value={newPillar} onChange={(e) => setNewPillar(e.target.value as Pillar)} className="rounded-lg border border-slate-200 px-2 text-sm">
             {PILLARS.map((p) => (
               <option key={p} value={p}>
                 {PILLAR_LABEL[p]}
@@ -375,7 +379,7 @@ export default function CaseTab({
               addExtra({ title: newTitle.trim(), pillar: newPillar, why: ['tanácsadói döntés'], source: 'MANUAL', priority: 'RECOMMENDED' });
               setNewTitle('');
             }}
-            className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-white"
+            className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1 text-xs font-medium text-white"
           >
             <Plus className="h-3.5 w-3.5" /> Hozzáad
           </button>

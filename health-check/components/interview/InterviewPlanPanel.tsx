@@ -10,8 +10,8 @@ import { PILLAR_LABEL } from '@/lib/risk/catalog';
 
 const STATUS_STYLE: Record<InterviewStatus, string> = {
   PLANNED: 'bg-slate-100 text-slate-600',
-  IN_PROGRESS: 'bg-sky-50 text-sky-700',
-  TRANSCRIBED: 'bg-indigo-50 text-indigo-700',
+  IN_PROGRESS: 'bg-brand-50 text-brand-700',
+  TRANSCRIBED: 'bg-brand-50 text-brand-700',
   ANALYZED: 'bg-emerald-50 text-emerald-700',
 };
 
@@ -37,7 +37,7 @@ export default function InterviewPlanPanel({
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-slate-200 bg-white p-4 text-sm shadow-sm">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-slate-200/80 bg-white p-4 text-sm shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <span className="flex items-center gap-2 font-semibold text-slate-900">
           <Users className="h-4 w-4" /> Kivel beszéljünk?
         </span>
@@ -61,14 +61,14 @@ export default function InterviewPlanPanel({
           const status = recordStatus(rec);
           const contradictions = rec?.analysis?.contradictions.length ?? 0;
           return (
-            <li key={p.role} className="flex flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <li key={p.role} className="flex flex-col rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
               <div className="flex items-start gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">{p.order}</span>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">{p.order}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold text-slate-900">{p.label}</h3>
                     <span
-                      className={`rounded px-1.5 text-xs font-medium ${p.priority === 'REQUIRED' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}
+                      className={`rounded px-1.5 text-xs font-medium ${p.priority === 'REQUIRED' ? 'bg-navy-900 text-white' : 'bg-slate-100 text-slate-600'}`}
                     >
                       {p.priority === 'REQUIRED' ? 'Kötelező' : 'Ajánlott'}
                     </span>
@@ -105,7 +105,7 @@ export default function InterviewPlanPanel({
 
               <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Miért vele?</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Miért vele?</p>
                   <ul className="mt-1 space-y-1 text-slate-700">
                     {p.why.map((w) => (
                       <li key={w}>• {w}</li>
@@ -113,7 +113,7 @@ export default function InterviewPlanPanel({
                   </ul>
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Miről kérdezzük?</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Miről kérdezzük?</p>
                   <ul className="mt-1 space-y-1 text-slate-700">
                     {p.topics.map((q) => (
                       <li key={q.id}>
@@ -143,7 +143,7 @@ export default function InterviewPlanPanel({
                     Elemzés
                   </PlanButton>
                 )}
-                {p.role === sampleRole && status === 'PLANNED' && <span className="self-center text-xs text-indigo-700">Minta-interjú elérhető</span>}
+                {p.role === sampleRole && status === 'PLANNED' && <span className="self-center text-xs text-brand-700">Minta-interjú elérhető</span>}
               </div>
             </li>
           );
@@ -161,8 +161,8 @@ function PlanButton({ onClick, icon, primary, children }: { onClick: () => void;
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${
-        primary ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
+      className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium ${
+        primary ? 'bg-brand-600 text-white hover:bg-brand-700' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
       }`}
     >
       {icon}

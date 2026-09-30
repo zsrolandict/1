@@ -45,6 +45,8 @@ import {
   type Role,
   type TimesheetState,
 } from '@/lib/timesheet/timesheet';
+import { PageHeader } from '../ui/primitives';
+import ProjectStagesCard from '../ui/ProjectStagesCard';
 
 const BUCKET_LABEL: Record<Bucket, string> = { ...PILLAR_LABEL, PM: BUCKET_LABEL_PM };
 const BAR: Record<BurnLevel, string> = { OK: 'bg-emerald-500', WARN: 'bg-amber-500', OVER: 'bg-red-600' };
@@ -67,13 +69,14 @@ export default function ProjectWorkspace() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-      <header>
-        <h1 className="text-xl font-semibold text-slate-900">Projekt</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          {ws.companyName} · {ENGAGEMENT_KINDS[ws.kind].label}. Az időkeret és a tudástár a Red Flag mátrixban kiválasztott projekthez tartozik.
-        </p>
-      </header>
+    <div className="mx-auto max-w-[1400px] space-y-5 px-6 py-7 lg:px-8">
+      <PageHeader
+        kind={ENGAGEMENT_KINDS[ws.kind].label}
+        section="Projekt"
+        title={ws.companyName || 'Névtelen projekt'}
+        subtitle="Időkeret és tudástár: a kiválasztott projekthez tartozik."
+      />
+      {hydrated && <ProjectStagesCard projectId={ws.projectId} identified={ws.items.filter((r) => r.identified).length} current="projekt" />}
       {hydrated && isOn('TIMESHEET') && <TimesheetSection key={ws.projectId} projectId={ws.projectId} kind={ws.kind} />}
       {!PROJECT_MODULES.some(isOn) && <ModuleOff ids={PROJECT_MODULES} />}
       {hydrated && isOn('KNOWLEDGE') && <KnowledgeSection ws={ws} sectors={sectors} />}
@@ -118,9 +121,12 @@ function TimesheetSection({ projectId, kind }: { projectId: string; kind: Engage
   };
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-        <Clock className="h-4 w-4" /> Időkeret – ráfordított órák, költség, fedezet
+    <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <h2 className="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600" aria-hidden>
+          <Clock className="h-4 w-4" />
+        </span>{' '}
+        Időkeret – ráfordított órák, költség, fedezet
       </h2>
       <dl className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
         <Stat label="Felhasznált / keret" value={`${fmt(sum.used)} / ${sum.budget} óra`} tone={sum.level} />
@@ -131,7 +137,7 @@ function TimesheetSection({ projectId, kind }: { projectId: string; kind: Engage
 
       <div className="mt-4 grid gap-2 sm:grid-cols-5">
         {sum.buckets.map((b) => (
-          <div key={b.bucket} className="rounded-md bg-slate-50 p-2 text-xs">
+          <div key={b.bucket} className="rounded-lg bg-slate-50 p-2 text-xs">
             <div className="flex justify-between text-slate-600">
               <span>{BUCKET_LABEL[b.bucket]}</span>
               <span className="tabular-nums">
@@ -150,7 +156,7 @@ function TimesheetSection({ projectId, kind }: { projectId: string; kind: Engage
         ))}
       </div>
       {sum.warnings.length > 0 && (
-        <ul className="mt-3 space-y-1 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+        <ul className="mt-3 space-y-1 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
           {sum.warnings.map((w) => (
             <li key={w}>{w}</li>
           ))}
@@ -251,7 +257,7 @@ function TimesheetSection({ projectId, kind }: { projectId: string; kind: Engage
             className="w-64 rounded border border-slate-200 px-2 py-1"
           />
         </Labeled>
-        <button onClick={add} className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 font-medium text-white hover:bg-slate-800">
+        <button onClick={add} className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 font-medium text-white hover:bg-brand-700">
           <Plus className="h-3.5 w-3.5" /> Rögzítés
         </button>
         <button onClick={() => setShowRates((v) => !v)} className="ml-auto text-slate-500 underline hover:text-slate-800">
@@ -260,7 +266,7 @@ function TimesheetSection({ projectId, kind }: { projectId: string; kind: Engage
       </div>
       {error && <p className="mt-1 text-xs text-red-700">{error}</p>}
       {showRates && (
-        <div className="mt-3 flex flex-wrap items-end gap-3 rounded-md bg-slate-50 p-3 text-xs">
+        <div className="mt-3 flex flex-wrap items-end gap-3 rounded-lg bg-slate-50 p-3 text-xs">
           {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
             <Labeled key={r} label={`${ROLE_LABEL[r]} (Ft/óra)`}>
               <input
@@ -364,14 +370,17 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
   };
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-          <BookOpen className="h-4 w-4" /> Tudástár – tapasztalatok a lezárt projektekből
+        <h2 className="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600" aria-hidden>
+            <BookOpen className="h-4 w-4" />
+          </span>{' '}
+          Tudástár – tapasztalatok a lezárt projektekből
         </h2>
         <button
           onClick={record}
-          className="ml-auto inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+          className="ml-auto inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
         >
           <Plus className="h-3.5 w-3.5" /> Aktuális projekt felvétele (anonimizálva)
         </button>
@@ -436,14 +445,14 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
       ) : (
         <div className="mt-3 grid gap-4 lg:grid-cols-2">
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Leggyakoribb tételek</h3>
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Leggyakoribb tételek</h3>
             <table className="mt-2 w-full text-left text-xs">
-              <thead className="text-slate-500">
+              <thead className="text-[11px] uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="py-1">Tétel</th>
-                  <th className="text-right">Gyakoriság</th>
-                  <th className="text-right">Átl. V×H</th>
-                  <th className="text-right">Piros</th>
+                  <th className="py-1.5 font-semibold">Tétel</th>
+                  <th className="whitespace-nowrap pl-3 text-right font-semibold">Gyakoriság</th>
+                  <th className="whitespace-nowrap pl-3 text-right font-semibold">Átl. V×H</th>
+                  <th className="whitespace-nowrap pl-3 text-right font-semibold">Piros</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -452,13 +461,13 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
                     <td className="py-1">
                       <span className="font-mono text-slate-500">{c.code}</span> {c.title}
                     </td>
-                    <td className="text-right tabular-nums">
+                    <td className="whitespace-nowrap pl-3 text-right tabular-nums">
                       {c.count}/{s.n} ({Math.round(c.frequency * 100)}%)
                     </td>
-                    <td className="text-right tabular-nums">
+                    <td className="whitespace-nowrap pl-3 text-right tabular-nums">
                       {fmt(c.avgLikelihood)}×{fmt(c.avgImpact)}
                     </td>
-                    <td className="text-right tabular-nums">{Math.round(c.redShare * 100)}%</td>
+                    <td className="whitespace-nowrap pl-3 text-right tabular-nums">{Math.round(c.redShare * 100)}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -467,7 +476,7 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
           </div>
           <div className="space-y-4">
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Hasonló projektekben gyakori, itt nincs jelölve</h3>
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Hasonló projektekben gyakori, itt nincs jelölve</h3>
               {missing.length === 0 ? (
                 <p className="mt-2 text-xs text-slate-500">Nincs ilyen tétel (vagy kevés a hasonló projekt).</p>
               ) : (
@@ -481,7 +490,7 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
               )}
             </div>
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Katalógus-kalibrálási javaslat</h3>
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Katalógus-kalibrálási javaslat</h3>
               {cal.length === 0 ? (
                 <p className="mt-2 text-xs text-slate-500">Legalább 3 projekt kell tételenként, és 1 pontos eltérés a katalógus alapértékétől.</p>
               ) : (
@@ -529,9 +538,9 @@ const fmt = (n: number) => n.toLocaleString('hu-HU', { maximumFractionDigits: 2 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: BurnLevel }) {
   const color = tone === 'OVER' ? 'text-red-700' : tone === 'WARN' ? 'text-amber-700' : 'text-slate-900';
   return (
-    <div className="rounded-md bg-slate-50 p-2">
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className={`mt-0.5 font-semibold tabular-nums ${color}`}>{value}</dd>
+    <div className="rounded-xl border border-slate-200/80 bg-white p-3.5">
+      <dt className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">{label}</dt>
+      <dd className={`mt-1 text-xl font-bold tracking-tight tabular-nums ${color}`}>{value}</dd>
     </div>
   );
 }

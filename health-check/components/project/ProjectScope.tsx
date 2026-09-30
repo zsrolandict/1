@@ -74,7 +74,7 @@ export default function ProjectScope({ children }: { children: ReactNode }) {
                 setOtherTab(false);
                 setRev((n) => n + 1);
               }}
-              className="inline-flex items-center gap-1 rounded-md bg-amber-800 px-2.5 py-1 text-xs font-medium text-white hover:bg-amber-900"
+              className="inline-flex items-center gap-1 rounded-lg bg-amber-800 px-2.5 py-1 text-xs font-medium text-white hover:bg-amber-900"
             >
               <RefreshCw className="h-3.5 w-3.5" /> Frissítés
             </button>

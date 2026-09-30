@@ -84,4 +84,4 @@ A naplót a hosting gyűjti (pl. Vercel Log Drains, Fly.io log shipping); a rias
 - Színek és betű egy helyen: `app/theme.css` (Tailwind `@theme`: `brand-*` kék, `navy-*` oldalsáv, `canvas` háttér, Inter). A Next-alkalmazás és az előnézet is ezt tölti be.
 - Keret: `components/shell/AppShell.tsx` (sötét oldalsáv + felső sáv a projektválasztóval), logó: `components/ui/BrandMark.tsx`, favicon: `public/icon.svg`.
 - Közös elemek: `components/ui/primitives.tsx` (kártya, KPI-csempe, jelvény, gombstílusok), `components/ui/StepBar.tsx` (a projekt szakaszai, `lib/projectStages.ts`).
-- Az átállás oldalanként halad: elsőként a Red Flag mátrix; a többi oldal tartalma még a korábbi stílusú.
+- Oldalfejléc, fülsor, legördülő: `PageHeader`, `TabBar`/`TabButton`, `SELECT`; a projekt szakaszai minden oldal tetején: `components/ui/ProjectStagesCard.tsx`. Új oldal ezekből épüljön, ne saját színekből.

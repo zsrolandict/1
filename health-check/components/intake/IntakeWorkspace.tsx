@@ -20,6 +20,7 @@ import {
   Undo2,
   Upload,
   X,
+  Lightbulb,
 } from 'lucide-react';
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 import { applyCompanySuggestion, applyIntakeSuggestion, isCompanySuggestionApplied } from '@/lib/intake/apply';
@@ -31,6 +32,8 @@ import { SAMPLE_DOCUMENTS, sampleDocumentRecord, samplePagesRedacted } from '@/l
 import { hasSampleTables, SAMPLE_REF_DATE, sampleTableCsv } from '@/lib/intake/samples/tables';
 import { EMPTY_INTAKE, intakeResults, loadIntake, requestList, saveIntake, type IntakeState } from '@/lib/intake/state';
 import CaseTab from './CaseTab';
+import { BTN_PRIMARY, Callout, PageHeader, SELECT, TabBar, TabButton, TabCount } from '../ui/primitives';
+import ProjectStagesCard from '../ui/ProjectStagesCard';
 import ModuleOff from '../ModuleOff';
 import { useModules } from '../useModules';
 import { INTAKE_TAB_EVENT, takeRequestedIntakeTab } from '@/lib/guide';
@@ -244,22 +247,18 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
   const tableCount = Object.keys(intake.tables).length;
 
   return (
-    <div className="mx-auto max-w-[1300px] space-y-5 px-4 py-6 sm:px-6 lg:px-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">{ENGAGEMENT_KINDS[ws.kind].label} · Adatgyűjtés</p>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-900">Adatgyűjtés és előjelölés</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {ws.companyName || 'Névtelen projekt'}
-            {scenario.situation ? ` · ${scenario.situation}` : ''}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="mx-auto max-w-[1400px] space-y-5 px-6 py-7 lg:px-8">
+      <PageHeader
+        kind={ENGAGEMENT_KINDS[ws.kind].label}
+        section="Adatgyűjtés"
+        title="Adatgyűjtés és előjelölés"
+        subtitle={`${ws.companyName || 'Névtelen projekt'}${scenario.situation ? ` · ${scenario.situation}` : ''}`}
+        actions={
           <select
             value={ws.kind}
             onChange={(e) => updateWs({ ...ws, kind: e.target.value as EngagementKind })}
             aria-label="Átvilágítás típusa"
-            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm"
+            className={SELECT}
           >
             {ENGAGEMENT_KIND_LIST.map((k) => (
               <option key={k.kind} value={k.kind}>
@@ -267,64 +266,63 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
               </option>
             ))}
           </select>
-        </div>
-      </header>
+        }
+      />
 
-      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 text-sm shadow-sm md:grid-cols-[1fr_auto] md:items-center">
-        <p className="text-slate-600">
-          A kérdőív, a táblázatok és a dokumentumok <b>javaslatokat</b> adnak. A Red Flag mátrixba csak az kerül, amit elfogad. Már azonosított tételnél a
-          súlyosság nem csökken; a képlet paraméterét (arány, darabszám) a tényadat pontosítja.
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+      <ProjectStagesCard projectId={ws.projectId} identified={ws.items.filter((r) => r.identified).length} current="adatok" />
+
+      <Callout tone="brand" icon={<Lightbulb className="h-4 w-4 text-brand-600" />}>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <p className="min-w-0 flex-1 text-slate-700">
+            A kérdőív, a táblázatok és a dokumentumok <b>javaslatokat</b> adnak. A Red Flag mátrixba csak az kerül, amit elfogad. Már azonosított tételnél a
+            súlyosság nem csökken; a képlet paraméterét (arány, darabszám) a tényadat pontosítja.
+          </p>
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-brand-100">
             {pendingCount} döntésre vár · {intake.accepted.length} átvéve
           </span>
           {onOpenMatrix && (
-            <button
-              onClick={onOpenMatrix}
-              className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
-            >
-              Red Flag mátrix <ArrowRight className="h-3.5 w-3.5" />
+            <button onClick={onOpenMatrix} className={BTN_PRIMARY}>
+              Red Flag mátrix <ArrowRight className="h-4 w-4" />
             </button>
           )}
         </div>
-      </div>
+      </Callout>
 
-      <nav className="flex gap-1 overflow-x-auto border-b border-slate-200">
+      <TabBar label="Adatgyűjtés lépései">
         {isOn('CASE') && (
           <TabButton active={activeTab === 'case'} onClick={() => setTab('case')} icon={<FolderInput className="h-4 w-4" />}>
-            0. Tényállás, iratbekérés <Count>{requestList(intake, ws.kind).length}</Count>
+            0. Tényállás, iratbekérés <TabCount>{requestList(intake, ws.kind).length}</TabCount>
           </TabButton>
         )}
         {isOn('CHECKLIST') && (
           <TabButton active={activeTab === 'checklist'} onClick={() => setTab('checklist')} icon={<ClipboardList className="h-4 w-4" />}>
             1. Kérdőív{' '}
-            <Count>
+            <TabCount>
               {progress.answered}/{progress.total}
-            </Count>
+            </TabCount>
           </TabButton>
         )}
         {isOn('TABLES') && (
           <TabButton active={activeTab === 'tables'} onClick={() => setTab('tables')} icon={<Table2 className="h-4 w-4" />}>
-            2. Adattáblák <Count>{tableCount}/4</Count>
+            2. Adattáblák <TabCount>{tableCount}/4</TabCount>
           </TabButton>
         )}
         {isOn('DOCUMENTS') && (
           <TabButton active={activeTab === 'documents'} onClick={() => setTab('documents')} icon={<FileText className="h-4 w-4" />}>
-            3. Dokumentumok <Count>{intake.documents.length}</Count>
+            3. Dokumentumok <TabCount>{intake.documents.length}</TabCount>
           </TabButton>
         )}
         {isOn('OVERVIEW') && (
           <TabButton active={activeTab === 'overview'} onClick={() => setTab('overview')} icon={<Sparkles className="h-4 w-4" />}>
-            4. Összkép <Count>{cross.conflicts.length} ellentmondás</Count>
+            4. Összkép <TabCount>{cross.conflicts.length} ellentmondás</TabCount>
           </TabButton>
         )}
-      </nav>
+      </TabBar>
 
       {!activeTab && <ModuleOff ids={INTAKE_MODULES} />}
 
       {error && (
-        <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
           <button onClick={() => setError(null)} className="ml-auto" aria-label="Bezárás">
             <X className="h-4 w-4" />
@@ -458,21 +456,21 @@ function ChecklistTab({
           {onSample && (
             <button
               onClick={onSample}
-              className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+              className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-100"
             >
               Minta-válaszok betöltése
             </button>
           )}
           <button
             onClick={onClear}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
           >
             <RotateCcw className="h-3.5 w-3.5" /> Törlés
           </button>
         </div>
       </div>
       {PILLARS.map((p) => (
-        <div key={p} className="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div key={p} className="rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <h2 className="border-b border-slate-100 px-4 py-2 text-sm font-semibold text-slate-900">{PILLAR_LABEL[p]}</h2>
           <ol className="divide-y divide-slate-100">
             {CHECKLIST.filter((q) => q.pillar === p && isVisible(q, answers, sectors)).map((q) => (
@@ -482,7 +480,7 @@ function ChecklistTab({
                     <p className="text-sm text-slate-900">
                       <span className="mr-1.5 font-mono text-xs text-slate-500">{q.id}</span>
                       {q.sectors && (
-                        <span className="mr-1.5 rounded bg-indigo-50 px-1.5 text-xs font-medium text-indigo-700">
+                        <span className="mr-1.5 rounded bg-brand-50 px-1.5 text-xs font-medium text-brand-700">
                           {q.sectors
                             .filter((x) => sectors.includes(x))
                             .map((x) => SECTOR_LABEL[x])
@@ -514,7 +512,7 @@ function ChecklistTab({
 function AnswerInput({ q, value, onChange }: { q: ChecklistQuestion; value: Answer | undefined; onChange: (a: Answer | undefined) => void }) {
   const seg = (active: boolean) =>
     `px-2.5 py-1 text-xs font-medium first:rounded-l-md last:rounded-r-md ring-1 ring-inset ${
-      active ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-50'
+      active ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-50'
     }`;
   if (q.type === 'YES_NO') {
     return (
@@ -552,7 +550,7 @@ function AnswerInput({ q, value, onChange }: { q: ChecklistQuestion; value: Answ
         value={typeof value === 'number' ? value : ''}
         onChange={(e) => onChange(e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)))}
         aria-label={q.id}
-        className="w-20 rounded-md border border-slate-200 px-2 py-1 text-right text-sm text-slate-900"
+        className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-right text-sm text-slate-900"
       />
       {q.unit}
     </label>
@@ -591,15 +589,15 @@ function TablesTab({
         const r = raw[kind];
         const missing = r ? missingColumns(kind, r.mapping) : [];
         return (
-          <div key={kind} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div key={kind} className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1 basis-64">
-                <h2 className="text-sm font-semibold text-slate-900">{spec.label}</h2>
+                <h2 className="text-base font-bold tracking-tight text-slate-900">{spec.label}</h2>
                 <p className="mt-0.5 text-xs text-slate-500">{spec.request}</p>
                 <p className="mt-0.5 text-xs text-slate-500">Oszlopok: {spec.columns.map((c) => c.label + (c.required ? '' : ' (opc.)')).join(' · ')}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
                   <Upload className="h-3.5 w-3.5" /> Fájl
                   <input
                     type="file"
@@ -615,7 +613,7 @@ function TablesTab({
                 {canSample && (
                   <button
                     onClick={() => onSample(kind)}
-                    className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                    className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-100"
                   >
                     Mintatábla
                   </button>
@@ -624,7 +622,7 @@ function TablesTab({
                   <button
                     onClick={() => onRemove(kind)}
                     aria-label="Tábla eltávolítása"
-                    className="rounded-md border border-slate-200 px-2 text-slate-500 hover:text-red-600"
+                    className="rounded-lg border border-slate-200 px-2 text-slate-500 hover:text-red-600"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -633,7 +631,7 @@ function TablesTab({
             </div>
 
             {r && (
-              <div className="mt-3 space-y-2 rounded-md bg-slate-50 p-3 text-xs">
+              <div className="mt-3 space-y-2 rounded-lg bg-slate-50 p-3 text-xs">
                 <p className="text-slate-500">
                   <b className="text-slate-700">{r.fileName}</b> · fejléc: {r.headerRow + 1}. sor
                 </p>
@@ -744,7 +742,7 @@ function DocumentsTab({
 }) {
   return (
     <section className="space-y-4">
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1 basis-72 text-sm text-slate-600">
             <p>
@@ -758,8 +756,8 @@ function DocumentsTab({
             </p>
           </div>
           <label
-            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-              aiReady && !busy ? 'cursor-pointer bg-slate-900 text-white hover:bg-slate-800' : 'cursor-not-allowed bg-slate-100 text-slate-500'
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ${
+              aiReady && !busy ? 'cursor-pointer bg-brand-600 text-white hover:bg-brand-700' : 'cursor-not-allowed bg-slate-100 text-slate-500'
             }`}
             title={aiReady ? undefined : 'Az AI-elemzés ebben a környezetben nincs beállítva'}
           >
@@ -785,7 +783,7 @@ function DocumentsTab({
               <button
                 key={s.fileName}
                 onClick={() => onSample(i)}
-                className="rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 font-medium text-indigo-700 hover:bg-indigo-100"
+                className="rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 font-medium text-brand-700 hover:bg-brand-100"
               >
                 {s.fileName}
               </button>
@@ -823,7 +821,7 @@ function DocumentCard({
   const redacted = Object.entries(d.redactions);
   const where = (i: number | null) => (i != null ? d.pageLabels[i] : '');
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <article className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -838,7 +836,7 @@ function DocumentCard({
         </button>
       </div>
       {d.kind && d.kind !== kind && (
-        <p className="mt-2 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900">
+        <p className="mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
             <b>Más célra készült:</b> {ENGAGEMENT_KINDS[d.kind].label} (most: {ENGAGEMENT_KINDS[kind].label}). A súlyosságot az AI a célhoz méri; az új célhoz
@@ -876,11 +874,11 @@ function DocumentCard({
       )}
       {sample && (
         <div className="mt-3">
-          <button onClick={() => setShowText((v) => !v)} className="text-xs font-medium text-indigo-700 hover:underline">
+          <button onClick={() => setShowText((v) => !v)} className="text-xs font-medium text-brand-700 hover:underline">
             {showText ? 'Szöveg elrejtése' : 'Mit kapott az AI? (maszkolt szöveg)'}
           </button>
           {showText && (
-            <div className="mt-2 max-h-72 space-y-2 overflow-auto rounded-md bg-slate-50 p-3 text-xs text-slate-700">
+            <div className="mt-2 max-h-72 space-y-2 overflow-auto rounded-lg bg-slate-50 p-3 text-xs text-slate-700">
               {samplePagesRedacted(sample).map((p) => (
                 <Fragment key={p.label}>
                   <p className="font-medium text-slate-500">— {p.label} —</p>
@@ -922,11 +920,11 @@ function SuggestionPanel({
 }) {
   const pending = result.suggestions.filter((s) => !accepted.has(s.key) && !dismissed.has(s.key)).length;
   return (
-    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-2.5">
-        <h2 className="text-sm font-semibold text-slate-900">Javaslatok a mátrixba ({result.suggestions.length})</h2>
+        <h2 className="text-base font-bold tracking-tight text-slate-900">Javaslatok a mátrixba ({result.suggestions.length})</h2>
         {pending > 1 && (
-          <button onClick={onAcceptAll} className="rounded-md bg-slate-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-slate-800">
+          <button onClick={onAcceptAll} className="rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-700">
             Mind ({pending}) elfogad
           </button>
         )}
@@ -936,15 +934,15 @@ function SuggestionPanel({
           {result.companySuggestions.map((c) => {
             const done = accepted.has(c.key) || isCompanySuggestionApplied(ws.company, c);
             return (
-              <li key={c.key} className="rounded-md bg-sky-50 p-2.5 text-xs">
-                <p className="flex items-center gap-1.5 font-medium text-sky-900">
+              <li key={c.key} className="rounded-lg bg-brand-50 p-2.5 text-xs">
+                <p className="flex items-center gap-1.5 font-medium text-brand-900">
                   <Building2 className="h-3.5 w-3.5" /> Cégadat: {c.label}
                 </p>
-                <p className="mt-0.5 text-sky-800/80">{c.evidence}</p>
+                <p className="mt-0.5 text-brand-800/80">{c.evidence}</p>
                 <button
                   onClick={() => onAcceptCompany(c)}
                   disabled={done}
-                  className={`mt-1.5 rounded px-2 py-0.5 font-medium ${done ? 'text-emerald-700' : 'bg-sky-700 text-white hover:bg-sky-800'}`}
+                  className={`mt-1.5 rounded px-2 py-0.5 font-medium ${done ? 'text-emerald-700' : 'bg-brand-600 text-white hover:bg-brand-700'}`}
                 >
                   {done ? '✓ Érvényben' : 'Cégadat frissítése'}
                 </button>
@@ -1016,7 +1014,7 @@ function SuggestionRow({
           V{s.likelihood}×H{s.impact} = {score}
         </span>
         {s.confidence != null && <span className="text-slate-500">biztosság {Math.round(s.confidence * 100)}%</span>}
-        <span className="ml-auto rounded bg-indigo-50 px-1.5 font-medium text-indigo-700">{ORIGIN_LABEL[s.origin]}</span>
+        <span className="ml-auto rounded bg-brand-50 px-1.5 font-medium text-brand-700">{ORIGIN_LABEL[s.origin]}</span>
       </div>
       <p className="mt-1 font-medium text-slate-900">{s.title}</p>
       <p className="mt-0.5 text-xs text-slate-600">{s.rationale}</p>
@@ -1034,10 +1032,10 @@ function SuggestionRow({
           </button>
         ) : (
           <>
-            <button onClick={onAccept} className="rounded-md bg-slate-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-slate-800">
+            <button onClick={onAccept} className="rounded-lg bg-brand-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-700">
               Elfogad
             </button>
-            <button onClick={onDismiss} className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-50">
+            <button onClick={onDismiss} className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-50">
               Elvet
             </button>
           </>
@@ -1051,7 +1049,7 @@ function FactsNote({ result }: { result: IntakeResult }) {
   if (!result.facts.length) return null;
   const toAsk = result.facts.filter((f) => f.askInInterview !== false).length;
   return (
-    <p className="rounded-md bg-slate-100 px-3 py-2 text-xs text-slate-600">
+    <p className="rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-600">
       {result.facts.length} tény megy tovább az interjúkhoz: ezekkel veti össze az elemzés az elhangzottakat
       {toAsk > 0 ? `, és ${toAsk}-ra külön rákérdezünk` : ''}.
     </p>
@@ -1059,21 +1057,3 @@ function FactsNote({ result }: { result: IntakeResult }) {
 }
 
 // ── Apró elemek ───────────────────────────────────────────────────
-
-function TabButton({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: ReactNode; children: ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`-mb-px inline-flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium ${
-        active ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'
-      }`}
-    >
-      {icon}
-      {children}
-    </button>
-  );
-}
-
-function Count({ children }: { children: ReactNode }) {
-  return <span className="rounded-full bg-slate-100 px-1.5 text-xs font-medium text-slate-600">{children}</span>;
-}

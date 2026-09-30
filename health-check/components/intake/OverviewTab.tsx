@@ -46,19 +46,22 @@ export default function OverviewTab({
 
   return (
     <section className="space-y-4">
-      <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-4 shadow-sm">
+      <div className="rounded-xl border border-brand-200 bg-brand-50/50 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1 basis-72">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-indigo-950">
-              <Sparkles className="h-4 w-4" /> Mit nem fed le a katalógus? (AI-összkép)
+            <h2 className="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600" aria-hidden>
+                <Sparkles className="h-4 w-4" />
+              </span>{' '}
+              Mit nem fed le a katalógus? (AI-összkép)
             </h2>
-            <p className="mt-1 text-xs text-indigo-900/80">
+            <p className="mt-1 text-xs text-brand-900/80">
               Az AI egyszerre olvassa a tényállást, a kérdőívet, a táblákat, a dokumentumokat és az interjúkat ({sourceCount} forrás), és olyan kockázatokat
               keres, amelyek csak ezek összevetéséből derülnek ki. Minden javaslat mellett ott a forrás és a szó szerinti idézet; amit nem talál meg a
               forrásban, azt a rendszer eldobja. A javaslatok jobb oldalt jelennek meg.
             </p>
             {synthesis && (
-              <p className="mt-1 text-xs text-indigo-900/70">
+              <p className="mt-1 text-xs text-brand-900/70">
                 Utolsó futtatás: {new Date(synthesis.createdAt).toLocaleString('hu-HU')} · {synthesis.suggestions.length} javaslat
                 {synthesis.discardedUnverified ? ` · ${synthesis.discardedUnverified} nem igazolhatót kiszűrt` : ''}
               </p>
@@ -68,7 +71,7 @@ export default function OverviewTab({
             onClick={run}
             disabled={!aiReady || busy || sourceCount === 0}
             title={aiReady ? undefined : 'Az AI ebben a környezetben nem érhető el'}
-            className="inline-flex items-center gap-1.5 rounded-md bg-indigo-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {synthesis ? 'Összkép újra' : 'Összkép készítése'}
@@ -76,14 +79,17 @@ export default function OverviewTab({
         </div>
         {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
         {sourceCount === 0 && (
-          <p className="mt-2 text-xs text-indigo-900/70">Előbb tölts be legalább egy forrást (tényállás, kérdőív, tábla, dokumentum vagy interjú).</p>
+          <p className="mt-2 text-xs text-brand-900/70">Előbb tölts be legalább egy forrást (tényállás, kérdőív, tábla, dokumentum vagy interjú).</p>
         )}
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-2.5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-            <ArrowLeftRight className="h-4 w-4" /> Ellentmondások a források között ({conflicts.length})
+          <h2 className="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600" aria-hidden>
+              <ArrowLeftRight className="h-4 w-4" />
+            </span>{' '}
+            Ellentmondások a források között ({conflicts.length})
           </h2>
           <div className="inline-flex text-xs" role="group" aria-label="Szűrő">
             {(
@@ -98,7 +104,7 @@ export default function OverviewTab({
                 onClick={() => setFilter(k)}
                 aria-pressed={filter === k}
                 className={`px-2.5 py-1 ring-1 ring-inset first:rounded-l-md last:rounded-r-md ${
-                  filter === k ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-600 ring-slate-200'
+                  filter === k ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white text-slate-600 ring-slate-200'
                 }`}
               >
                 {label}
@@ -116,7 +122,7 @@ export default function OverviewTab({
         ) : (
           <ul className="space-y-3 p-3">
             {shown.map((c) => (
-              <li key={c.key} className={`rounded-md border p-3 text-sm ${SEV[c.severity].cls}`}>
+              <li key={c.key} className={`rounded-lg border p-3 text-sm ${SEV[c.severity].cls}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium">
                   <span className="text-slate-500">
                     {PILLAR_LABEL[c.pillar]} · {c.topic}
