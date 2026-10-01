@@ -63,6 +63,8 @@ import { EvidencePanel, HealthExplain } from './EvidencePanel';
 import { deriveHealth } from '@/lib/risk/derivation';
 import { useIdentity } from '../Identity';
 import { useFocusAnchor } from '../useFocusAnchor';
+import { buildScope } from '@/lib/report/scope';
+import { loadRecords } from '@/lib/interview/records';
 
 const SOURCE_LABEL: Partial<Record<RiskSource, string>> = {
   CHECKLIST: 'Kérdőív',
@@ -289,6 +291,8 @@ export default function RedFlagMatrix({
     if (ok) applyWorkspace(scenarioId);
   };
 
+  // A riport „Vizsgálati terjedelem” fejezete: mit láttunk és mit nem (iratok, táblák, interjúk).
+  const scope = useMemo(() => (hydrated ? buildScope(loadIntake(projectId), kind, loadRecords(projectId)) : undefined), [hydrated, projectId, kind]);
   const saveFile = savePdf ?? browserDownload;
   const fileBase = `${slug(companyName)}-${new Date().toISOString().slice(0, 10)}`;
   const [fileNote, setFileNote] = useState<string | null>(null);
@@ -307,7 +311,7 @@ export default function RedFlagMatrix({
     await save(async () => {
       const { exportExcel: build } = await import('@/lib/report/excelExport');
       const { XLSX_MIME } = await import('@/lib/report/xlsx');
-      const bytes = build({ companyName, kind, company, materialityHuf, assessment: result });
+      const bytes = build({ companyName, kind, company, materialityHuf, assessment: result, scope });
       return new Blob([bytes.slice().buffer], { type: XLSX_MIME });
     }, `red-flag-${fileBase}.xlsx`);
   };
@@ -388,7 +392,7 @@ export default function RedFlagMatrix({
             </ToolbarButton>
           )}
           <ExportPdfButton
-            input={{ companyName, kind, company, materialityHuf, assessment: result }}
+            input={{ companyName, kind, company, materialityHuf, assessment: result, scope }}
             beforeExport={confirmEmptyExport}
             saveFile={savePdf}
             fontBase={fontBase}

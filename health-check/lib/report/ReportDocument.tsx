@@ -7,6 +7,8 @@ import { BRAND } from './brand';
 import { formatAdjustment, KIND_ADJUSTMENTS_STATUS } from '@/lib/engagement/adjustments';
 import { firstSentence, formatDateHu, WINDOW_ORDER, type ReportModel } from './model';
 import { hasRevenue } from '@/lib/risk/valuation';
+import { ACTOR_LABEL, formatChange, formatWhen, trailOf, TRAIL_KIND_LABEL } from '@/lib/risk/trail';
+import { scopeCounts, type ReportScope } from './scope';
 
 const C = BRAND.colors;
 
@@ -52,6 +54,8 @@ export function ReportDocument({ model }: { model: ReportModel }) {
       <DetailPages m={model} />
       <ActionPlanPage m={model} />
       <OfferPage m={model} />
+      {model.scope && <ScopePage m={model} scope={model.scope} />}
+      {model.evidenceBook.some((e) => e.entries.length || e.changes.length) && <EvidenceBookPage m={model} />}
     </Document>
   );
 }
@@ -282,7 +286,7 @@ function FindingCard({ r }: { r: ScoredRisk }) {
       </View>
       <Text style={{ fontSize: 11, fontWeight: 600, marginTop: 3 }}>{r.title}</Text>
       {r.reasoning ? <Text style={{ marginTop: 3 }}>{r.reasoning}</Text> : <Text style={[s.muted, { marginTop: 3 }]}>{r.description}</Text>}
-      {r.evidence && <Text style={[s.small, { fontStyle: 'italic', marginTop: 3 }]}>Bizonyíték: {r.evidence}</Text>}
+      <EvidenceLines r={r} />
       {r.adjustment && (
         <Text style={[s.small, { marginTop: 3 }]}>
           Típus-korrekció ({formatAdjustment(r.adjustment)}; szakértői érték V{r.baseLikelihood} × H{r.baseImpact}): {r.adjustment.reason}
@@ -409,6 +413,25 @@ function OfferPage({ m }: { m: ReportModel }) {
           szó szerinti forrásidézettel.
         </Text>
       )}
+      {m.unapprovedFinancialThresholds && (
+        <Text style={[s.muted, { marginBottom: 4 }]}>
+          • A pénzügyi alapadatokra épülő szabályok küszöbei (pl. árbevétel-csökkenés, likviditási ráta) kezdő javaslatok, szakértői jóváhagyásra várnak.
+        </Text>
+      )}
+      <Text style={[s.muted, { marginBottom: 4 }]}>
+        • Minden megállapítás forrása – irat oldallal és idézettel, kérdőív-válasz, adattábla-mutató, interjú-időbélyeg – a Bizonyítéktár mellékletben szerepel,
+        a szakértői módosításokkal együtt. A vizsgálat terjedelmét (mit láttunk, mit nem) külön fejezet rögzíti.
+      </Text>
+      {m.unexplained.length > 0 && (
+        <View style={[s.card, { marginTop: 6, borderColor: C.amber, backgroundColor: C.amberBg }]}>
+          <Text style={[s.h3, { color: C.amber }]}>Belső jelzés – indoklás nélküli csökkentés</Text>
+          {m.unexplained.map(({ risk, changes }) => (
+            <Text key={risk.id} style={s.small}>
+              {risk.code} {risk.title}: {changes.map((c) => formatChange(c)).join('; ')} – indoklás nincs megadva.
+            </Text>
+          ))}
+        </View>
+      )}
       {m.unapprovedParameterRisks.length > 0 && (
         <View style={[s.card, { marginTop: 6, borderColor: C.amber, backgroundColor: C.amberBg }]}>
           <Text style={[s.h3, { color: C.amber }]}>Belső jelzés – kiadás előtt rendezendő</Text>
@@ -428,6 +451,131 @@ function OfferPage({ m }: { m: ReportModel }) {
         Készítette: {m.preparedBy ?? BRAND.firmName} · Lényegességi küszöb: {formatHuf(m.materialityHuf)} · Árbevétel-alap:{' '}
         {hasRevenue(m.company) ? formatHufShort(m.company.revenueHuf) : 'nincs megadva (a forintosított összegek 0 Ft-ot mutatnak)'}
       </Text>
+    </Page>
+  );
+}
+
+// ── Források a részletező kártyán ───────────────────────────────────
+
+function EvidenceLines({ r }: { r: ScoredRisk }) {
+  const entries = trailOf(r).filter((e) => e.kind !== 'MANUAL' && e.kind !== 'SUGGESTED');
+  if (!entries.length) return null;
+  return (
+    <View style={{ marginTop: 3 }}>
+      <Text style={s.small}>
+        Források ({entries.length}){entries.length > 2 ? ' – a teljes lista a Bizonyítéktárban' : ''}:
+      </Text>
+      {entries.slice(0, 2).map((e) => (
+        <Text key={e.id} style={[s.small, { fontStyle: 'italic' }]}>
+          • {TRAIL_KIND_LABEL[e.kind]}: {e.ref}
+          {e.quote ? ` – „${e.quote.length > 160 ? `${e.quote.slice(0, 159)}…` : e.quote}”` : ''}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
+// ── 6. Vizsgálati terjedelem ───────────────────────────────────────
+
+function ScopePage({ m, scope }: { m: ReportModel; scope: ReportScope }) {
+  const c = scopeCounts(scope);
+  const notSeen = [...c.missing, ...c.open];
+  return (
+    <Page size="A4" style={s.page} wrap>
+      <Chrome m={m} />
+      <Text style={s.h2}>6. A vizsgálat terjedelme</Text>
+      <Text style={[s.muted, { marginBottom: 8 }]}>
+        A megállapítások kizárólag az alább felsorolt forrásokon alapulnak. Ami a be nem érkezett iratokból derülne ki, arról a riport nem állít semmit; ezek a
+        területek nem tekinthetők átvizsgáltnak.
+      </Text>
+      <View style={[s.row, { gap: 8, marginBottom: 10 }]}>
+        <Stat label="Beérkezett irat" value={`${c.received.length}`} sub={`${scope.requests.length} bekértből`} />
+        <Stat label="Hiányzik / nem érkezett meg" value={`${notSeen.length}`} sub={`ebből kötelező: ${notSeen.filter((r) => r.required).length}`} />
+        <Stat label="Elemzett dokumentum" value={`${scope.documents.length}`} />
+        <Stat label="Interjú" value={`${scope.interviews.length}`} sub={`${scope.interviews.filter((i) => i.analyzed).length} elemezve`} />
+      </View>
+      <Text style={s.h3}>Amit láttunk</Text>
+      {scope.financialYears.length > 0 && <Text style={s.small}>• Beszámoló-adatok: {scope.financialYears.join(', ')}. év.</Text>}
+      <Text style={s.small}>
+        • Ügyfélkérdőív: {scope.checklist.answered}/{scope.checklist.total} kérdés megválaszolva.
+      </Text>
+      {scope.tables.length > 0 && <Text style={s.small}>• Adattáblák: {scope.tables.join('; ')}.</Text>}
+      {scope.documents.map((d) => (
+        <Text key={d.fileName} style={s.small}>
+          • {d.type}: {d.fileName}
+        </Text>
+      ))}
+      {scope.interviews.map((i, n) => (
+        <Text key={n} style={s.small}>
+          • Interjú: {i.who}
+          {i.heldAt ? ` (${i.heldAt})` : ''}
+          {i.analyzed ? '' : ' – elemzés nélkül'}
+        </Text>
+      ))}
+      {c.received.map((r) => (
+        <Text key={r.title} style={s.small}>
+          • Beérkezett irat: {r.title}
+        </Text>
+      ))}
+      <Text style={[s.h3, { marginTop: 10 }]}>Amit nem láttunk</Text>
+      {notSeen.length === 0 && <Text style={s.small}>Minden bekért irat beérkezett, vagy nem releváns.</Text>}
+      {notSeen.map((r) => (
+        <Text key={r.title} style={s.small}>
+          • {r.title} – {r.statusLabel.toLowerCase()}
+          {r.required ? ' (kötelező)' : ''}
+        </Text>
+      ))}
+      {c.na.length > 0 && <Text style={[s.small, { marginTop: 6 }]}>Nem releváns ennél a cégnél: {c.na.map((r) => r.title).join('; ')}.</Text>}
+    </Page>
+  );
+}
+
+// ── Melléklet: Bizonyítéktár ───────────────────────────────────────
+
+function EvidenceBookPage({ m }: { m: ReportModel }) {
+  return (
+    <Page size="A4" style={s.page} wrap>
+      <Chrome m={m} />
+      <Text style={s.h2}>Melléklet: Bizonyítéktár</Text>
+      <Text style={[s.muted, { marginBottom: 8 }]}>
+        Tételenként minden forrás, amely a megállapítást javasolta vagy megerősítette (hely, szó szerinti idézet, indoklás, hatás, elfogadó), és a szakértői
+        módosítások. AI-forrás csak szakértői jóváhagyással szerepel.
+      </Text>
+      {m.evidenceBook
+        .filter((e) => e.entries.length || e.changes.length)
+        .map(({ risk: r, entries, changes }) => (
+          <View key={r.id} style={{ marginBottom: 10 }} wrap={false}>
+            <View
+              style={[s.row, { justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: C.rule, paddingBottom: 2 }]}
+            >
+              <Text style={{ fontWeight: 600 }}>
+                {r.code} {r.title}
+              </Text>
+              <RagPill rag={r.rag} />
+            </View>
+            {entries.map((e, i) => (
+              <View key={e.id} style={{ marginTop: 3, paddingLeft: 6 }}>
+                <Text style={s.small}>
+                  {i + 1}. {TRAIL_KIND_LABEL[e.kind]} · {ACTOR_LABEL[e.actor]}
+                  {e.confidence != null ? ` · bizonyosság ${Math.round(e.confidence * 100)}%` : ''} – {e.ref}
+                </Text>
+                {e.quote && <Text style={[s.small, { fontStyle: 'italic', paddingLeft: 8 }]}>„{e.quote}”</Text>}
+                {e.rationale && <Text style={[s.small, { paddingLeft: 8 }]}>{e.rationale}</Text>}
+                <Text style={[s.small, { paddingLeft: 8, color: C.faint }]}>
+                  {e.effect ? `Hatás: ${e.effect}. ` : ''}
+                  {e.actor === 'EXPERT' ? 'Döntött' : 'Elfogadta'}: {e.acceptedBy ?? 'név nélkül'}
+                  {e.at ? `, ${formatWhen(e.at)}` : ''}
+                </Text>
+              </View>
+            ))}
+            {changes.map((c, i) => (
+              <Text key={i} style={[s.small, { paddingLeft: 6, marginTop: 2 }]}>
+                Módosítás: {formatChange(c)} – {c.by ?? 'név nélkül'}, {formatWhen(c.at)}
+                {c.reduces ? ` · indoklás: ${c.reason?.trim() || 'NINCS MEGADVA'}` : ''}
+              </Text>
+            ))}
+          </View>
+        ))}
     </Page>
   );
 }

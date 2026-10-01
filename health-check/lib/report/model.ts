@@ -3,6 +3,9 @@ import { WINDOWS } from '@/lib/risk/engine';
 import type { Pillar, RiskAssessment, ScoredRisk } from '@/lib/risk/types';
 import { EXPERT_PARAMETERS } from '@/lib/risk/parameters';
 import type { CompanyProfile } from '@/lib/risk/valuation';
+import { historyOf, missingReasons, trailOf, type ChangeEntry, type EvidenceEntry } from '@/lib/risk/trail';
+import { FIN_THRESHOLDS_APPROVED } from '@/lib/intake/financials/thresholds';
+import type { ReportScope } from './scope';
 
 export interface ReportInput {
   companyName: string;
@@ -13,6 +16,8 @@ export interface ReportInput {
   /** ISO dátum; alapértelmezés: most. Tesztben rögzíthető. */
   generatedAt?: string;
   preparedBy?: string;
+  /** Vizsgálati terjedelem: mit láttunk és mit nem (hiányzik = a fejezet kimarad). */
+  scope?: ReportScope;
 }
 
 export interface ReportModel extends ReportInput {
@@ -33,6 +38,12 @@ export interface ReportModel extends ReportInput {
   aiSourcedCount: number;
   /** Típusfüggő korrekcióval módosított tételek. */
   adjustedRisks: ScoredRisk[];
+  /** Bizonyítéktár: azonosított tételenként a források és a szakértői módosítások. */
+  evidenceBook: { risk: ScoredRisk; entries: EvidenceEntry[]; changes: ChangeEntry[] }[];
+  /** Indoklás nélküli csökkentések – kiadás előtt rendezendő (belső jelzés). */
+  unexplained: { risk: ScoredRisk; changes: ChangeEntry[] }[];
+  /** Van-e pénzügyi szabályból jövő tétel, miközben a küszöbök még nincsenek jóváhagyva. */
+  unapprovedFinancialThresholds: boolean;
 }
 
 export function buildReportModel(input: ReportInput): ReportModel {
@@ -57,7 +68,10 @@ export function buildReportModel(input: ReportInput): ReportModel {
     greenCount: assessment.risks.length - nonGreen.length,
     unapprovedParameterRisks: unapproved,
     adjustedRisks: assessment.risks.filter((r) => r.adjustment),
-    aiSourcedCount: assessment.risks.filter((r) => r.source === 'AI_INTERVIEW' || r.source === 'AI_DOCUMENT' || r.source === 'AI_SYNTHESIS').length,
+    evidenceBook: assessment.risks.map((r) => ({ risk: r, entries: trailOf(r), changes: historyOf(r) })),
+    unexplained: assessment.risks.map((r) => ({ risk: r, changes: missingReasons(r) })).filter((x) => x.changes.length > 0),
+    unapprovedFinancialThresholds: !FIN_THRESHOLDS_APPROVED && assessment.risks.some((r) => trailOf(r).some((e) => e.kind === 'FINANCIALS')),
+    aiSourcedCount: assessment.risks.filter((r) => trailOf(r).some((e) => e.actor === 'AI')).length,
   };
 }
 

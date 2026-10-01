@@ -61,6 +61,16 @@ describe('Excel-export', () => {
     expect(plan.rows).toHaveLength(assessment.totals.identified);
   });
 
+  it('bizonyítéktár: forrásonként egy sor; változásnapló és terjedelem csak ha van', () => {
+    const items = sc.items.map((r, i) => (i === 0 ? { ...r, identified: true, evidence: 'Ügyfélkérdőív: Q09 – Igen', source: 'CHECKLIST' as const } : r));
+    const a2 = assess(items, { company: sc.company, materialityHuf: sc.materialityHuf });
+    const wb = buildWorkbook({ ...input, assessment: a2 });
+    const ev = wb.find((s) => s.name === 'Bizonyítéktár')!;
+    expect(ev.rows.some((r) => r[4] === 'Ügyfélkérdőív: Q09 – Igen' && r[2] === 'Ügyfélkérdőív')).toBe(true);
+    expect(wb.some((s) => s.name === 'Változásnapló')).toBe(false);
+    expect(wb.some((s) => s.name === 'Vizsgálati terjedelem')).toBe(false);
+  });
+
   it('különleges karakterek és hosszú munkalapnév biztonságosan', () => {
     const bytes = writeXlsx([
       { name: 'Nagyon hosszú munkalapnév: [próba] / 2026 szeptember', columns: [{ header: 'A&B <x>' }], rows: [['„idézet” & <tag> \u0007']] },

@@ -8,6 +8,7 @@ import { buildBuyerQuestions } from './buyerQuestions';
 import type { ReportInput } from './model';
 import { writeXlsx, type Sheet } from './xlsx';
 import { hasRevenue } from '@/lib/risk/valuation';
+import { ACTOR_LABEL, formatChange, formatWhen, historyOf, trailOf, TRAIL_KIND_LABEL } from '@/lib/risk/trail';
 
 /**
  * Red Flag értékelés → olvasható Excel a tanácsadóknak (szűrhető, továbbküldhető).
@@ -179,7 +180,85 @@ export function buildWorkbook(input: ReportInput): Sheet[] {
     rows: buildBuyerQuestions(a).map((q) => [q.code, q.title, RAG_LABEL[q.rag], q.questions.join('\n'), q.answerDraft, q.documents.join('\n')]),
   };
 
-  const sheets = [summary, risks, plan, offer, pillars];
+  // Bizonyítéktár: tételenként minden forrás külön sorban (szűrhető forrásra, elfogadóra).
+  const evidence: Sheet = {
+    name: 'Bizonyítéktár',
+    columns: [
+      { header: 'Kód', width: 9 },
+      { header: 'Tétel', width: 36, format: 'wrap' },
+      { header: 'Forrás', width: 20 },
+      { header: 'Ki javasolta', width: 16 },
+      { header: 'Pontos hely', width: 44, format: 'wrap' },
+      { header: 'Idézet', width: 60, format: 'wrap' },
+      { header: 'Indoklás', width: 50, format: 'wrap' },
+      { header: 'Hatás', width: 30, format: 'wrap' },
+      { header: 'Bizonyosság', width: 11, format: 'pct' },
+      { header: 'Elfogadta', width: 18 },
+      { header: 'Időpont', width: 17 },
+    ],
+    rows: a.risks.flatMap((r) =>
+      trailOf(r).map((e) => [
+        r.code,
+        r.title,
+        TRAIL_KIND_LABEL[e.kind],
+        ACTOR_LABEL[e.actor],
+        e.ref,
+        e.quote ?? '',
+        e.rationale ?? '',
+        e.effect ?? '',
+        e.confidence ?? null,
+        e.acceptedBy ?? '',
+        formatWhen(e.at),
+      ]),
+    ),
+  };
+
+  const changes: Sheet = {
+    name: 'Változásnapló',
+    columns: [
+      { header: 'Kód', width: 9 },
+      { header: 'Tétel', width: 36, format: 'wrap' },
+      { header: 'Módosítás', width: 40, format: 'wrap' },
+      { header: 'Csökkentés', width: 11 },
+      { header: 'Indoklás', width: 60, format: 'wrap' },
+      { header: 'Ki', width: 18 },
+      { header: 'Mikor', width: 17 },
+    ],
+    rows: a.risks.flatMap((r) =>
+      historyOf(r).map((h) => [
+        r.code,
+        r.title,
+        formatChange(h),
+        h.reduces ? 'igen' : '',
+        h.reduces ? h.reason?.trim() || 'NINCS MEGADVA' : '',
+        h.by ?? '',
+        formatWhen(h.at),
+      ]),
+    ),
+  };
+
+  const scope: Sheet | null = input.scope
+    ? {
+        name: 'Vizsgálati terjedelem',
+        columns: [
+          { header: 'Forrás', width: 70, format: 'wrap' },
+          { header: 'Állapot', width: 16 },
+          { header: 'Kötelező', width: 10 },
+        ],
+        rows: [
+          ...input.scope.requests.map((q) => [q.title, q.statusLabel, q.required ? 'igen' : '']),
+          ...input.scope.documents.map((d) => [`${d.type}: ${d.fileName}`, 'Elemezve', '']),
+          ...input.scope.tables.map((t) => [`Adattábla: ${t}`, 'Betöltve', '']),
+          ...input.scope.interviews.map((i) => [`Interjú: ${i.who}${i.heldAt ? ` (${i.heldAt})` : ''}`, i.analyzed ? 'Elemezve' : 'Rögzítve', '']),
+          ...(input.scope.financialYears.length ? [[`Beszámoló-adatok: ${input.scope.financialYears.join(', ')}`, 'Rögzítve', '']] : []),
+          [`Ügyfélkérdőív: ${input.scope.checklist.answered}/${input.scope.checklist.total} kérdés`, 'Kitöltve', ''],
+        ],
+      }
+    : null;
+
+  const sheets = [summary, risks, plan, offer, pillars, evidence];
+  if (changes.rows.length) sheets.push(changes);
+  if (scope) sheets.push(scope);
   // Eladói és vevői átvilágításnál a vevői kérdéslista is része a munkafüzetnek.
   if (input.kind === 'VENDOR_DD' || input.kind === 'BUY_SIDE_DD') sheets.push(buyer);
   return sheets;
