@@ -93,7 +93,7 @@ export function KpiTile({
     <Card className={`flex items-center gap-3.5 p-4 ${className}`} title={hint}>
       <IconBox tone={tone}>{icon}</IconBox>
       <div className="min-w-0">
-        <div className="text-2xl font-bold leading-tight tracking-tight tabular-nums text-slate-900">{children}</div>
+        <div className="whitespace-nowrap text-xl font-bold leading-tight tracking-tight tabular-nums text-slate-900 2xl:text-2xl">{children}</div>
         <div className="mt-0.5 flex items-center gap-1 text-xs font-medium text-slate-500">
           {label}
           {extra}

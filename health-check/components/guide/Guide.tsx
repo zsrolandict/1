@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Check, ChevronRight, Compass, Lightbulb, SlidersHorizontal, X } from 'lucide-react';
-import { nextStep, PAGE_TIPS, requestIntakeTab, type GuideStep } from '@/lib/guide';
+import { GUIDE_STATE_EVENT, GUIDE_TOGGLE_EVENT, nextStep, PAGE_TIPS, requestIntakeTab, type GuideStep } from '@/lib/guide';
 import { SAMPLE_PROFILES } from '@/lib/intake/samples/profiles';
 import { ago, SAVED_EVENT } from '@/lib/localSave';
 import { MODULES, type ModuleArea } from '@/lib/modules';
@@ -19,7 +19,7 @@ const SEEN_KEY = 'ict-hc:guide-seen';
 const AREAS: ModuleArea[] = ['Adatgyűjtés', 'Interjúk', 'Red Flag mátrix', 'Projekt'];
 
 /**
- * Kalauz: lebegő segítő a jobb alsó sarokban. Megmutatja, hol tart a
+ * Kalauz: lebegő segítő a jobb alsó sarokban, az oldalsáv gombjával nyílik. Megmutatja, hol tart a
  * projekt, mi a következő lépés, ad tippeket az adott oldalhoz, és itt
  * lehet a modulokat ki-be kapcsolni.
  */
@@ -47,6 +47,15 @@ export default function Guide() {
       setOpen(true);
     }
   }, []);
+  // Az oldalsáv gombja kapcsolja; az állapotot visszajelezzük (a gomb kiemeléséhez).
+  useEffect(() => {
+    const toggle = () => setOpen((o) => !o);
+    window.addEventListener(GUIDE_TOGGLE_EVENT, toggle);
+    return () => window.removeEventListener(GUIDE_TOGGLE_EVENT, toggle);
+  }, []);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(GUIDE_STATE_EVENT, { detail: open }));
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const refresh = () => {
@@ -87,16 +96,7 @@ export default function Guide() {
   const next = nextStep(steps);
   const doneCount = steps.filter((s) => s.done).length;
 
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(41,82,227,0.4)] hover:bg-brand-700 print:hidden"
-      >
-        <Compass className="h-4 w-4" /> Kalauz
-      </button>
-    );
-  }
+  if (!open) return null;
 
   return (
     <aside

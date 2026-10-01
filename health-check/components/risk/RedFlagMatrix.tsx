@@ -27,6 +27,8 @@ import {
   ArrowRight,
   ClipboardList,
   AlertTriangle,
+  Rows3,
+  Rows4,
   Lightbulb,
   Sparkles,
 } from 'lucide-react';
@@ -66,6 +68,7 @@ const SOURCE_LABEL: Partial<Record<RiskSource, string>> = {
   AI_INTERVIEW: 'AI · interjú',
 };
 const SCALE: Scale5[] = [1, 2, 3, 4, 5];
+const DENSE_KEY = 'ict-hc:matrix-dense';
 
 const RAG_TONE: Record<Rag, Tone> = { GREEN: 'green', AMBER: 'amber', RED: 'red' };
 const AI_SOURCES = new Set<RiskSource>(['AI_SYNTHESIS', 'AI_DOCUMENT', 'AI_INTERVIEW']);
@@ -131,6 +134,16 @@ export default function RedFlagMatrix({
   const [query, setQuery] = useState('');
   const [cell, setCell] = useState<{ l: Scale5; i: Scale5 } | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  // Tömör táblázat: nézőnkénti kényelmi beállítás.
+  const [dense, setDenseState] = useState(false);
+  const setDense = (v: boolean) => {
+    setDenseState(v);
+    try {
+      localStorage.setItem(DENSE_KEY, v ? '1' : '0');
+    } catch {
+      /* csak erre a megnyitásra */
+    }
+  };
   const modules = useModules();
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -145,6 +158,11 @@ export default function RedFlagMatrix({
     setCompany(ws.company);
     setScenarioId(ws.scenarioId);
     setProjectId(ws.projectId);
+    try {
+      setDenseState(localStorage.getItem(DENSE_KEY) === '1');
+    } catch {
+      /* alapértelmezés: részletes */
+    }
     setHydrated(true);
   }, []);
 
@@ -335,18 +353,6 @@ export default function RedFlagMatrix({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <select
-            value={kind}
-            onChange={(e) => setKind(e.target.value as EngagementKind)}
-            aria-label="Átvilágítás típusa"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-xs"
-          >
-            {ENGAGEMENT_KIND_LIST.map((k) => (
-              <option key={k.kind} value={k.kind}>
-                {k.label}
-              </option>
-            ))}
-          </select>
           <ToolbarButton onClick={reset} icon={<RotateCcw className="h-3.5 w-3.5" />}>
             Alaphelyzet
           </ToolbarButton>
@@ -396,132 +402,146 @@ export default function RedFlagMatrix({
       {/* ── A projekt szakaszai ─────────────────────────────────── */}
       {hydrated && <ProjectStagesCard projectId={projectId} identified={totals.identified} current="matrix" />}
 
+      <SectionNav
+        sections={[
+          { id: 'osszkep', label: 'Összkép' },
+          { id: 'kockazati-tetelek', label: 'Kockázati tételek' },
+          { id: 'akcioterv', label: 'Akcióterv' },
+          ...(modules.isOn('WHATIF') ? [{ id: 'mi-lenne-ha', label: 'Mi lenne, ha…' }] : []),
+          ...(modules.isOn('BUYER_QUESTIONS') ? [{ id: 'vevoi-kerdesek', label: 'Vevői kérdések' }] : []),
+          ...(modules.isOn('FOLLOWUP') ? [{ id: 'utokovetes', label: 'Utókövetés' }] : []),
+          { id: 'pipeline', label: 'Pipeline' },
+        ]}
+      />
+
       {confirmDialog}
 
       {/* ── Még nincs értékelés ─────────────────────────────────── */}
-      {noAssessment ? (
-        <Card className="border-2 border-dashed border-slate-300 p-8 text-center">
-          <span className="inline-flex">
-            <IconBox tone="brand">
-              <ClipboardList className="h-5 w-5" />
-            </IconBox>
-          </span>
-          <h2 className="mt-3 text-lg font-bold text-slate-900">Még nincs értékelés</h2>
-          <p className="mx-auto mt-1 max-w-xl text-sm text-slate-600">
-            Egyetlen kockázat sincs bepipálva, ezért itt még nincs eredmény (se státusz, se Health Score). Kezdd az adatgyűjtéssel: a kérdőív, a táblázatok és a
-            dokumentumok javaslatokat adnak, amiket elfogadva a tételek ide kerülnek. Vagy pipáld be lent közvetlenül a talált kockázatokat.
-          </p>
-          <div className="mt-5 flex flex-wrap justify-center gap-2">
-            {nav && (
-              <button onClick={() => nav.go('adatok')} className={BTN_PRIMARY}>
-                Adatgyűjtés indítása <ArrowRight className="h-4 w-4" />
+      <div id="osszkep" className="scroll-mt-28 space-y-5">
+        {noAssessment ? (
+          <Card className="border-2 border-dashed border-slate-300 p-8 text-center">
+            <span className="inline-flex">
+              <IconBox tone="brand">
+                <ClipboardList className="h-5 w-5" />
+              </IconBox>
+            </span>
+            <h2 className="mt-3 text-lg font-bold text-slate-900">Még nincs értékelés</h2>
+            <p className="mx-auto mt-1 max-w-xl text-sm text-slate-600">
+              Egyetlen kockázat sincs bepipálva, ezért itt még nincs eredmény (se státusz, se Health Score). Kezdd az adatgyűjtéssel: a kérdőív, a táblázatok és
+              a dokumentumok javaslatokat adnak, amiket elfogadva a tételek ide kerülnek. Vagy pipáld be lent közvetlenül a talált kockázatokat.
+            </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              {nav && (
+                <button onClick={() => nav.go('adatok')} className={BTN_PRIMARY}>
+                  Adatgyűjtés indítása <ArrowRight className="h-4 w-4" />
+                </button>
+              )}
+              <button onClick={() => document.getElementById('kockazati-tetelek')?.scrollIntoView({ behavior: 'smooth' })} className={BTN_SECONDARY}>
+                Tételek kézi bepipálása
               </button>
-            )}
-            <button onClick={() => document.getElementById('kockazati-tetelek')?.scrollIntoView({ behavior: 'smooth' })} className={BTN_SECONDARY}>
-              Tételek kézi bepipálása
-            </button>
-          </div>
-        </Card>
-      ) : (
-        <>
-          {/* ── KPI sáv ─────────────────────────────────────────────── */}
-          <section className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-            <KpiTile
-              tone={RAG_TONE[totals.rag]}
-              icon={<ShieldAlert className="h-5 w-5" />}
-              label="Összesített státusz"
-              extra={<InfoTip term="status" label="Összesített státusz" />}
-            >
-              <span className="flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${RAG_STYLE[totals.rag].dot}`} aria-hidden />
-                {RAG_LABEL[totals.rag]}
-              </span>
-            </KpiTile>
-            <KpiTile tone="brand" icon={<Gauge className="h-5 w-5" />} label="Health Score" extra={<InfoTip term="healthScore" label="Health Score" />}>
-              {totals.healthScore}
-              <span className="text-sm font-semibold text-slate-400"> / 100</span>
-            </KpiTile>
-            <KpiTile
-              tone="amber"
-              icon={<Banknote className="h-5 w-5" />}
-              label="Bruttó kitettség"
-              hint={formatHuf(totals.grossExposureHuf)}
-              extra={<InfoTip term="grossExposure" label="Bruttó kitettség" />}
-            >
-              {formatHufShort(totals.grossExposureHuf)}
-            </KpiTile>
-            <KpiTile
-              tone="red"
-              icon={<TrendingDown className="h-5 w-5" />}
-              label="Várható veszteség"
-              extra={<InfoTip term="expectedLoss" label="Várható veszteség" />}
-            >
-              {formatHufShort(totals.expectedLossHuf)}
-            </KpiTile>
-            <KpiTile
-              tone="slate"
-              icon={<Filter className="h-5 w-5" />}
-              className="col-span-2 lg:col-span-1"
-              label={
-                <span>
-                  Azonosított · <span className="text-red-700">{totals.red} piros</span> · <span className="text-amber-700">{totals.amber} sárga</span> ·{' '}
-                  <span className="text-emerald-700">{totals.green} zöld</span>
-                </span>
-              }
-            >
-              {totals.identified}
-            </KpiTile>
-          </section>
-
-          {/* ── Pillérek + hőtérkép ─────────────────────────────────── */}
-          <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
-            <div className="grid grid-cols-2 content-start gap-4">
-              {PILLARS.map((p) => {
-                const s = pillars[p];
-                const active = pillarFilter === p;
-                return (
-                  <button
-                    key={p}
-                    onClick={() => setPillarFilter(active ? 'ALL' : p)}
-                    aria-pressed={active}
-                    className={`rounded-xl border bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:border-brand-300 ${
-                      active ? 'border-brand-500 ring-1 ring-brand-500' : 'border-slate-200/80'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">{PILLAR_LABEL[p]}</span>
-                      <Badge tone={RAG_TONE[s.rag]}>{RAG_LABEL[s.rag]}</Badge>
-                    </div>
-                    <div className="mt-3 flex items-baseline gap-1.5">
-                      <span className="text-3xl font-bold tracking-tight tabular-nums text-slate-900">{s.healthScore}</span>
-                      <span className="text-xs font-medium text-slate-400">súly {Math.round(profile.weights[p] * 100)}%</span>
-                    </div>
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                      <div className={`h-full rounded-full ${RAG_STYLE[s.rag].dot}`} style={{ width: `${s.healthScore}%` }} />
-                    </div>
-                    <dl className="mt-3 space-y-1 text-xs text-slate-500">
-                      <div className="flex justify-between">
-                        <dt>Tételek</dt>
-                        <dd className="font-semibold tabular-nums text-slate-800">{s.identified}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt>Kitettség</dt>
-                        <dd className="font-semibold tabular-nums text-slate-800">{formatHufShort(s.grossExposureHuf)}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt>Várható</dt>
-                        <dd className="font-semibold tabular-nums text-slate-800">{formatHufShort(s.expectedLossHuf)}</dd>
-                      </div>
-                    </dl>
-                  </button>
-                );
-              })}
             </div>
+          </Card>
+        ) : (
+          <>
+            {/* ── KPI sáv ─────────────────────────────────────────────── */}
+            <section className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+              <KpiTile
+                tone={RAG_TONE[totals.rag]}
+                icon={<ShieldAlert className="h-5 w-5" />}
+                label="Összesített státusz"
+                extra={<InfoTip term="status" label="Összesített státusz" />}
+              >
+                <span className="flex items-center gap-2">
+                  <span className={`h-2.5 w-2.5 rounded-full ${RAG_STYLE[totals.rag].dot}`} aria-hidden />
+                  {RAG_LABEL[totals.rag]}
+                </span>
+              </KpiTile>
+              <KpiTile tone="brand" icon={<Gauge className="h-5 w-5" />} label="Health Score" extra={<InfoTip term="healthScore" label="Health Score" />}>
+                {totals.healthScore}
+                <span className="text-sm font-semibold text-slate-400"> / 100</span>
+              </KpiTile>
+              <KpiTile
+                tone="amber"
+                icon={<Banknote className="h-5 w-5" />}
+                label="Bruttó kitettség"
+                hint={formatHuf(totals.grossExposureHuf)}
+                extra={<InfoTip term="grossExposure" label="Bruttó kitettség" />}
+              >
+                {formatHufShort(totals.grossExposureHuf)}
+              </KpiTile>
+              <KpiTile
+                tone="red"
+                icon={<TrendingDown className="h-5 w-5" />}
+                label="Várható veszteség"
+                extra={<InfoTip term="expectedLoss" label="Várható veszteség" />}
+              >
+                {formatHufShort(totals.expectedLossHuf)}
+              </KpiTile>
+              <KpiTile
+                tone="slate"
+                icon={<Filter className="h-5 w-5" />}
+                className="col-span-2 lg:col-span-1"
+                label={
+                  <span>
+                    Azonosított · <span className="text-red-700">{totals.red} piros</span> · <span className="text-amber-700">{totals.amber} sárga</span> ·{' '}
+                    <span className="text-emerald-700">{totals.green} zöld</span>
+                  </span>
+                }
+              >
+                {totals.identified}
+              </KpiTile>
+            </section>
 
-            <HeatMap risks={result.risks} selected={cell} onSelect={setCell} />
-          </section>
-        </>
-      )}
+            {/* ── Pillérek + hőtérkép ─────────────────────────────────── */}
+            <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
+              <div className="grid grid-cols-2 content-start gap-4">
+                {PILLARS.map((p) => {
+                  const s = pillars[p];
+                  const active = pillarFilter === p;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPillarFilter(active ? 'ALL' : p)}
+                      aria-pressed={active}
+                      className={`rounded-xl border bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:border-brand-300 ${
+                        active ? 'border-brand-500 ring-1 ring-brand-500' : 'border-slate-200/80'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">{PILLAR_LABEL[p]}</span>
+                        <Badge tone={RAG_TONE[s.rag]}>{RAG_LABEL[s.rag]}</Badge>
+                      </div>
+                      <div className="mt-3 flex items-baseline gap-1.5">
+                        <span className="text-3xl font-bold tracking-tight tabular-nums text-slate-900">{s.healthScore}</span>
+                        <span className="text-xs font-medium text-slate-400">súly {Math.round(profile.weights[p] * 100)}%</span>
+                      </div>
+                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                        <div className={`h-full rounded-full ${RAG_STYLE[s.rag].dot}`} style={{ width: `${s.healthScore}%` }} />
+                      </div>
+                      <dl className="mt-3 space-y-1 text-xs text-slate-500">
+                        <div className="flex justify-between">
+                          <dt>Tételek</dt>
+                          <dd className="font-semibold tabular-nums text-slate-800">{s.identified}</dd>
+                        </div>
+                        <div className="flex justify-between">
+                          <dt>Kitettség</dt>
+                          <dd className="font-semibold tabular-nums text-slate-800">{formatHufShort(s.grossExposureHuf)}</dd>
+                        </div>
+                        <div className="flex justify-between">
+                          <dt>Várható</dt>
+                          <dd className="font-semibold tabular-nums text-slate-800">{formatHufShort(s.expectedLossHuf)}</dd>
+                        </div>
+                      </dl>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <HeatMap risks={result.risks} selected={cell} onSelect={setCell} />
+            </section>
+          </>
+        )}
+      </div>
 
       {/* ── Javasolt további tételek (típus, ágazat) ───────────── */}
       {(kindExtras.length > 0 || sectorExtras.length > 0) && (
@@ -618,8 +638,22 @@ export default function RedFlagMatrix({
             <p className="ml-auto max-w-xs self-center text-xs text-slate-500">A képletek kiinduló becslést adnak; tételenként felülírhatók.</p>
           </div>
           <div className="rounded-lg border border-slate-200/70 bg-white/80 p-3 text-sm">
-            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-              <span className="font-semibold text-slate-900">{profile.label}</span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <label className="flex items-center gap-2 font-semibold text-slate-900">
+                Átvilágítás típusa
+                <select
+                  value={kind}
+                  onChange={(e) => setKind(e.target.value as EngagementKind)}
+                  aria-label="Átvilágítás típusa"
+                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-700 shadow-xs"
+                >
+                  {ENGAGEMENT_KIND_LIST.map((k) => (
+                    <option key={k.kind} value={k.kind}>
+                      {k.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <span className="text-slate-500">Címzett: {profile.audience}</span>
               <span className="text-slate-500">{profile.purpose}</span>
             </div>
@@ -651,7 +685,7 @@ export default function RedFlagMatrix({
       </details>
 
       {/* ── Kockázati tételek ───────────────────────────────────── */}
-      <Card id="kockazati-tetelek" className="scroll-mt-20 overflow-hidden">
+      <Card id="kockazati-tetelek" className="scroll-mt-28 overflow-hidden">
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-200/80 px-4 py-3 print:hidden">
           <h2 className="mr-1 flex items-center gap-2 text-base font-bold text-slate-900">
             Kockázati tételek
@@ -690,13 +724,28 @@ export default function RedFlagMatrix({
               Mátrix szűrő: V{cell.l} × H{cell.i} ✕
             </button>
           )}
-          <button onClick={addCustom} className={`ml-auto ${BTN_SECONDARY}`}>
+          <div className="ml-auto flex rounded-lg bg-slate-100 p-1 text-xs" role="group" aria-label="Táblázat nézete">
+            {([false, true] as const).map((d) => (
+              <button
+                key={String(d)}
+                onClick={() => setDense(d)}
+                aria-pressed={dense === d}
+                className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 ${
+                  dense === d ? 'bg-white font-semibold text-slate-900 shadow-sm' : 'font-medium text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {d ? <Rows4 className="h-3.5 w-3.5" /> : <Rows3 className="h-3.5 w-3.5" />}
+                {d ? 'Tömör' : 'Részletes'}
+              </button>
+            ))}
+          </div>
+          <button onClick={addCustom} className={BTN_SECONDARY}>
             <Plus className="h-4 w-4" /> Egyedi kockázat
           </button>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px] text-sm">
+          <table className={`w-full text-sm ${dense ? 'min-w-[860px]' : 'min-w-[1100px]'}`}>
             <thead className="border-b border-slate-200/80 bg-slate-50/80 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
               <tr>
                 <th className="w-16 px-3 py-2.5" />
@@ -716,8 +765,8 @@ export default function RedFlagMatrix({
                 <th className="px-2 py-2.5 text-right">
                   Várható <InfoTip term="expectedLoss" label="várható veszteség" />
                 </th>
-                <th className="px-2 py-2.5 text-center">Munkanap</th>
-                <th className="px-2 py-2.5">Divízió / díj</th>
+                {!dense && <th className="px-2 py-2.5 text-center">Munkanap</th>}
+                {!dense && <th className="px-2 py-2.5">Divízió / díj</th>}
                 <th className="w-10 px-2 py-2.5" />
               </tr>
             </thead>
@@ -742,11 +791,12 @@ export default function RedFlagMatrix({
                   kindAdjustment={adjustments?.[r.code]}
                   onChange={(patch) => update(r.id, patch)}
                   onDelete={r.id.startsWith('CUS-') ? () => setItems((xs) => xs.filter((x) => x.id !== r.id)) : undefined}
+                  dense={dense}
                 />
               ))}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-10 text-center text-slate-500">
+                  <td colSpan={dense ? 8 : 10} className="px-3 py-10 text-center text-slate-500">
                     Nincs a szűrésnek megfelelő tétel.
                   </td>
                 </tr>
@@ -757,7 +807,7 @@ export default function RedFlagMatrix({
       </Card>
 
       {/* ── 90 napos akcióterv ──────────────────────────────────── */}
-      <section className="pt-2">
+      <section id="akcioterv" className="scroll-mt-28 pt-2">
         <SectionTitle icon={<CalendarClock className="h-4 w-4" />} title="90 napos prioritási akcióterv" />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {WINDOWS.map((w) => (
@@ -800,27 +850,35 @@ export default function RedFlagMatrix({
       </section>
 
       {/* ── Mi lenne, ha…? ──────────────────────────────────────── */}
-      {modules.isOn('WHATIF') && <WhatIfPanel key={projectId} items={items} opts={engineOpts} result={result} />}
+      {modules.isOn('WHATIF') && (
+        <div id="mi-lenne-ha" className="scroll-mt-28">
+          <WhatIfPanel key={projectId} items={items} opts={engineOpts} result={result} />
+        </div>
+      )}
 
       {/* ── Várható vevői kérdések ───────────────────────────────── */}
       {modules.isOn('BUYER_QUESTIONS') && (
-        <BuyerQuestionsPanel companyName={companyName} result={result} highlighted={kind === 'VENDOR_DD' || kind === 'BUY_SIDE_DD'} />
+        <div id="vevoi-kerdesek" className="scroll-mt-28">
+          <BuyerQuestionsPanel companyName={companyName} result={result} highlighted={kind === 'VENDOR_DD' || kind === 'BUY_SIDE_DD'} />
+        </div>
       )}
 
       {/* ── Utókövetés ─────────────────────────────────────────── */}
       {modules.isOn('FOLLOWUP') && (
-        <FollowUpPanel
-          scenarioId={projectId}
-          kind={kind}
-          items={items}
-          opts={engineOpts}
-          result={result}
-          onStatus={(id, status) => update(id, { remediationStatus: status })}
-        />
+        <div id="utokovetes" className="scroll-mt-28">
+          <FollowUpPanel
+            scenarioId={projectId}
+            kind={kind}
+            items={items}
+            opts={engineOpts}
+            result={result}
+            onStatus={(id, status) => update(id, { remediationStatus: status })}
+          />
+        </div>
       )}
 
       {/* ── Keresztértékesítés + kredit ─────────────────────────── */}
-      <section className="grid gap-4 lg:grid-cols-[1fr_360px]">
+      <section id="pipeline" className="grid scroll-mt-28 gap-4 lg:grid-cols-[1fr_360px]">
         <Card className="p-5">
           <SectionTitle icon={<BriefcaseBusiness className="h-4 w-4" />} title="Remediation pipeline divíziónként" compact />
           <div className="space-y-3">
@@ -879,6 +937,7 @@ function RiskRow({
   kindAdjustment,
   onChange,
   onDelete,
+  dense,
 }: {
   risk: RiskItem;
   focus: boolean;
@@ -890,6 +949,8 @@ function RiskRow({
   kindAdjustment?: KindAdjustment;
   onChange: (patch: Partial<RiskItem>) => void;
   onDelete?: () => void;
+  /** Tömör nézet: leírás, munkanap és divízió csak a lenyitott sorban. */
+  dense: boolean;
 }) {
   const score = eff.score;
   const exposure = resolveExposure(r, company);
@@ -972,8 +1033,8 @@ function RiskRow({
           ) : (
             <>
               <p className={`mt-0.5 font-semibold ${r.identified ? 'text-slate-900' : ''}`}>{r.title}</p>
-              <p className="text-xs text-slate-500">{r.description}</p>
-              {r.evidence && <p className="mt-1 text-xs italic text-brand-700">{r.evidence}</p>}
+              {!dense && <p className="text-xs text-slate-500">{r.description}</p>}
+              {!dense && r.evidence && <p className="mt-1 text-xs italic text-brand-700">{r.evidence}</p>}
             </>
           )}
         </td>
@@ -1024,34 +1085,38 @@ function RiskRow({
         <td className="whitespace-nowrap px-2 py-2 text-right align-top font-semibold tabular-nums text-slate-900">
           {scored ? formatHufShort(scored.expectedLossHuf) : '—'}
         </td>
-        <td className="px-2 py-2 text-center align-top">
-          <input
-            type="number"
-            min={0}
-            value={r.remediationDays}
-            onChange={(e) => onChange({ remediationDays: Math.max(0, Number(e.target.value) || 0) })}
-            className="w-16 rounded border border-slate-200 px-1.5 py-1 text-center tabular-nums"
-          />
-          {scored?.quickWin && <Zap className="mx-auto mt-1 h-3.5 w-3.5 text-brand-600" aria-label="Quick win" />}
-        </td>
-        <td className="px-2 py-2 align-top">
-          <select
-            value={r.division}
-            onChange={(e) => onChange({ division: e.target.value as Division })}
-            className="w-full rounded border border-slate-200 bg-white px-1.5 py-1 text-xs"
-          >
-            {DIVISIONS.map((d) => (
-              <option key={d} value={d}>
-                {DIVISION_LABEL[d]}
-              </option>
-            ))}
-          </select>
-          <HufInput
-            value={r.serviceFeeHuf}
-            onChange={(v) => onChange({ serviceFeeHuf: v })}
-            className="mt-1 w-full rounded border border-slate-200 px-1.5 py-0.5 text-right text-xs tabular-nums"
-          />
-        </td>
+        {!dense && (
+          <>
+            <td className="px-2 py-2 text-center align-top">
+              <input
+                type="number"
+                min={0}
+                value={r.remediationDays}
+                onChange={(e) => onChange({ remediationDays: Math.max(0, Number(e.target.value) || 0) })}
+                className="w-16 rounded border border-slate-200 px-1.5 py-1 text-center tabular-nums"
+              />
+              {scored?.quickWin && <Zap className="mx-auto mt-1 h-3.5 w-3.5 text-brand-600" aria-label="Quick win" />}
+            </td>
+            <td className="px-2 py-2 align-top">
+              <select
+                value={r.division}
+                onChange={(e) => onChange({ division: e.target.value as Division })}
+                className="w-full rounded border border-slate-200 bg-white px-1.5 py-1 text-xs"
+              >
+                {DIVISIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {DIVISION_LABEL[d]}
+                  </option>
+                ))}
+              </select>
+              <HufInput
+                value={r.serviceFeeHuf}
+                onChange={(v) => onChange({ serviceFeeHuf: v })}
+                className="mt-1 w-full rounded border border-slate-200 px-1.5 py-0.5 text-right text-xs tabular-nums"
+              />
+            </td>
+          </>
+        )}
         <td className="px-2 py-2 align-top">
           {onDelete && (
             <button onClick={onDelete} aria-label="Törlés" className="text-slate-300 hover:text-red-600">
@@ -1063,7 +1128,41 @@ function RiskRow({
       {expanded && (
         <tr className="bg-canvas">
           <td />
-          <td colSpan={9} className="px-3 pb-4 pt-1">
+          <td colSpan={dense ? 7 : 9} className="px-3 pb-4 pt-1">
+            {dense && (
+              <div className="mb-3 flex flex-wrap items-end gap-4 text-xs">
+                {r.description && <p className="w-full text-slate-500">{r.description}</p>}
+                <Field label="Munkanap">
+                  <input
+                    type="number"
+                    min={0}
+                    value={r.remediationDays}
+                    onChange={(e) => onChange({ remediationDays: Math.max(0, Number(e.target.value) || 0) })}
+                    className="w-20 rounded-lg border border-slate-200 bg-white px-2 py-1 text-center text-sm tabular-nums"
+                  />
+                </Field>
+                <Field label="Divízió">
+                  <select
+                    value={r.division}
+                    onChange={(e) => onChange({ division: e.target.value as Division })}
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm"
+                  >
+                    {DIVISIONS.map((d) => (
+                      <option key={d} value={d}>
+                        {DIVISION_LABEL[d]}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Díj (Ft)">
+                  <HufInput
+                    value={r.serviceFeeHuf}
+                    onChange={(v) => onChange({ serviceFeeHuf: v })}
+                    className="w-32 rounded-lg border border-slate-200 px-2 py-1 text-right text-sm tabular-nums"
+                  />
+                </Field>
+              </div>
+            )}
             {kindAdjustment && (
               <label className="mb-3 flex items-start gap-2 rounded-lg border border-violet-100 bg-violet-50 p-2.5 text-xs text-violet-900">
                 <input
@@ -1357,6 +1456,50 @@ function HufInput({
       onBlur={() => setDraft(null)}
       className={`bg-white outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 ${className}`}
     />
+  );
+}
+
+/** Tapadó belső menü: ugrás a hosszú oldal szakaszaira; a látható szakasz kiemelve. */
+function SectionNav({ sections }: { sections: { id: string; label: string }[] }) {
+  const [active, setActive] = useState(sections[0]?.id);
+  const ids = sections.map((x) => x.id).join(',');
+  useEffect(() => {
+    const els = ids
+      .split(',')
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => Boolean(el));
+    if (!els.length || typeof IntersectionObserver === 'undefined') return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const top = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (top) setActive(top.target.id);
+      },
+      { rootMargin: '-120px 0px -60% 0px' },
+    );
+    els.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, [ids]);
+  return (
+    <nav
+      aria-label="Ugrás az oldalon"
+      className="sticky top-14 z-20 -mx-1 flex gap-1 overflow-x-auto rounded-xl border border-slate-200/80 bg-white/95 p-1 shadow-[0_1px_2px_rgba(15,23,42,0.04)] backdrop-blur print:hidden"
+    >
+      {sections.map((x) => (
+        <button
+          key={x.id}
+          onClick={() => {
+            setActive(x.id);
+            document.getElementById(x.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+          aria-current={active === x.id ? 'location' : undefined}
+          className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+            active === x.id ? 'bg-brand-50 text-brand-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+          }`}
+        >
+          {x.label}
+        </button>
+      ))}
+    </nav>
   );
 }
 

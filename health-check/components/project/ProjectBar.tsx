@@ -80,7 +80,7 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-haspopup="true"
-          className="inline-flex max-w-[16rem] items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-800 hover:bg-slate-50"
+          className="inline-flex max-w-[26rem] items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-800 hover:bg-slate-50"
         >
           <FolderOpen className="h-4 w-4 shrink-0 text-slate-500" />
           <span className="truncate">{label}</span>

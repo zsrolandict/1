@@ -23,8 +23,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <SupabaseIdentity>
             <AppShell project={<ProjectBar />} account={<AccountLink />}>
               <ProjectScope>{children}</ProjectScope>
-              {/* Hely a lebegő Kalauz gombnak, hogy ne takarja a lap alját. */}
-              <div className="h-20 print:hidden" aria-hidden />
+              <div className="h-10 print:hidden" aria-hidden />
             </AppShell>
           </SupabaseIdentity>
           <GuideHost />

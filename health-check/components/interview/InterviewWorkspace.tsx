@@ -21,7 +21,7 @@ import {
   Upload,
   Users,
 } from 'lucide-react';
-import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
+import { ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 import { buildInterviewGuide, estimateMinutes } from '@/lib/interview/guide';
 import { ROLE_LABEL } from '@/lib/interview/questionBank';
 import { getScenario } from '@/lib/scenarios';
@@ -238,18 +238,6 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
         subtitle={`${ws.companyName || 'Névtelen projekt'}${scenario.situation ? ` · ${scenario.situation}` : ''}`}
         actions={
           <>
-            <select
-              value={ws.kind}
-              onChange={(e) => updateWs({ ...ws, kind: e.target.value as EngagementKind })}
-              aria-label="Átvilágítás típusa"
-              className={SELECT}
-            >
-              {ENGAGEMENT_KIND_LIST.map((k) => (
-                <option key={k.kind} value={k.kind}>
-                  {k.label}
-                </option>
-              ))}
-            </select>
             <select value={role} onChange={(e) => setRole(e.target.value as IntervieweeRole)} aria-label="Interjúalany" className={SELECT}>
               {ROLES.map((r) => (
                 <option key={r} value={r}>

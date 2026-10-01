@@ -181,6 +181,14 @@ export const PAGE_TIPS: Record<PageId, string[]> = {
 const TAB_KEY = 'ict-hc:intake-tab';
 export const INTAKE_TAB_EVENT = 'ict-hc:intake-tab';
 
+/** A kalauz ki-be kapcsolása (az oldalsáv gombja küldi) és az állapota (a kalauz jelzi vissza). */
+export const GUIDE_TOGGLE_EVENT = 'ict-hc:guide-toggle';
+export const GUIDE_STATE_EVENT = 'ict-hc:guide-state';
+
+export function toggleGuide(): void {
+  window.dispatchEvent(new Event(GUIDE_TOGGLE_EVENT));
+}
+
 /** Kalauzból érkező kérés egy adatgyűjtési fül megnyitására (oldalváltáson át is). */
 export function requestIntakeTab(tab: IntakeTab): void {
   try {

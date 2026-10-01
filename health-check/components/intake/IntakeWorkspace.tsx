@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -22,7 +22,7 @@ import {
   X,
   Lightbulb,
 } from 'lucide-react';
-import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
+import { ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 import { applyCompanySuggestion, applyIntakeSuggestion, isCompanySuggestionApplied } from '@/lib/intake/apply';
 import { CHECKLIST, checklistProgress, isVisible, type Answer, type ChecklistQuestion } from '@/lib/intake/checklist';
 import { documentChars, extractPlain, SUPPORTED_DOCUMENTS } from '@/lib/intake/documents/extract';
@@ -32,7 +32,7 @@ import { SAMPLE_DOCUMENTS, sampleDocumentRecord, samplePagesRedacted } from '@/l
 import { hasSampleTables, SAMPLE_REF_DATE, sampleTableCsv } from '@/lib/intake/samples/tables';
 import { EMPTY_INTAKE, intakeResults, loadIntake, requestList, saveIntake, type IntakeState } from '@/lib/intake/state';
 import CaseTab from './CaseTab';
-import { BTN_PRIMARY, Callout, PageHeader, SELECT, TabBar, TabButton, TabCount } from '../ui/primitives';
+import { BTN_PRIMARY, Callout, PageHeader, TabBar, TabButton, TabCount } from '../ui/primitives';
 import ProjectStagesCard from '../ui/ProjectStagesCard';
 import ModuleOff from '../ModuleOff';
 import { useModules } from '../useModules';
@@ -253,20 +253,6 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
         section="Adatgyűjtés"
         title="Adatgyűjtés és előjelölés"
         subtitle={`${ws.companyName || 'Névtelen projekt'}${scenario.situation ? ` · ${scenario.situation}` : ''}`}
-        actions={
-          <select
-            value={ws.kind}
-            onChange={(e) => updateWs({ ...ws, kind: e.target.value as EngagementKind })}
-            aria-label="Átvilágítás típusa"
-            className={SELECT}
-          >
-            {ENGAGEMENT_KIND_LIST.map((k) => (
-              <option key={k.kind} value={k.kind}>
-                {k.label}
-              </option>
-            ))}
-          </select>
-        }
       />
 
       <ProjectStagesCard projectId={ws.projectId} identified={ws.items.filter((r) => r.identified).length} current="adatok" />
