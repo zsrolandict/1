@@ -59,7 +59,8 @@ import ExportPdfButton, { browserDownload, slug, type SaveFile } from '@/compone
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, hourSplit, PM_HOURS, type EngagementKind } from '@/lib/engagement/kinds';
 import { KIND_RISKS } from '@/lib/engagement/kindRisks';
 import { adjustmentsFor, describeAdjustment, formatAdjustment, KIND_ADJUSTMENTS_STATUS, type KindAdjustment } from '@/lib/engagement/adjustments';
-import { addEntry, missingReasons, recordChange, sourceCount } from '@/lib/risk/trail';
+import { addEntry, missingReasons, reasonAt, recordChange, sourceCount } from '@/lib/risk/trail';
+import type { DiscussionEntry, ReviewProposal } from '@/lib/risk/review';
 import { EvidencePanel, HealthExplain } from './EvidencePanel';
 import { deriveHealth } from '@/lib/risk/derivation';
 import { useIdentity } from '../Identity';
@@ -242,6 +243,30 @@ export default function RedFlagMatrix({
   // Minden szakértői módosítás a tétel változásnaplójába kerül (csökkentésnél indoklás kell).
   const update = (id: string, patch: Partial<RiskItem>) =>
     setItems((xs) => xs.map((r) => (r.id === id ? recordChange(r, { ...r, ...patch }, me.name, (x) => resolveExposure(x, company).valueHuf) : r)));
+
+  /**
+   * Elfogadott felülvizsgálati javaslat: a javaslat a korrigált értékre szól, a
+   * megadott értéket ennyivel módosítjuk (a típus-korrekció marad); a változás a
+   * naplóba kerül, csökkentésnél a vélemény és a felülvizsgálat az indoklás.
+   */
+  const applyProposal = (id: string, p: ReviewProposal, reason: string, discussion: DiscussionEntry[]) =>
+    setItems((xs) =>
+      xs.map((r) => {
+        if (r.id !== id) return r;
+        const eff = scoreRisk(r, engineOpts);
+        const clamp = (n: number) => Math.min(5, Math.max(1, Math.round(n))) as Scale5;
+        const patch: Partial<RiskItem> = { discussion };
+        if (p.likelihood != null) patch.likelihood = clamp(p.likelihood - (eff.likelihood - r.likelihood));
+        if (p.impact != null) patch.impact = clamp(p.impact - (eff.impact - r.impact));
+        if (p.exposureHuf != null) {
+          if (r.valuation && r.valuation.formula.type !== 'MANUAL') patch.valuation = { ...r.valuation, overrideHuf: p.exposureHuf };
+          else patch.exposureHuf = p.exposureHuf;
+        }
+        const now = new Date();
+        const next = recordChange(r, { ...r, ...patch }, me.name, (x) => resolveExposure(x, company).valueHuf, now);
+        return reasonAt(next, now.toISOString(), reason);
+      }),
+    );
 
   // Ugrás egy sorra más oldalról (forrásnézet): szűrők törlése, sor lenyitása.
   useFocusAnchor(hydrated, (anchor) => {
@@ -838,6 +863,8 @@ export default function RedFlagMatrix({
                   kindAdjustment={adjustments?.[r.code]}
                   onChange={(patch) => update(r.id, patch)}
                   onDelete={r.id.startsWith('CUS-') ? () => setItems((xs) => xs.filter((x) => x.id !== r.id)) : undefined}
+                  kind={kind}
+                  onApplyProposal={(p, reason, discussion) => applyProposal(r.id, p, reason, discussion)}
                   dense={dense}
                 />
               ))}
@@ -986,6 +1013,8 @@ function RiskRow({
   onChange,
   onDelete,
   dense,
+  kind,
+  onApplyProposal,
 }: {
   risk: RiskItem;
   focus: boolean;
@@ -1000,6 +1029,8 @@ function RiskRow({
   onDelete?: () => void;
   /** Tömör nézet: leírás, munkanap és divízió csak a lenyitott sorban. */
   dense: boolean;
+  kind: EngagementKind;
+  onApplyProposal: (p: ReviewProposal, reason: string, discussion: DiscussionEntry[]) => void;
 }) {
   const score = eff.score;
   const exposure = resolveExposure(r, company);
@@ -1247,7 +1278,7 @@ function RiskRow({
               </label>
             )}
             <div className="mb-4">
-              <EvidencePanel risk={r} eff={eff} materialityHuf={materialityHuf} onChange={onChange} />
+              <EvidencePanel risk={r} eff={eff} materialityHuf={materialityHuf} kind={kind} onChange={onChange} onApplyProposal={onApplyProposal} />
             </div>
             <RiskDetails risk={r} company={company} onChange={onChange} />
           </td>

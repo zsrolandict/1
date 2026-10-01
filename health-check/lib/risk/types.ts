@@ -1,5 +1,6 @@
 import type { KindAdjustment } from '@/lib/engagement/adjustments';
 import type { ChangeEntry, EvidenceEntry } from './trail';
+import type { DiscussionEntry } from './review';
 import type { Valuation } from './valuation';
 
 // Kockázati motor – domain típusok.
@@ -46,6 +47,8 @@ export interface RiskItem {
   trail?: EvidenceEntry[];
   /** A szakértő módosításai (csökkentésnél indoklással). */
   history?: ChangeEntry[];
+  /** Szakértői vélemények és azok kritikus AI-felülvizsgálata. */
+  discussion?: DiscussionEntry[];
   /** Szakmai indoklás a riportba – a katalógusból előtöltve, szerkeszthető. */
   reasoning?: string;
   /** Forintosító képlet + szakértői felülírás. Hiányzik = kézi `exposureHuf`. */

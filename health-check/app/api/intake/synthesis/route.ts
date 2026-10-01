@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAiConfigured, parseStructured } from '@/lib/ai/client.server';
 import { requireAi } from '@/lib/auth/guard.server';
-import { runSynthesis } from '@/lib/intake/synthesis';
+import { runSynthesis, SYNTHESIS_SOURCE_KINDS } from '@/lib/intake/synthesis';
 import { RiskItemSchema } from '@/lib/interview/schemas';
 import { errorResponse } from '../../_errors';
 import { EngagementKindSchema } from '@/lib/engagement/kindSchema';
@@ -17,7 +17,7 @@ const RequestSchema = z.object({
     .array(
       z.object({
         id: z.string().max(10),
-        kind: z.enum(['TÉNYÁLLÁS', 'KÉRDŐÍV', 'ADATTÁBLA', 'DOKUMENTUM', 'INTERJÚ']),
+        kind: z.enum(SYNTHESIS_SOURCE_KINDS),
         label: z.string().max(300),
         text: z.string().max(60_000),
       }),

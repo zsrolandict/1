@@ -119,10 +119,16 @@ try {
   await p.waitForTimeout(600);
   await p.evaluate(() => (location.hash = 'adatok'));
   await p.waitForTimeout(700);
-  await p.getByRole('button', { name: /Dokumentumok/ }).first().click();
+  await p
+    .getByRole('button', { name: /Dokumentumok/ })
+    .first()
+    .click();
   await p.getByRole('button', { name: /^Beszamolo_/ }).click();
   await p.getByRole('button', { name: /^Konyvvizsgaloi_/ }).click();
-  await p.getByRole('button', { name: /Pénzügyi alapadatok/ }).first().click();
+  await p
+    .getByRole('button', { name: /Pénzügyi alapadatok/ })
+    .first()
+    .click();
   await p.waitForTimeout(400);
   const pending = Number((await p.getByText(/jóváhagyásra várnak \(\d+\)/).innerText()).match(/\((\d+)\)/)?.[1] ?? 0);
   check('beszámolóból kiolvasott értékek jóváhagyásra várnak', pending >= 30, String(pending));
@@ -138,6 +144,12 @@ try {
   await p.waitForTimeout(300);
   const why = await p.locator('section[aria-label="Bizonyíték-lánc"]').first().innerText();
   check('Miért? panel: forrás, idézet, elfogadó', /Pénzügyi alapadatok/.test(why) && /Teszt Elek/.test(why), why.slice(0, 200));
+
+  await p.getByLabel('Vélemény az eredményhez').first().fill('Szerintem a valószínűség túlzó, a szerződés 2027-ig határozott idejű.');
+  await p.getByRole('button', { name: 'Csak megjegyzés' }).first().click();
+  await p.waitForTimeout(300);
+  const thread = await p.locator('section[aria-label="Vélemény és felülvizsgálat"]').first().innerText();
+  check('vélemény-szál: a megjegyzés rögzül, értéket nem változtat', /2027-ig határozott idejű/.test(thread), thread.slice(0, 200));
 
   check('nincs JavaScript-hiba', errors.length === 0, errors.join(' | '));
 } catch (e) {

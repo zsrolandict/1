@@ -96,6 +96,8 @@ A bal oldali (összecsukható) sávban az oldalak: **Adatgyűjtés → Interjúk
 - **Változásnapló:** kézi pipálás és módosítás naplózva; a súlyosság csökkentéséhez indoklás kell, hiánya látszik a sorban és a riport belső jelzésében.
 - **Forrásnézet:** egy iratnál vagy táblánál látszik, mely tételek születtek belőle.
 - **Riport:** „A vizsgálat terjedelme” (mit láttunk, mit nem) és „Bizonyítéktár” melléklet.
+- **Levezetés-munkafüzet:** letölthető Excel élő képletekkel, ugyanazt számolja, mint a program (teszttel igazolva); a sárga bemeneti cellák átírhatók, látszik, mi mit befolyásol.
+- **Vélemény és kritikus felülvizsgálat:** a tanácsadó véleményt fűzhet egy eredményhez; az AI a forrásokkal és a levezetéssel veti össze, nem ért egyet automatikusan. A program elveti a nem létező forrásra vagy nem található idézetre hivatkozást, a forrás nélküli enyhítést, és a forrás nélküli „egyetért”-et „bizonyíték kell”-re írja át. A javaslat csak kézi átvétellel lép életbe, a változásnaplóba indoklással kerül.
 
 ## 6. Forintosítás
 

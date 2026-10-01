@@ -53,7 +53,16 @@ beforeEach(() => {
   guard.requireStaff.mockImplementation(async () => (guard.mode === 'deny' ? denied() : allowed()));
 });
 
-const ROUTES = ['documents/analyze', 'intake/case', 'intake/registry', 'intake/synthesis', 'interviews/analyze', 'interviews/guide', 'interviews/transcribe'];
+const ROUTES = [
+  'documents/analyze',
+  'intake/case',
+  'intake/registry',
+  'intake/synthesis',
+  'interviews/analyze',
+  'interviews/guide',
+  'interviews/transcribe',
+  'risk/review',
+];
 const post = (body: BodyInit | null, type = 'application/json') =>
   new Request('http://localhost/api/x', { method: 'POST', body, headers: body instanceof FormData ? undefined : { 'content-type': type } });
 

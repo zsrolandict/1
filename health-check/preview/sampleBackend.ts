@@ -9,6 +9,7 @@ import { runInterviewAnalysis, runQuestionSuggestions } from '@/lib/interview/pr
 import { runCaseSuggestion } from '@/lib/intake/casePrompts';
 import { runSynthesis } from '@/lib/intake/synthesis';
 import { runRegistryExtraction } from '@/lib/intake/registry';
+import { runOpinionReview } from '@/lib/risk/review';
 
 /**
  * Böngészős előnézet: az AI a claude.ai beépített képessége (`sample`),
@@ -104,5 +105,8 @@ export const sampleBackend: AiBackend = {
   },
   async extractRegistry(text) {
     return runRegistryExtraction(sampleCall, text.slice(0, 30_000));
+  },
+  async reviewOpinion(req) {
+    return runOpinionReview(sampleCall, req);
   },
 };

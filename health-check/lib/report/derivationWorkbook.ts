@@ -2,6 +2,7 @@ import { adjustmentsFor } from '@/lib/engagement/adjustments';
 import { ENGAGEMENT_KINDS } from '@/lib/engagement/kinds';
 import { PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
 import { DEFAULT_OPTIONS, PILLARS, PROBABILITY, scoreRisk } from '@/lib/risk/engine';
+import { describeProposal, discussionOf, VERDICT_LABEL } from '@/lib/risk/review';
 import { missingReasons, sourceCount, trailOf, TRAIL_KIND_LABEL } from '@/lib/risk/trail';
 import type { RiskItem, Scale5 } from '@/lib/risk/types';
 import { resolveExposure } from '@/lib/risk/valuation';
@@ -251,12 +252,51 @@ export function buildDerivationWorkbook(input: ReportInput, items: RiskItem[]): 
       ['Pillérek munkalap: azonosított tételek, pillér-egészség (100 × a tételek Health-szorzóinak szorzata), besorolás, és a súlyozott Health Score.'],
       ['Próba: írd át egy tétel valószínűségét, az „Azonosítva” oszlopot, az árbevételt vagy egy küszöböt a Paraméterek lapon, és nézd meg, mi változik.'],
       ['A munkafüzetben végzett módosítás nem kerül vissza a programba: ott a változásnaplóval és indoklással kell átvezetni.'],
-      ['Források: a bizonyíték-lánc tételenként (hely, idézet, ki fogadta el); Változásnapló: a szakértői módosítások.'],
+      [
+        'Források: a bizonyíték-lánc tételenként (hely, idézet, ki fogadta el); Változásnapló: a szakértői módosítások; Vélemények: a tanácsadói vélemények, az AI-felülvizsgálat és a döntés.',
+      ],
     ],
   };
 
+  const opinionRows: CellValue[][] = items.flatMap((r) =>
+    discussionOf(r).map((d) => {
+      const rv = d.review;
+      const decision = d.decision
+        ? `${d.decision.kind === 'APPLIED' ? 'Átvéve' : 'Elvetve'} (${d.decision.by ?? 'név nélkül'}, ${d.decision.at.slice(0, 16).replace('T', ' ')})`
+        : '';
+      return [
+        r.code,
+        d.at.slice(0, 16).replace('T', ' '),
+        d.role === 'AI' ? 'AI-felülvizsgálat' : (d.by ?? 'név nélkül'),
+        rv ? VERDICT_LABEL[rv.verdict] : 'Vélemény',
+        [
+          d.text,
+          ...(rv?.counterpoints.length ? [`Ellenérvek: ${rv.counterpoints.join('; ')}`] : []),
+          ...(rv?.evidenceNeeded.length ? [`Bizonyíték kellene: ${rv.evidenceNeeded.join('; ')}`] : []),
+        ].join('\n'),
+        rv?.discarded.join('\n') ?? '',
+        rv?.proposal && rv.basis ? describeProposal(rv.proposal, rv.basis) : '',
+        decision,
+      ];
+    }),
+  );
+  const opinions: Sheet = {
+    name: 'Vélemények',
+    columns: [
+      { header: 'Kód', width: 9 },
+      { header: 'Időpont', width: 17 },
+      { header: 'Ki', width: 18 },
+      { header: 'Ítélet', width: 16 },
+      { header: 'Szöveg', width: 70, format: 'wrap' },
+      { header: 'A program által elvetett elemek', width: 50, format: 'wrap' },
+      { header: 'Javaslat', width: 30, format: 'wrap' },
+      { header: 'Döntés', width: 30 },
+    ],
+    rows: opinionRows,
+  };
+
   const extra = buildWorkbook(input).filter((s) => s.name === 'Bizonyítéktár' || s.name === 'Változásnapló');
-  return [guide, derivation, pillars, params, ...extra];
+  return [guide, derivation, pillars, params, ...(opinionRows.length ? [opinions] : []), ...extra];
 }
 
 export function exportDerivation(input: ReportInput, items: RiskItem[]): Uint8Array {

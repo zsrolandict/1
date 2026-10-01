@@ -140,6 +140,30 @@ Minden piros és sárga tételhez elkészíti a várható vevői kérdéseket, e
 - **Kód:** `lib/risk/trail.ts`, `lib/risk/derivation.ts`, `components/risk/EvidencePanel.tsx`, `lib/focus.ts`. Régi mentésnél a szöveges bizonyítékból egy bejegyzés lesz.
 - **Adatbázis:** `red_flags.evidence_trail`, `red_flags.change_log` (0010).
 
+## Levezetés-munkafüzet (Excel, élő képletekkel)
+
+- **Mit tud:** a Red Flag mátrix „Levezetés” gombja egy Excel-munkafüzetet ad, amely **ugyanazt számolja, mint a program**, de látható képletekkel: tételenként megadott érték → típus-korrekció → pont → sáv → kitettség (képlet szerint vagy kézzel) → esély → várható veszteség → lényegességi küszöb → végső besorolás → időablak, prioritás, Health-szorzó; a Pillérek lapon pillér-egészség és súlyozott Health Score.
+- **Sárga cella = bemenet** (valószínűség, hatás, „Azonosítva”, kitettség-paraméterek, árbevétel, küszöbök, esély-tábla, súlyok): átírható, és látszik, mi változik. A fehér cellák képletek. Megnyitáskor az Excel újraszámol.
+- **Munkalapok:** Útmutató, Levezetés, Pillérek, Paraméterek, Vélemények (ha van), Bizonyítéktár, Változásnapló.
+- **Garancia:** teszt (`lib/report/derivation.test.ts`) minden bemutató cégnél táblázatkezelő-motorral (HyperFormula) kiértékeli az összes képletet, és összeveti a program eredményével; a „mi lenne, ha” módosításokat (tétel kivétele, árbevétel átírása) is.
+- **Fontos:** a munkafüzetben végzett módosítás nem kerül vissza a programba; ott változásnaplóval, indoklással kell átvezetni.
+- **Kód:** `lib/report/derivationWorkbook.ts`, `lib/report/xlsx.ts` (képletes cellák).
+
+## Vélemény és kritikus felülvizsgálat
+
+- **Mit tud:** a Miért? panel alján a tanácsadó véleményt fűzhet a tétel eredményéhez („Szerintem túlzó, mert…”). Két lehetőség: **Csak megjegyzés** (rögzül, semmit nem változtat), vagy **Kritikus felülvizsgálat kérése**: az AI a véleményt a tétel forrásaival és levezetésével veti össze.
+- **Nem szolgai:** a prompt kimondja, hogy a vélemény nem bizonyíték, a tanácsadó tekintélye nem érv, ne udvariaskodjon, és mindig írja le a legerősebb ellenérvet. Ítélet: egyetért / részben / nem ért egyet / bizonyíték kell; mellé: ellenérvek, milyen irat igazolná, hivatkozott források, javaslat (valószínűség, hatás, kitettség).
+- **A program ellenőrzi az AI-t** (`verifyReview`), nem csak a prompt kéri:
+  - hivatkozás csak létező forrásra, és az idézetnek szó szerint szerepelnie kell abban a forrásban – különben elvetve;
+  - súlyosság-**csökkentő** javaslat ellenőrizhető hivatkozás nélkül elvetve;
+  - „egyetért” ellenőrizhető hivatkozás nélkül → „bizonyíték kell”;
+  - a változatlan értéket javaslatként nem mutatja.
+  Az elvetett elemek a kártyán „A program ellenőrzése után kimaradt” alatt látszanak.
+- **Semmi nem automatikus:** a javaslat csak **Átvétel**-lel lép életbe; ekkor a változásnaplóba kerül, indoklásként a vélemény és a felülvizsgálat szövegével. Elvetésnél a döntés is rögzül (ki, mikor).
+- **Következmény:** forrás nélküli (katalógus-alapértékből indult) tételnél az AI nem javasolhat enyhítést: előbb bizonyítékot kell csatolni, vagy a tanácsadó kézzel módosít, indoklással – a felelősség így nála marad.
+- **Riport:** a levezetés-munkafüzet „Vélemények” lapja (vélemény, ítélet, elvetett elemek, javaslat, döntés).
+- **Kód:** `lib/risk/review.ts`, `app/api/risk/review/route.ts`, `components/risk/EvidencePanel.tsx` (OpinionThread, ReviewCard). **Adatbázis:** `red_flags.discussion` (0011).
+
 ## Pénzügyi alapadatok
 
 - **Mit tud:** az Adatgyűjtés új fülén a beszámoló kulcsszámai legfeljebb 3 évre (eredménykimutatás és mérleg főbb sorai), mutatók (EBITDA, EBITDA-ráta, árbevétel-változás, nettó adósság/EBITDA, likviditási ráta, saját tőke/jegyzett tőke, vevői és szállítói fizetési idő, fedezeti hányad közelítése), és beírható tények öt csoportban: könyvvizsgálat és beszámoló, adó és hatóság, jogviták és függő kötelezettségek, finanszírozás és támogatás, létszám és biztosítás. Minden érték mellett a forrása (irat oldallal és idézettel, kézi bevitel, ügyfél szóbeli közlése, interjú, nyilvános adat).

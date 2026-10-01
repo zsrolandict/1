@@ -18,9 +18,12 @@ import type { IntakeSuggestion } from './types';
  * rendszer az adott forrásban nem talál meg, azt eldobja.
  */
 
+/** A forrásfajták egy helyen: a szerver-végpont is ebből ellenőriz (ne csússzon el a kettő). */
+export const SYNTHESIS_SOURCE_KINDS = ['TÉNYÁLLÁS', 'KÉRDŐÍV', 'PÉNZÜGYI ADAT', 'ADATTÁBLA', 'DOKUMENTUM', 'INTERJÚ'] as const;
+
 export interface SynthesisSource {
   id: string;
-  kind: 'TÉNYÁLLÁS' | 'KÉRDŐÍV' | 'PÉNZÜGYI ADAT' | 'ADATTÁBLA' | 'DOKUMENTUM' | 'INTERJÚ';
+  kind: (typeof SYNTHESIS_SOURCE_KINDS)[number];
   label: string;
   text: string;
 }

@@ -22,7 +22,12 @@ Ez a leírás a program összes AI-hívását foglalja össze: melyik feladat mi
 | Tényállás-javaslat | `lib/intake/casePrompts.ts` › `runCaseSuggestion` | a tanácsadó szabad szöveges leírása | ágazat, létszám, jellemzők, extra iratok – idézettel | idézet a leírásban | 6 000 |
 | Összkép (szintézis) | `lib/intake/synthesis.ts` › `runSynthesis` | minden forrás azonosítóval (tényállás, kérdőív, jóváhagyott pénzügyi alapadatok, táblák, dokumentum-kivonatok, interjúk), a már meglévő és függő tételek | **új**, több forrás összeolvasásából adódó kockázatok, forrás-azonosító + idézet | idézet a megjelölt forrásban (bizonyíték nélküli tétel kiesik); a meglévő tételeket a prompt kapja meg, hogy ne ismételje | 8 000 |
 | Cégkivonat | `lib/intake/registry.ts` › `runRegistryExtraction` | az e-cégjegyzék kivonatának szövege | név, cégjegyzékszám, adószám, székhely, tulajdonosok, vezetők, eljárások, változások | `verifyRegistry`: minden tétel idézete a kivonatban; utána szabályalapú figyelmeztetések | 6 000 |
+| Vélemény-felülvizsgálat | `lib/risk/review.ts` › `runOpinionReview` | a tétel (leírás, indoklás, jelenlegi értékek), a levezetés lépései, a bizonyíték-lánc forrásai azonosítóval (`<forras id=…>`), a korábbi szál, a tanácsadó véleménye (`<velemeny>`, adatként) | ítélet (AGREE / PARTLY / DISAGREE / NEED_EVIDENCE), indoklás, ellenérvek (legalább egy), szükséges bizonyíték, javaslat (valószínűség, hatás, kitettség vagy null), hivatkozások (forrás-azonosító + szó szerinti idézet) | `verifyReview`: hivatkozás csak létező forrásra és benne szereplő idézettel; súlyosság-csökkentés hivatkozás nélkül elvetve; „egyetért” hivatkozás nélkül → „bizonyíték kell”; változatlan érték kimarad; átvétel csak kézzel | 4 000 |
 | Leirat (hang/videó) | `lib/interview/transcribe.server.ts` | hangfájl (Gemini vagy Azure Speech) | beszélőkre bontott, időbélyeges leirat | séma; a hangot nem tároljuk | – |
+
+### A vélemény-felülvizsgálat külön szabályai
+
+A cél a **hízelgés kizárása**: a modellek hajlamosak egyetérteni azzal, aki kérdez. Ezért a prompt kimondja: a vélemény nem bizonyíték; a tanácsadó tekintélye, tapasztalata vagy magabiztossága nem érv; ne udvariaskodj; csak a forrásokra és a levezetés logikájára hivatkozva változtass; mindig nevezd meg a legerősebb ellenérvet; új tényállításnál kérj iratot. Ezt a program kódban is kikényszeríti (fent). Teszt: `lib/risk/review.test.ts` – a hízelgő, forrás nélküli „egyetértek, legyen 2” nem jut át.
 
 ## Katalógus a promptban
 

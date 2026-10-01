@@ -1,6 +1,7 @@
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { DocumentAnalysis, DocumentFormat } from '@/lib/intake/documents/types';
 import type { DocType } from '@/lib/intake/documents/docTypes';
+import type { OpinionReview, ReviewRequest } from '@/lib/risk/review';
 import type { CaseSuggestion } from '@/lib/intake/casePrompts';
 import type { SynthesisResult, SynthesisSource } from '@/lib/intake/synthesis';
 import type { RegistryData } from '@/lib/intake/registry';
@@ -40,6 +41,8 @@ export interface AiBackend {
   suggestCase(req: CaseRequest): Promise<CaseSuggestion>;
   synthesize(req: SynthesisRequest): Promise<SynthesisResult>;
   extractRegistry(text: string): Promise<RegistryData>;
+  /** Szakértői vélemény kritikus felülvizsgálata (nem változtat semmit, csak javasol). */
+  reviewOpinion(req: ReviewRequest): Promise<OpinionReview>;
 }
 
 export interface SynthesisRequest {
@@ -107,5 +110,8 @@ export const serverBackend: AiBackend = {
   },
   async extractRegistry(text) {
     return (await callApi<{ data: RegistryData }>('/api/intake/registry', json({ text }))).data;
+  },
+  async reviewOpinion(req) {
+    return (await callApi<{ review: OpinionReview }>('/api/risk/review', json(req))).review;
   },
 };

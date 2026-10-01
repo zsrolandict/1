@@ -213,3 +213,8 @@ export function formatWhen(iso: string): string {
 export function itemsFromAnchor(items: RiskItem[], anchor: string): RiskItem[] {
   return items.filter((r) => r.identified && trailOf(r).some((e) => e.link?.anchor === anchor));
 }
+
+/** A most rögzített (`at` időpontú) csökkentő naplóbejegyzések indoklása – pl. elfogadott felülvizsgálati javaslatnál. */
+export function reasonAt(r: RiskItem, at: string, reason: string): RiskItem {
+  return { ...r, history: historyOf(r).map((h) => (h.at === at && h.reduces && !h.reason?.trim() ? { ...h, reason } : h)) };
+}

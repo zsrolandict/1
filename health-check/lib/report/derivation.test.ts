@@ -92,6 +92,44 @@ describe('levezetés-munkafüzet', () => {
     expect(get('Pillérek', 5, 7)).toBe(after.totals.grossExposureHuf);
   });
 
+  it('vélemények munkalap: a vélemény, az ítélet, az elvetett elemek és a döntés', () => {
+    const { input } = setup('it-fejleszto');
+    const items = getScenario('it-fejleszto').items.map((r, i) =>
+      i === 0
+        ? {
+            ...r,
+            discussion: [
+              { id: 'o1', at: '2026-10-01T10:00:00.000Z', by: 'Teszt Elek', role: 'EXPERT' as const, text: 'Túlzó.' },
+              {
+                id: 'a1',
+                at: '2026-10-01T10:00:05.000Z',
+                by: null,
+                role: 'AI' as const,
+                text: 'Forrás nélkül nem enyhíthető.',
+                review: {
+                  verdict: 'NEED_EVIDENCE' as const,
+                  reasoning: 'Forrás nélkül nem enyhíthető.',
+                  counterpoints: ['A katalógus-alapérték óvatos.'],
+                  evidenceNeeded: ['Aláírt szerződés'],
+                  proposal: { likelihood: 2 as const },
+                  citations: [],
+                  discarded: ['A súlyosságot csökkentő javaslatot a program elvetette.'],
+                  basis: { likelihood: 4, impact: 4, exposureHuf: 1 },
+                },
+                decision: { kind: 'REJECTED' as const, by: 'Teszt Elek', at: '2026-10-01T10:01:00.000Z' },
+              },
+            ],
+          }
+        : r,
+    );
+    const op = buildDerivationWorkbook(input, items).find((s) => s.name === 'Vélemények')!;
+    expect(op.rows).toHaveLength(2);
+    expect(op.rows[1].join(' ')).toContain('Bizonyíték kell');
+    expect(op.rows[1].join(' ')).toContain('valószínűség 4 → 2');
+    expect(op.rows[1].join(' ')).toContain('Elvetve (Teszt Elek');
+    expect(buildDerivationWorkbook(input, getScenario('it-fejleszto').items).some((s) => s.name === 'Vélemények')).toBe(false);
+  });
+
   it('valódi XLSX: képletek, újraszámolás megnyitáskor, sárga bemenetek', () => {
     const { items, input } = setup('konyvelo');
     const files = unzipSync(exportDerivation(input, items));
