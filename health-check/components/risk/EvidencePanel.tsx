@@ -1,5 +1,6 @@
 'use client';
 
+import { ASSUMPTION_STATUS_LABEL, ASSUMPTIONS } from '@/lib/risk/assumptions';
 import { useState } from 'react';
 import { AlertTriangle, ArrowUpRight, Bot, Calculator, Cog, History, Link2, Loader2, MessageSquare, Quote, Scale, UserCheck } from 'lucide-react';
 import { openSource } from '@/lib/focus';
@@ -41,11 +42,15 @@ export function EvidencePanel({
   kind,
   onChange,
   onApplyProposal,
+  priority,
+  quickWinMaxDays,
 }: {
   risk: RiskItem;
   eff: Omit<ScoredRisk, 'priority'>;
   materialityHuf: number;
   kind: EngagementKind;
+  priority?: { value: number; maxLossHuf: number };
+  quickWinMaxDays?: number;
   onChange: (patch: Partial<RiskItem>) => void;
   /** Elfogadott felülvizsgálati javaslat átvezetése (a változásnaplóba indoklással). */
   onApplyProposal: (p: ReviewProposal, reason: string, discussion: DiscussionEntry[]) => void;
@@ -79,7 +84,7 @@ export function EvidencePanel({
               <Calculator className="h-3.5 w-3.5" /> Levezetés
             </h4>
             <dl className="space-y-1.5 text-xs">
-              {deriveRisk(eff, materialityHuf).map((s) => (
+              {deriveRisk(eff, materialityHuf, { hasSources: trail.length > 0, priority, quickWinMaxDays }).map((s) => (
                 <div key={s.label}>
                   <div className="flex justify-between gap-3">
                     <dt className="text-slate-500">{s.label}</dt>
@@ -89,6 +94,7 @@ export function EvidencePanel({
                 </div>
               ))}
             </dl>
+            <AssumptionsList />
           </section>
 
           <section aria-label="Változásnapló" className="rounded-lg border border-slate-200 bg-white p-3">
@@ -117,6 +123,37 @@ export function EvidencePanel({
       </div>
       <OpinionThread risk={risk} eff={eff} materialityHuf={materialityHuf} kind={kind} trail={trail} onChange={onChange} onApplyProposal={onApplyProposal} />
     </div>
+  );
+}
+
+/** A levezetés állandói: honnan jönnek, és jóváhagyta-e már valaki őket. */
+function AssumptionsList() {
+  const open = ASSUMPTIONS.filter((a) => a.status === 'PROPOSAL').length;
+  const fin = ASSUMPTIONS.filter((a) => a.id.startsWith('fin-'));
+  return (
+    <details className="mt-2 border-t border-slate-100 pt-2 text-[11px] text-slate-600">
+      <summary className="cursor-pointer font-medium text-slate-700">
+        Feltevések a levezetésben · {ASSUMPTIONS.length} db, ebből {open} kezdő javaslat (nem kalibrált)
+      </summary>
+      <ul className="mt-1.5 space-y-1.5">
+        {ASSUMPTIONS.filter((a) => !a.id.startsWith('fin-')).map((a) => (
+          <li key={a.id}>
+            <span className="font-semibold text-slate-800">{a.label}:</span> {a.value}{' '}
+            <span className={a.status === 'APPROVED' ? 'text-emerald-700' : 'text-amber-700'}>({ASSUMPTION_STATUS_LABEL[a.status]})</span>
+            <br />
+            <span className="text-slate-500">
+              {a.effect} {a.basis} Felelős: {a.owner}.
+            </span>
+          </li>
+        ))}
+        {fin.length > 0 && (
+          <li>
+            <span className="font-semibold text-slate-800">Pénzügyi küszöbök:</span> {fin.length} db, {fin.filter((a) => a.status === 'PROPOSAL').length} kezdő
+            javaslat. Egyenként a levezetés-munkafüzet „Feltevések” lapján.
+          </li>
+        )}
+      </ul>
+    </details>
   );
 }
 
@@ -353,7 +390,11 @@ function TrailEntry({ e }: { e: EvidenceEntry }) {
             <Icon className="h-3 w-3" /> {ACTOR_LABEL[e.actor]}
           </span>
           <span className="font-semibold text-slate-900">{TRAIL_KIND_LABEL[e.kind] ?? e.kind}</span>
-          {e.confidence != null && <span className="text-slate-500">bizonyosság {Math.round(e.confidence * 100)}%</span>}
+          {e.confidence != null && (
+            <span className="text-slate-500" title="Az AI saját becslése, nem kalibrált valószínűség; a pontszámba nem számít bele.">
+              AI-önbecslés {Math.round(e.confidence * 100)}% (nem kalibrált)
+            </span>
+          )}
           {e.link && nav && (
             <button
               onClick={() => openSource(e.link!, nav.go, nav.page)}

@@ -3,7 +3,8 @@ import { applyIntakeSuggestion } from '@/lib/intake/apply';
 import type { IntakeSuggestion } from '@/lib/intake/types';
 import { DEFAULT_CATALOG } from './catalog';
 import { deriveRisk } from './derivation';
-import { scoreRisk } from './engine';
+import { getScenario } from '@/lib/scenarios';
+import { assess, scoreRisk } from './engine';
 import { applySuggestion } from './store';
 import { addEntry, itemsFromAnchor, missingReasons, recordChange, setReason, sourceCount, trailOf } from './trail';
 import type { RiskItem } from './types';
@@ -153,7 +154,42 @@ describe('levezetés', () => {
     const r = { ...base(), identified: true, likelihood: 2 as const, impact: 3 as const, exposureHuf: 500_000_000, valuation: undefined };
     const eff = scoreRisk(r, { materialityHuf: 40_000_000 });
     const steps = deriveRisk(eff, 40_000_000);
-    expect(steps.map((s) => s.label)).toEqual(['Megadott érték', 'Pontszám', 'Kitettség', 'Várható veszteség', 'Lényegességi küszöb', 'Besorolás']);
-    expect(steps.at(-1)!.value).toBe('Piros');
+    expect(steps.map((s) => s.label)).toEqual([
+      'Megadott érték',
+      'Pontszám',
+      'Kitettség',
+      'Várható veszteség',
+      'Lényegességi küszöb',
+      'Besorolás',
+      'Időablak',
+      'Hatás a pillér-egészségre',
+    ]);
+    expect(steps.find((s) => s.label === 'Besorolás')!.value).toBe('Piros');
+  });
+
+  it('a prioritás és a Health-szorzó levezetése ugyanazt adja, mint a motor', () => {
+    const sc = getScenario('it-fejleszto');
+    const opts = { company: sc.company, materialityHuf: sc.materialityHuf };
+    const res = assess(sc.items, opts);
+    const maxLossHuf = Math.max(1, ...res.risks.map((r) => r.expectedLossHuf));
+    for (const r of res.risks) {
+      const steps = deriveRisk(scoreRisk(r, opts), sc.materialityHuf, { priority: { value: r.priority, maxLossHuf }, hasSources: false });
+      const note = steps.find((s) => s.label === 'Prioritás')!.note!;
+      const recomputed = 0.5 * (r.score / 25) + 0.5 * (r.expectedLossHuf / maxLossHuf) + (note.includes('quick win') ? 0.15 : 0);
+      expect(recomputed).toBeCloseTo(r.priority, 9);
+      expect(steps[0].note).toContain('katalógus alapértéke');
+    }
+    for (const p of Object.values(res.pillars)) {
+      const own = res.risks.filter((r) => r.pillar === p.pillar);
+      const factors = own.map((r) =>
+        Number(
+          deriveRisk(r, sc.materialityHuf)
+            .find((s) => s.label === 'Hatás a pillér-egészségre')!
+            .value.slice(2)
+            .replace(',', '.'),
+        ),
+      );
+      expect(Math.round(100 * factors.reduce((a, b) => a * b, 1))).toBeCloseTo(p.healthScore, 0);
+    }
   });
 });

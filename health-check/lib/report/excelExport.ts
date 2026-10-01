@@ -192,7 +192,7 @@ export function buildWorkbook(input: ReportInput): Sheet[] {
       { header: 'Idézet', width: 60, format: 'wrap' },
       { header: 'Indoklás', width: 50, format: 'wrap' },
       { header: 'Hatás', width: 30, format: 'wrap' },
-      { header: 'Bizonyosság', width: 11, format: 'pct' },
+      { header: 'AI-önbecslés (nem kalibrált)', width: 14, format: 'pct' },
       { header: 'Elfogadta', width: 18 },
       { header: 'Időpont', width: 17 },
     ],

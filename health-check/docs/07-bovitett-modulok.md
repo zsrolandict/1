@@ -149,6 +149,15 @@ Minden piros és sárga tételhez elkészíti a várható vevői kérdéseket, e
 - **Fontos:** a munkafüzetben végzett módosítás nem kerül vissza a programba; ott változásnaplóval, indoklással kell átvezetni.
 - **Kód:** `lib/report/derivationWorkbook.ts`, `lib/report/xlsx.ts` (képletes cellák).
 
+## Feltevések: nincs rejtett állandó
+
+- **Mit tud:** minden módszertani szám egy helyen (`lib/risk/assumptions.ts`): katalógus-alapértékek, esély-tábla (1→5%, 2→20%, 3→40%, 4→65%, 5→90%), pontszám-sávok, lényegességi küszöb, Health-szorzó (1 − pont/25 × 0,6), pillér-besorolás (40/70), pillérsúlyok, típus-korrekciók, prioritás (0,5 × pont/25 + 0,5 × várható veszteség/legnagyobb + 0,15 quick win), quick win és időablak, kitettség-képletek, szakértői paraméterek, pénzügyi küszöbök. Mindegyiknél: érték, mire hat, honnan jön, **állapot** (jóváhagyva / kezdő javaslat), felelős, kód.
+- **Hol látszik:** a Miért? panel Levezetés részének alján („Feltevések a levezetésben”), és a levezetés-munkafüzet „Feltevések” lapján.
+- **A levezetés teljes:** a megadott érték forrása (katalógus-alapérték = szakértői becslés, ha nincs forrás), típus-korrekció, pont, kitettség, várható veszteség, küszöb, besorolás, **időablak** (miért), **prioritás** (a képlet a tétel számaival), **hatás a pillér-egészségre**.
+- **Őszintén:** egyik állandó sincs lezárt projektek tényleges kimenetén kalibrálva. Az AI „bizonyossága” önbecslés, ezért „AI-önbecslés (nem kalibrált)” a neve, és a pontszámba nem számít bele.
+- **Ami ítélet marad** (dokumentálva, de nem kiszámolható): az AI által javasolt 1–5 érték és kitettség, az AI önbecslése, a felülvizsgálat érvelése, a leirat minősége, a szakértő saját döntése. Mindegyiknél a kezelés: idézet-ellenőrzés, kézi elfogadás, változásnapló, indoklás.
+- **Teszt:** `lib/risk/assumptions.test.ts` (a kiírt értékek a motor tényleges állandói), `lib/risk/trail.test.ts` (a prioritás és a Health-szorzó levezetése egyezik a motorral).
+
 ## Vélemény és kritikus felülvizsgálat
 
 - **Mit tud:** a Miért? panel alján a tanácsadó véleményt fűzhet a tétel eredményéhez („Szerintem túlzó, mert…”). Két lehetőség: **Csak megjegyzés** (rögzül, semmit nem változtat), vagy **Kritikus felülvizsgálat kérése**: az AI a véleményt a tétel forrásaival és levezetésével veti össze.

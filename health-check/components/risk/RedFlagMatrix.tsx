@@ -222,6 +222,7 @@ export default function RedFlagMatrix({
   const addSectorRisks = (list: RiskItem[]) =>
     setItems((xs) => [...xs, ...list.map((k) => suggested(k, `Az ágazatban (${sectors.map((x) => SECTOR_LABEL[x]).join(', ')}) gyakori kockázat`))]);
   const scoredById = useMemo(() => new Map(result.risks.map((r) => [r.id, r])), [result]);
+  const maxLossHuf = useMemo(() => Math.max(1, ...result.risks.map((r) => r.expectedLossHuf)), [result]);
 
   const visible = items
     .filter((r) => {
@@ -859,6 +860,7 @@ export default function RedFlagMatrix({
                     })
                   }
                   scored={scoredById.get(r.id)}
+                  maxLossHuf={maxLossHuf}
                   eff={effById.get(r.id)!}
                   kindAdjustment={adjustments?.[r.code]}
                   onChange={(patch) => update(r.id, patch)}
@@ -1008,6 +1010,8 @@ function RiskRow({
   expanded,
   onToggleExpand,
   scored,
+  maxLossHuf,
+  quickWinMaxDays,
   eff,
   kindAdjustment,
   onChange,
@@ -1023,6 +1027,8 @@ function RiskRow({
   expanded: boolean;
   onToggleExpand: () => void;
   scored?: ScoredRisk;
+  maxLossHuf: number;
+  quickWinMaxDays?: number;
   eff: Omit<ScoredRisk, 'priority'>;
   kindAdjustment?: KindAdjustment;
   onChange: (patch: Partial<RiskItem>) => void;
@@ -1278,7 +1284,16 @@ function RiskRow({
               </label>
             )}
             <div className="mb-4">
-              <EvidencePanel risk={r} eff={eff} materialityHuf={materialityHuf} kind={kind} onChange={onChange} onApplyProposal={onApplyProposal} />
+              <EvidencePanel
+                risk={r}
+                eff={eff}
+                materialityHuf={materialityHuf}
+                kind={kind}
+                onChange={onChange}
+                onApplyProposal={onApplyProposal}
+                priority={scored ? { value: scored.priority, maxLossHuf } : undefined}
+                quickWinMaxDays={quickWinMaxDays}
+              />
             </div>
             <RiskDetails risk={r} company={company} onChange={onChange} />
           </td>

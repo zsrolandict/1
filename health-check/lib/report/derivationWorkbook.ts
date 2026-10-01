@@ -2,6 +2,7 @@ import { adjustmentsFor } from '@/lib/engagement/adjustments';
 import { ENGAGEMENT_KINDS } from '@/lib/engagement/kinds';
 import { PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
 import { DEFAULT_OPTIONS, PILLARS, PROBABILITY, scoreRisk } from '@/lib/risk/engine';
+import { ASSUMPTION_STATUS_LABEL, ASSUMPTIONS, REMAINING_JUDGEMENT } from '@/lib/risk/assumptions';
 import { describeProposal, discussionOf, VERDICT_LABEL } from '@/lib/risk/review';
 import { missingReasons, sourceCount, trailOf, TRAIL_KIND_LABEL } from '@/lib/risk/trail';
 import type { RiskItem, Scale5 } from '@/lib/risk/types';
@@ -295,8 +296,27 @@ export function buildDerivationWorkbook(input: ReportInput, items: RiskItem[]): 
     rows: opinionRows,
   };
 
+  const assumptions: Sheet = {
+    name: 'Feltevések',
+    columns: [
+      { header: 'Feltevés', width: 44, format: 'wrap' },
+      { header: 'Érték', width: 40, format: 'wrap' },
+      { header: 'Mire hat', width: 50, format: 'wrap' },
+      { header: 'Honnan jön', width: 50, format: 'wrap' },
+      { header: 'Állapot', width: 16 },
+      { header: 'Felelős', width: 22 },
+      { header: 'Kód', width: 36 },
+    ],
+    rows: [
+      ...ASSUMPTIONS.map((a): CellValue[] => [a.label, a.value, a.effect, a.basis, ASSUMPTION_STATUS_LABEL[a.status], a.owner, a.code]),
+      [],
+      ['Ítélet, amely nem számolható ki (dokumentálva, de nem levezethető):'],
+      ...REMAINING_JUDGEMENT.map((j): CellValue[] => [j.label, '', j.mitigation]),
+    ],
+  };
+
   const extra = buildWorkbook(input).filter((s) => s.name === 'Bizonyítéktár' || s.name === 'Változásnapló');
-  return [guide, derivation, pillars, params, ...(opinionRows.length ? [opinions] : []), ...extra];
+  return [guide, derivation, pillars, params, assumptions, ...(opinionRows.length ? [opinions] : []), ...extra];
 }
 
 export function exportDerivation(input: ReportInput, items: RiskItem[]): Uint8Array {
