@@ -99,7 +99,7 @@ export default function WhatIfPanel({ items, opts, result }: { items: RiskItem[]
                     <span className="w-14 font-mono text-xs text-slate-500">{r.code}</span>
                     <span className="min-w-0 flex-1 truncate text-slate-800">{r.title}</span>
                     <span className={`text-xs ${r.rag === 'RED' ? 'text-red-700' : 'text-amber-700'}`}>{RAG_LABEL[r.rag]}</span>
-                    <span className="w-20 text-right text-xs tabular-nums text-slate-500">{formatHufShort(r.serviceFeeHuf)}</span>
+                    <span className="w-20 text-right text-xs tabular-nums text-slate-500">{formatHufShort(r.fee.base)}</span>
                     <span className="w-12 text-right text-xs tabular-nums text-slate-500">{r.remediationDays} nap</span>
                   </label>
                 </li>

@@ -9,6 +9,8 @@ import { firstSentence, formatDateHu, WINDOW_ORDER, type ReportModel } from './m
 import { hasRevenue } from '@/lib/risk/valuation';
 import { ACTOR_LABEL, formatChange, formatWhen, trailOf, TRAIL_KIND_LABEL } from '@/lib/risk/trail';
 import { scopeCounts, type ReportScope } from './scope';
+import { estimateRemediation } from '@/lib/remediation/estimate';
+import { RATES_APPROVED, ROLE_SHORT } from '@/lib/remediation/rates';
 
 const C = BRAND.colors;
 
@@ -54,6 +56,7 @@ export function ReportDocument({ model }: { model: ReportModel }) {
       <DetailPages m={model} />
       <ActionPlanPage m={model} />
       <OfferPage m={model} />
+      <RemediationPlansPage m={model} />
       {model.scope && <ScopePage m={model} scope={model.scope} />}
       {model.evidenceBook.some((e) => e.entries.length || e.changes.length) && <EvidenceBookPage m={model} />}
     </Document>
@@ -305,6 +308,13 @@ function FindingCard({ r }: { r: ScoredRisk }) {
         <View style={{ flex: 1.6 }}>
           <Text style={s.small}>Javasolt intézkedés · {DIVISION_LABEL[r.division]}</Text>
           <Text>{r.remediation || '—'}</Text>
+          {r.rag !== 'GREEN' && (
+            <Text style={[s.small, { fontSize: 7, marginTop: 2 }]}>
+              Javítási díj: {formatHufShort(r.fee.base)}
+              {r.fee.low !== r.fee.high ? ` (sáv ${formatHufShort(r.fee.low)} – ${formatHufShort(r.fee.high)})` : ''} · {formatHours(r.fee.hours)} óra – a
+              lépéseket a Javítási tervek fejezet részletezi.
+            </Text>
+          )}
         </View>
       </View>
     </View>
@@ -354,6 +364,63 @@ function ActionPlanPage({ m }: { m: ReportModel }) {
 
 // ── 5. Következő lépések, ajánlat, módszertan ───────────────────────
 
+const leadsOf = (m: ReportModel) => m.assessment.risks.filter((r) => r.rag !== 'GREEN');
+const sumOf = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+const formatHours = (h: number) => h.toLocaleString('hu-HU', { maximumFractionDigits: 1 });
+
+/** 5b. Javítási tervek: miből áll a díj tételenként. */
+function RemediationPlansPage({ m }: { m: ReportModel }) {
+  const leads = leadsOf(m);
+  if (!leads.length) return null;
+  return (
+    <Page size="A4" style={s.page} wrap>
+      <Chrome m={m} />
+      <Text style={s.h2}>Javítási tervek tételenként</Text>
+      <Text style={[s.muted, { marginBottom: 8 }]}>
+        Indikatív becslés, nem ajánlat. A díj a munkalépések óraszámából és az üzletág óradíjából adódik; a sáv azt mutatja, mennyit változhat a tényleges
+        terjedelem szerint.
+      </Text>
+      {leads.map((r) => {
+        const e = estimateRemediation(r);
+        return (
+          <View key={r.id} style={[s.card, { marginBottom: 8 }]} wrap={false}>
+            <View style={[s.row, { justifyContent: 'space-between' }]}>
+              <Text style={{ fontWeight: 700, flex: 1, paddingRight: 8 }}>
+                {r.code} · {r.title}
+              </Text>
+              <Text style={{ fontWeight: 700 }}>
+                {formatHuf(e.fee.base)}
+                {e.fee.low !== e.fee.high ? `  (${formatHufShort(e.fee.low)} – ${formatHufShort(e.fee.high)})` : ''}
+              </Text>
+            </View>
+            <Text style={[s.small, { marginTop: 2, marginBottom: 4 }]}>
+              {e.goal}
+              {e.driver ? ` Terjedelem: ${e.driver.value} ${e.driver.unit} (${e.driver.label}).` : ''}
+            </Text>
+            {e.steps.map((st) => (
+              <View key={st.index} style={[s.row, { marginBottom: 1 }]}>
+                <Text style={[s.small, { flex: 3, paddingRight: 6 }]}>
+                  {st.index + 1}. {st.label} – {st.detail}
+                </Text>
+                <Text style={[s.small, { flex: 1.2 }]}>
+                  {DIVISION_LABEL[st.division]}, {ROLE_SHORT[st.role]}
+                </Text>
+                <Text style={[s.small, { width: 40, textAlign: 'right' }]}>{formatHours(st.hours)} óra</Text>
+                <Text style={[s.small, { width: 60, textAlign: 'right' }]}>{formatHufShort(st.feeHuf)}</Text>
+              </View>
+            ))}
+            <Text style={[s.small, { fontSize: 7, marginTop: 3 }]}>
+              {e.source === 'MANUAL' ? `Egyeztetett díj; a terv szerint ${formatHufShort(e.planFeeHuf)}. ` : `Sáv: ${e.uncertainty} `}
+              Ügyfél ráfordítása: kb. {formatHours(e.client.days)} nap ({e.client.who}).
+              {e.external.length ? ` Nem része a díjnak: ${e.external.join('; ')}.` : ''}
+            </Text>
+          </View>
+        );
+      })}
+    </Page>
+  );
+}
+
 function OfferPage({ m }: { m: ReportModel }) {
   const p = m.assessment.pipeline;
   return (
@@ -367,7 +434,7 @@ function OfferPage({ m }: { m: ReportModel }) {
       <View style={s.row}>
         <Text style={[s.th, { flex: 2 }]}>Divízió</Text>
         <Text style={[s.th, { flex: 1, textAlign: 'right' }]}>Tételek</Text>
-        <Text style={[s.th, { flex: 1.4, textAlign: 'right' }]}>Becsült díj (nettó)</Text>
+        <Text style={[s.th, { flex: 1.4, textAlign: 'right' }]}>Várható díj (nettó)</Text>
       </View>
       {DIVISIONS.filter((d) => p.byDivision[d].count > 0).map((d) => (
         <View key={d} style={[s.row, s.td]}>
@@ -380,6 +447,12 @@ function OfferPage({ m }: { m: ReportModel }) {
         <View style={[s.row, { justifyContent: 'space-between' }]}>
           <Text style={{ color: '#cbd5e1' }}>Javasolt javítási munkák összesen</Text>
           <Text style={{ color: '#ffffff' }}>{formatHuf(p.totalFeeHuf)}</Text>
+        </View>
+        <View style={[s.row, { justifyContent: 'space-between', marginTop: 3 }]}>
+          <Text style={{ color: '#cbd5e1' }}>Sáv (a terjedelemtől függően)</Text>
+          <Text style={{ color: '#cbd5e1' }}>
+            {formatHuf(sumOf(leadsOf(m).map((r) => r.fee.low)))} – {formatHuf(sumOf(leadsOf(m).map((r) => r.fee.high)))}
+          </Text>
         </View>
         <View style={[s.row, { justifyContent: 'space-between', marginTop: 3 }]}>
           <Text style={{ color: '#cbd5e1' }}>Átvilágítási díj beszámítása (100%)</Text>
@@ -418,6 +491,11 @@ function OfferPage({ m }: { m: ReportModel }) {
           • A pénzügyi alapadatokra épülő szabályok küszöbei (pl. árbevétel-csökkenés, likviditási ráta) kezdő javaslatok, szakértői jóváhagyásra várnak.
         </Text>
       )}
+      <Text style={[s.muted, { marginBottom: 4 }]}>
+        • A javítási díjak indikatív becslések, nem ajánlatok: tételenként munkalépések × óraszám × az üzletág óradíja, a terjedelemtől (pl. érintett
+        szerződések száma) függő sávval. Az ügyfél saját ráfordítása és a külső költségek (illeték, hatósági díj, licenc) nincsenek benne.
+        {RATES_APPROVED ? '' : ' (Az óradíjak és a munkalépés-sablonok kezdő javaslatok, jóváhagyásra várnak.)'}
+      </Text>
       <Text style={[s.muted, { marginBottom: 4 }]}>
         • Minden megállapítás forrása – irat oldallal és idézettel, kérdőív-válasz, adattábla-mutató, interjú-időbélyeg – a Bizonyítéktár mellékletben szerepel,
         a szakértői módosításokkal együtt. A vizsgálat terjedelmét (mit láttunk, mit nem) külön fejezet rögzíti.

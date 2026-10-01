@@ -1,3 +1,4 @@
+import type { FeeSource, PlanOverride } from '@/lib/remediation/types';
 import type { KindAdjustment } from '@/lib/engagement/adjustments';
 import type { ChangeEntry, EvidenceEntry } from './trail';
 import type { DiscussionEntry } from './review';
@@ -37,8 +38,13 @@ export interface RiskItem {
   remediation: string;
   /** Melyik ICT divízió tudja megoldani (keresztértékesítés). */
   division: Division;
-  /** Becsült ICT szolgáltatási díj a remediációra, Ft (nettó). */
+  /**
+   * Régi, egyösszegű díj (Ft). A díjat a javítási terv adja (`lib/remediation`);
+   * ez csak sablon nélküli tételnél él tovább kézi díjként.
+   */
   serviceFeeHuf: number;
+  /** A javítási terv tételre szabott pontosítása (terjedelem, órák, kézi díj). */
+  plan?: PlanOverride;
   /** Honnan származik a tétel. Hiányzik = katalógus / kézi. */
   source?: RiskSource;
   /** Bizonyíték: idézet + hivatkozás (dokumentum oldal, interjú időbélyeg). Összefűzött szöveg; a részletek a `trail`-ben. */
@@ -81,6 +87,10 @@ export interface ScoredRisk extends RiskItem {
   quickWin: boolean;
   priority: number; // rendezési kulcs az akciótervhez
   window: ActionWindow;
+  /** Javítási díj a terv alapján: alsó, várható, felső (Ft), és honnan jön. */
+  fee: { low: number; base: number; high: number; hours: number; source: FeeSource };
+  /** A várható díj üzletágankénti bontása (a terv lépései szerint). */
+  feeByDivision: Partial<Record<Division, number>>;
 }
 
 export interface PillarSummary {

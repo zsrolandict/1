@@ -149,6 +149,18 @@ Minden piros és sárga tételhez elkészíti a várható vevői kérdéseket, e
 - **Fontos:** a munkafüzetben végzett módosítás nem kerül vissza a programba; ott változásnaplóval, indoklással kell átvezetni.
 - **Kód:** `lib/report/derivationWorkbook.ts`, `lib/report/xlsx.ts` (képletes cellák).
 
+## Javítási terv és díj
+
+- **Mit tud:** minden tételnél a díj nem egy szám, hanem **javítási terv**: cél (mit kap az ügyfél), 2–6 munkalépés leírással, lépésenként ki végzi (üzletág, partner / szenior / junior), hány óra, milyen óradíjjal – ebből a díj. Mellette **sáv** (alsó – felső) és hogy mitől függ, az **ügyfél saját ráfordítása**, a díjban **nem szereplő külső költségek** (illeték, hatósági díj, licenc) és a feltételezések.
+- **Terjedelem:** ahol a munka a cég méretétől függ (pl. érintett szerződések, jogviszonyok, nyilvántartások száma), a lépések órája `alapóra + óra/egység × terjedelem`. A terjedelem a kitettség-képlet darabszámából jön, ha van (pl. transzferár), különben a sablon alapértéke – a tanácsadó átírja a cég adatai szerint. Ezért nem ugyanaz a díj egy 4- és egy 40-ügyletes cégnél.
+- **Pontosítás tételenként:** a terjedelem, bármely lépés órája (lilán jelölve), vagy **kézi díj** indoklással („miért tér el a tervtől”); a terv kézi díjnál is látszik összevetésre.
+- **Hol látszik:** a mátrix „Divízió / javítási díj” oszlopa (várható díj + sáv, kattintásra a terv), a lenyitott sor „Javítási terv” kártyája, a What-if, az Excel (Kockázatok: díj + sáv; **Javítási tervek** lap lépésenként), a PDF (tételkártyán a díj és sáv; **Javítási tervek tételenként** fejezet; az Ajánlat összesítőjében a sáv; módszertani megjegyzés: indikatív, nem ajánlat), a levezetés-munkafüzet (**Óradíjak** és **Javítási díj** lap élő képletekkel).
+- **Ajánlat-összesítő:** üzletágankénti bontás a lépések üzletága szerint (pl. a change of control tételnél a jogi lépések a Jognál, az üzleti hatás számszerűsítése a Tanácsadásnál).
+- **Sablonok:** 75 tételre szabott terv (alap-, pénzügyi, ágazati és típusonkénti tételek) + általános sablon üzletágonként egyedi tételhez (széles sáv, „pontosítsd” jelzéssel). Régi, egyösszegű díj sablon nélküli tételnél kézi díjként él tovább.
+- **Állapot:** az óradíjak (`lib/remediation/rates.ts`) és a sablon-órák **kezdő javaslatok**; amíg az üzletág nem hagyja jóvá, a felület és a riport jelzi. A Feltevések listán szerepelnek. Az óraszám-követés belső önköltsége ettől külön szám (az a ráfordítás költsége, ez a kiszámlázott díj).
+- **Átfutás:** a munkanap (quick win) mező külön marad: az a javítás naptári átfutása ügyfél és ICT oldalon együtt.
+- **Kód:** `lib/remediation/` (rates, types, templates.core, templates.extra, estimate), `components/risk/RemediationPlanCard.tsx`, `lib/report/feeWorkbook.ts`. **Adatbázis:** `red_flags.remediation_plan` (0012). **Teszt:** `lib/remediation/remediation.test.ts`; a munkafüzet díjképletei táblázatkezelő-motorral egyeznek a programmal (`lib/report/derivation.test.ts`).
+
 ## Feltevések: nincs rejtett állandó
 
 - **Mit tud:** minden módszertani szám egy helyen (`lib/risk/assumptions.ts`): katalógus-alapértékek, esély-tábla (1→5%, 2→20%, 3→40%, 4→65%, 5→90%), pontszám-sávok, lényegességi küszöb, Health-szorzó (1 − pont/25 × 0,6), pillér-besorolás (40/70), pillérsúlyok, típus-korrekciók, prioritás (0,5 × pont/25 + 0,5 × várható veszteség/legnagyobb + 0,15 quick win), quick win és időablak, kitettség-képletek, szakértői paraméterek, pénzügyi küszöbök. Mindegyiknél: érték, mire hat, honnan jön, **állapot** (jóváhagyva / kezdő javaslat), felelős, kód.

@@ -3,6 +3,7 @@ import { strFromU8, unzipSync } from 'fflate';
 import { HyperFormula } from 'hyperformula';
 import { adjustmentsFor } from '@/lib/engagement/adjustments';
 import { ENGAGEMENT_KINDS } from '@/lib/engagement/kinds';
+import { DIVISION_LABEL } from '@/lib/risk/catalog';
 import { assess } from '@/lib/risk/engine';
 import type { RiskItem } from '@/lib/risk/types';
 import { getScenario, SCENARIOS } from '@/lib/scenarios';
@@ -52,7 +53,7 @@ describe('levezetés-munkafüzet', () => {
       const sheets = buildDerivationWorkbook(input, items);
       const { get } = evaluate(sheets);
       let checked = 0;
-      for (const s of sheets.filter((x) => ['Levezetés', 'Pillérek'].includes(x.name))) {
+      for (const s of sheets.filter((x) => ['Levezetés', 'Pillérek', 'Javítási díj'].includes(x.name))) {
         s.rows.forEach((row, r) =>
           row.forEach((cell, c) => {
             if (cell == null || typeof cell !== 'object' || !(cell as CellObj).f) return;
@@ -128,6 +129,33 @@ describe('levezetés-munkafüzet', () => {
     expect(op.rows[1].join(' ')).toContain('valószínűség 4 → 2');
     expect(op.rows[1].join(' ')).toContain('Elvetve (Teszt Elek');
     expect(buildDerivationWorkbook(input, getScenario('it-fejleszto').items).some((s) => s.name === 'Vélemények')).toBe(false);
+  });
+
+  it('javítási díj: az ajánlat összege egyezik a programéval; a terjedelem és az óradíj átírása átfut', () => {
+    const { items, input, opts } = setup('it-fejleszto');
+    const sheets = buildDerivationWorkbook(input, items);
+    const fee = sheets.find((x) => x.name === 'Javítási díj')!;
+    const total = fee.rows.length; // utolsó sor: Ajánlat összesen (fejléc miatt +1, 0-tól számolva)
+    const { get } = evaluate(sheets);
+    expect(get('Javítási díj', total, 9)).toBe(input.assessment.pipeline.totalFeeHuf);
+
+    // Egy terjedelemmel rendelkező tétel terjedelmét átírjuk a munkafüzetben és a programban is.
+    const hdrIdx = fee.rows.findIndex((r) => r[6] != null && typeof r[6] === 'object' && !(r[6] as CellObj).f);
+    const code = fee.rows[hdrIdx][0] as string;
+    const after = evaluate(sheets, (s) => {
+      const f = s.find((x) => x.name === 'Javítási díj')!;
+      (f.rows[hdrIdx][6] as CellObj).v = 25;
+    });
+    const changed = items.map((r) => (r.code === code ? { ...r, plan: { ...r.plan, driver: 25 } } : r));
+    expect(after.get('Javítási díj', total, 9)).toBe(assess(changed, opts).pipeline.totalFeeHuf);
+
+    // Óradíj: a jogi szenior díjának emelése
+    const rateRow = sheets.find((x) => x.name === 'Óradíjak')!.rows.findIndex((r) => r[0] === DIVISION_LABEL.LEGAL);
+    const bumped = evaluate(sheets, (s) => {
+      const r = s.find((x) => x.name === 'Óradíjak')!;
+      (r.rows[rateRow][2] as CellObj).v = ((r.rows[rateRow][2] as CellObj).v as number) + 10_000;
+    });
+    expect(bumped.get('Javítási díj', total, 9) as number).toBeGreaterThan(input.assessment.pipeline.totalFeeHuf);
   });
 
   it('valódi XLSX: képletek, újraszámolás megnyitáskor, sárga bemenetek', () => {

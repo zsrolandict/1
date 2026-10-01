@@ -44,8 +44,9 @@ describe('PDF', () => {
     const buf = await renderToBuffer(<ReportDocument model={buildReportModel(input)} />);
     expect(buf.subarray(0, 5).toString()).toBe('%PDF-');
     const pages = (buf.toString('latin1').match(/\/Type \/Page\b/g) ?? []).length;
-    expect(pages).toBeGreaterThanOrEqual(5);
-    expect(pages).toBeLessThanOrEqual(7);
+    // + a javítási tervek tételenként (a nem zöld tételek számától függően 2–3 oldal)
+    expect(pages).toBeGreaterThanOrEqual(6);
+    expect(pages).toBeLessThanOrEqual(10);
     if (process.env.REPORT_OUT) writeFileSync(process.env.REPORT_OUT, buf);
   }, 30_000);
 });
@@ -92,7 +93,7 @@ describe('bizonyítéktár és vizsgálati terjedelem', () => {
   it('a PDF két új oldallal bővül', async () => {
     const buf = await renderToBuffer(<ReportDocument model={buildReportModel(full)} />);
     const pages = (buf.toString('latin1').match(/\/Type \/Page\b/g) ?? []).length;
-    expect(pages).toBeGreaterThanOrEqual(7);
-    expect(pages).toBeLessThanOrEqual(10);
+    expect(pages).toBeGreaterThanOrEqual(8);
+    expect(pages).toBeLessThanOrEqual(13);
   }, 30_000);
 });

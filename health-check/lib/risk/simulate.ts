@@ -34,7 +34,7 @@ export function simulate(items: RiskItem[], opts: Partial<EngineOptions>, fixIds
   const before = assess(items, opts);
   const after = assess(applyFixes(items, fixIds, mode), opts);
   const fixed = before.risks.filter((r) => fixIds.has(r.id));
-  const costHuf = fixed.reduce((s, r) => s + r.serviceFeeHuf, 0);
+  const costHuf = fixed.reduce((s, r) => s + r.fee.base, 0);
   const expectedLossReductionHuf = before.totals.expectedLossHuf - after.totals.expectedLossHuf;
   return {
     before,

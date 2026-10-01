@@ -53,6 +53,7 @@ import { Badge, BTN_PRIMARY, BTN_SECONDARY, BTN_TOOL, Card, IconBox, KpiTile, ty
 import ProjectStagesCard from '../ui/ProjectStagesCard';
 import WhatIfPanel from './WhatIfPanel';
 import FollowUpPanel from './FollowUpPanel';
+import RemediationPlanCard from './RemediationPlanCard';
 import { useModules } from '../useModules';
 import BuyerQuestionsPanel from './BuyerQuestionsPanel';
 import ExportPdfButton, { browserDownload, slug, type SaveFile } from '@/components/report/ExportPdfButton';
@@ -838,7 +839,7 @@ export default function RedFlagMatrix({
                   Várható <InfoTip term="expectedLoss" label="várható veszteség" />
                 </th>
                 {!dense && <th className="px-2 py-2.5 text-center">Munkanap</th>}
-                {!dense && <th className="px-2 py-2.5">Divízió / díj</th>}
+                {!dense && <th className="px-2 py-2.5">Divízió / javítási díj</th>}
                 <th className="w-10 px-2 py-2.5" />
               </tr>
             </thead>
@@ -1213,11 +1214,16 @@ function RiskRow({
                   </option>
                 ))}
               </select>
-              <HufInput
-                value={r.serviceFeeHuf}
-                onChange={(v) => onChange({ serviceFeeHuf: v })}
-                className="mt-1 w-full rounded border border-slate-200 px-1.5 py-0.5 text-right text-xs tabular-nums"
-              />
+              <button
+                onClick={onToggleExpand}
+                title={`Javítási terv: ${eff.fee.hours.toLocaleString('hu-HU')} óra · sáv ${formatHufShort(eff.fee.low)} – ${formatHufShort(eff.fee.high)}`}
+                className="mt-1 block w-full rounded px-1.5 py-0.5 text-right text-xs tabular-nums text-slate-700 hover:bg-slate-100"
+              >
+                {formatHufShort(eff.fee.base)}
+                <span className="block text-[10px] text-slate-500">
+                  {eff.fee.source === 'MANUAL' ? 'kézi díj' : `${formatHufShort(eff.fee.low)}–${formatHufShort(eff.fee.high)}`}
+                </span>
+              </button>
             </td>
           </>
         )}
@@ -1258,12 +1264,16 @@ function RiskRow({
                     ))}
                   </select>
                 </Field>
-                <Field label="Díj (Ft)">
-                  <HufInput
-                    value={r.serviceFeeHuf}
-                    onChange={(v) => onChange({ serviceFeeHuf: v })}
-                    className="w-32 rounded-lg border border-slate-200 px-2 py-1 text-right text-sm tabular-nums"
-                  />
+                <Field label="Javítási díj (terv)">
+                  <span className="block py-1 text-sm tabular-nums text-slate-800">
+                    {formatHufShort(eff.fee.base)}
+                    {eff.fee.source !== 'MANUAL' && (
+                      <span className="text-xs text-slate-500">
+                        {' '}
+                        ({formatHufShort(eff.fee.low)}–{formatHufShort(eff.fee.high)})
+                      </span>
+                    )}
+                  </span>
                 </Field>
               </div>
             )}
@@ -1296,6 +1306,7 @@ function RiskRow({
               />
             </div>
             <RiskDetails risk={r} company={company} onChange={onChange} />
+            <RemediationPlanCard risk={r} onChange={onChange} />
           </td>
         </tr>
       )}

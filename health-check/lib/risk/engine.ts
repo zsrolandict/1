@@ -1,3 +1,4 @@
+import { estimateRemediation } from '@/lib/remediation/estimate';
 import type { ActionWindow, Division, Pillar, PillarSummary, Rag, RiskAssessment, RiskItem, Scale5, ScoredRisk } from './types';
 import { DEFAULT_COMPANY, resolveExposure, type CompanyProfile } from './valuation';
 import type { KindAdjustments } from '@/lib/engagement/adjustments';
@@ -64,6 +65,7 @@ export function worstRag(a: Rag, b: Rag): Rag {
 const clampScale = (n: number): Scale5 => Math.min(5, Math.max(1, Math.round(n))) as Scale5;
 
 export function scoreRisk(risk: RiskItem, options: Partial<EngineOptions> = {}): Omit<ScoredRisk, 'priority'> {
+  const plan = estimateRemediation(risk);
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const adj = risk.ignoreKindAdjustment ? undefined : opts.adjustments?.[risk.code];
   const likelihood = clampScale(risk.likelihood + (adj?.dL ?? 0));
@@ -102,6 +104,8 @@ export function scoreRisk(risk: RiskItem, options: Partial<EngineOptions> = {}):
     expectedLossHuf,
     quickWin,
     window,
+    fee: { ...plan.fee, hours: plan.hours, source: plan.source },
+    feeByDivision: plan.byDivision,
   };
 }
 
@@ -175,7 +179,7 @@ export function assess(items: RiskItem[], partial: Partial<EngineOptions> = {}):
   for (const r of risks) {
     if (r.rag === 'GREEN') continue;
     byDivision[r.division].count += 1;
-    byDivision[r.division].feeHuf += Math.max(0, r.serviceFeeHuf || 0);
+    for (const [d, fee] of Object.entries(r.feeByDivision) as [Division, number][]) byDivision[d].feeHuf += Math.max(0, fee || 0);
   }
   const totalFeeHuf = sum(DIVISIONS.map((d) => byDivision[d].feeHuf));
   const creditHuf = Math.min(opts.auditFeeHuf, totalFeeHuf);

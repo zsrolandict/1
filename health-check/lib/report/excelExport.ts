@@ -1,7 +1,9 @@
 import { formatAdjustment } from '@/lib/engagement/adjustments';
 import { ENGAGEMENT_KINDS } from '@/lib/engagement/kinds';
 import { DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
-import { DIVISIONS, PILLARS, WINDOWS } from '@/lib/risk/engine';
+import { DIVISIONS, formatHuf, PILLARS, WINDOWS } from '@/lib/risk/engine';
+import { estimateRemediation } from '@/lib/remediation/estimate';
+import { ROLE_SHORT } from '@/lib/remediation/rates';
 import type { RiskSource } from '@/lib/risk/types';
 import { REMEDIATION_LABEL } from '@/lib/risk/followup';
 import { buildBuyerQuestions } from './buyerQuestions';
@@ -28,9 +30,14 @@ const SOURCE: Record<RiskSource, string> = {
 
 const huf = (n: number) => `${Math.round(n).toLocaleString('hu-HU')} Ft`;
 
+const feeRange = (f: { low: number; high: number }) => (f.low === f.high ? '' : `${formatHuf(f.low)} – ${formatHuf(f.high)}`);
+const sum = (xs: number[]) => xs.reduce((x, y) => x + y, 0);
+
 export function buildWorkbook(input: ReportInput): Sheet[] {
   const { assessment: a, company } = input;
   const kind = ENGAGEMENT_KINDS[input.kind];
+  // Ajánlatba (lead) csak a nem zöld tételek kerülnek – ugyanúgy, mint a motor díjösszesítőjében.
+  const leads = a.risks.filter((r) => r.rag !== 'GREEN');
   const date = (input.generatedAt ?? new Date().toISOString()).slice(0, 10);
 
   const summary: Sheet = {
@@ -84,7 +91,8 @@ export function buildWorkbook(input: ReportInput): Sheet[] {
       { header: 'Ütemezés', width: 26 },
       { header: 'Munkanap', width: 10, format: 'int' },
       { header: 'Felelős divízió', width: 15 },
-      { header: 'Becsült díj', width: 14, format: 'huf' },
+      { header: 'Javítási díj (várható)', width: 14, format: 'huf' },
+      { header: 'Díjsáv', width: 22 },
       { header: 'Javítás állapota', width: 16 },
       { header: 'Indoklás', width: 70, format: 'wrap' },
     ],
@@ -107,7 +115,8 @@ export function buildWorkbook(input: ReportInput): Sheet[] {
       WINDOW_LABEL[r.window] + (r.quickWin ? ' ⚡' : ''),
       r.remediationDays,
       DIVISION_LABEL[r.division],
-      r.serviceFeeHuf,
+      r.fee.base,
+      feeRange(r.fee),
       REMEDIATION_LABEL[r.remediationStatus ?? 'OPEN'],
       r.reasoning ?? '',
     ]),
@@ -143,6 +152,7 @@ export function buildWorkbook(input: ReportInput): Sheet[] {
         a.pipeline.byDivision[d].feeHuf,
       ]),
       ['Összesen', null, a.pipeline.totalFeeHuf],
+      ['Sáv (alsó – felső)', null, `${formatHuf(sum(leads.map((r) => r.fee.low)))} – ${formatHuf(sum(leads.map((r) => r.fee.high)))}`],
       ['Beszámítható kredit', null, -a.pipeline.creditHuf],
       ['Nettó', null, a.pipeline.netAfterCreditHuf],
     ],
@@ -256,7 +266,63 @@ export function buildWorkbook(input: ReportInput): Sheet[] {
       }
     : null;
 
-  const sheets = [summary, risks, plan, offer, pillars, evidence];
+  // Javítási tervek: tételenként a munkalépések óraszámmal és óradíjjal – ebből jön a díj.
+  const plans: Sheet = {
+    name: 'Javítási tervek',
+    columns: [
+      { header: 'Kód', width: 9 },
+      { header: 'Tétel / lépés', width: 44, format: 'wrap' },
+      { header: 'Részletek', width: 60, format: 'wrap' },
+      { header: 'Üzletág', width: 14 },
+      { header: 'Szint', width: 10 },
+      { header: 'Óra', width: 8, format: 'dec' },
+      { header: 'Óradíj', width: 12, format: 'huf' },
+      { header: 'Díj', width: 14, format: 'huf' },
+    ],
+    rows: leads.flatMap((r) => {
+      const e = estimateRemediation(r);
+      return [
+        [
+          r.code,
+          r.title,
+          `Cél: ${e.goal}${e.driver ? ` Terjedelem: ${e.driver.value} ${e.driver.unit} (${e.driver.label}).` : ''}`,
+          null,
+          null,
+          null,
+          null,
+          null,
+        ],
+        ...e.steps.map((st) => [
+          r.code,
+          `${st.index + 1}. ${st.label}`,
+          st.detail,
+          DIVISION_LABEL[st.division],
+          ROLE_SHORT[st.role],
+          st.hours,
+          st.rate,
+          st.feeHuf,
+        ]),
+        [
+          r.code,
+          e.source === 'MANUAL' ? 'Érvényes díj: kézi' : `Összesen (sáv: ${feeRange(e.fee)})`,
+          [
+            e.source === 'MANUAL' ? `Kézi díj; a terv szerint ${formatHuf(e.planFeeHuf)}. ${e.note ?? ''}` : e.uncertainty,
+            `Ügyfél ráfordítása: kb. ${e.client.days} nap (${e.client.who}).`,
+            e.external.length ? `Külső költség (nincs a díjban): ${e.external.join('; ')}.` : '',
+          ]
+            .filter(Boolean)
+            .join(' '),
+          null,
+          null,
+          e.hours,
+          null,
+          e.fee.base,
+        ],
+      ];
+    }),
+  };
+
+  const sheets = [summary, risks, plan, offer, plans, pillars, evidence];
   if (changes.rows.length) sheets.push(changes);
   if (scope) sheets.push(scope);
   // Eladói és vevői átvilágításnál a vevői kérdéslista is része a munkafüzetnek.

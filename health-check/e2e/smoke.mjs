@@ -166,6 +166,21 @@ try {
     droppedText.slice(0, 200),
   );
 
+  await p.evaluate(() => (location.hash = 'matrix'));
+  await p.waitForTimeout(800);
+  const planRow = p.locator('tr', { hasText: 'PA-01' }).first();
+  if (!(await p.locator('section[aria-label="Javítási terv"]').count())) await planRow.getByRole('button', { name: /Miért\?/ }).click();
+  const planCard = p.locator('section[aria-label="Javítási terv"]').first();
+  const feeBefore = await planCard.locator('tfoot').innerText();
+  await planCard.getByLabel(/Terjedelem/).fill('9');
+  await p.waitForTimeout(300);
+  const feeAfter = await planCard.locator('tfoot').innerText();
+  check(
+    'javítási terv: lépések óraszámmal, a terjedelem átírása a díjat változtatja',
+    /Óradíj|ÓRADÍJ/i.test(await planCard.innerText()) && feeBefore !== feeAfter,
+    `${feeBefore} → ${feeAfter}`,
+  );
+
   check('nincs JavaScript-hiba', errors.length === 0, errors.join(' | '));
 } catch (e) {
   check('a teszt végigfutott', false, e instanceof Error ? e.message.split('\n')[0] : String(e));

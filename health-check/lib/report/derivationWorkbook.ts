@@ -8,6 +8,7 @@ import { missingReasons, sourceCount, trailOf, TRAIL_KIND_LABEL } from '@/lib/ri
 import type { RiskItem, Scale5 } from '@/lib/risk/types';
 import { resolveExposure } from '@/lib/risk/valuation';
 import { buildWorkbook } from './excelExport';
+import { buildFeeSheets } from './feeWorkbook';
 import type { ReportInput } from './model';
 import { writeXlsx, type CellValue, type Sheet } from './xlsx';
 
@@ -316,7 +317,7 @@ export function buildDerivationWorkbook(input: ReportInput, items: RiskItem[]): 
   };
 
   const extra = buildWorkbook(input).filter((s) => s.name === 'Bizonyítéktár' || s.name === 'Változásnapló');
-  return [guide, derivation, pillars, params, assumptions, ...(opinionRows.length ? [opinions] : []), ...extra];
+  return [guide, derivation, pillars, params, ...buildFeeSheets(items, a.risks), assumptions, ...(opinionRows.length ? [opinions] : []), ...extra];
 }
 
 export function exportDerivation(input: ReportInput, items: RiskItem[]): Uint8Array {

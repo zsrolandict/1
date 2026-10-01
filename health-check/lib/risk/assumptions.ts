@@ -2,6 +2,10 @@ import { KIND_ADJUSTMENTS_STATUS } from '@/lib/engagement/adjustments';
 import { FIN_THRESHOLDS } from '@/lib/intake/financials/thresholds';
 import { DEFAULT_OPTIONS, PROBABILITY } from './engine';
 import { EXPERT_PARAMETERS } from './parameters';
+import { DIVISION_LABEL } from './catalog';
+import type { Division } from './types';
+import { PLAN_TEMPLATES } from '@/lib/remediation/estimate';
+import { BILLING_RATES } from '@/lib/remediation/rates';
 
 /**
  * Feltevés-nyilvántartás: minden olyan szám és szabály, amely az eredményt
@@ -35,6 +39,7 @@ export const ASSUMPTION_STATUS_LABEL: Record<AssumptionStatus, string> = {
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 const huf = (x: number) => `${(x / 1_000_000).toLocaleString('hu-HU')} M Ft`;
+const ft = (x: number) => `${x.toLocaleString('hu-HU')} Ft`;
 const fin = Object.values(FIN_THRESHOLDS);
 const params = Object.values(EXPERT_PARAMETERS);
 
@@ -148,6 +153,26 @@ export const ASSUMPTIONS: Assumption[] = [
     status: 'PROPOSAL',
     owner: 'Pillérfelelős szakértők',
     code: 'lib/risk/catalog.ts, lib/risk/valuation.ts',
+  },
+  ...(Object.keys(BILLING_RATES) as Division[]).map((d): Assumption => ({
+    id: `rate-${d}`,
+    label: `Óradíj – ${DIVISION_LABEL[d]}`,
+    value: `partner ${ft(BILLING_RATES[d].rates.PARTNER)}, szenior ${ft(BILLING_RATES[d].rates.SENIOR)}, junior ${ft(BILLING_RATES[d].rates.JUNIOR)} / óra`,
+    effect: 'A javítási díj: lépésenként óra × óradíj.',
+    basis: 'Helykitöltő számlázási óradíj; az üzletág állítja be.',
+    status: BILLING_RATES[d].approved ? 'APPROVED' : 'PROPOSAL',
+    owner: BILLING_RATES[d].owner,
+    code: 'lib/remediation/rates.ts',
+  })),
+  {
+    id: 'remediation-templates',
+    label: 'Javítási terv-sablonok (munkalépések, órák, terjedelem, sáv)',
+    value: `${Object.keys(PLAN_TEMPLATES).length} tételre szabott terv + általános sablon üzletágonként`,
+    effect: 'A javítási díj és sávja; a lépések leírása a riportba kerül.',
+    basis: 'Szakértői becslés tipikus magyar KKV-ra; a tényleges órák (óraszám-követés) alapján pontosítandó.',
+    status: 'PROPOSAL',
+    owner: 'Üzletágak',
+    code: 'lib/remediation/templates.*.ts',
   },
   ...params.map((p): Assumption => ({
     id: `param-${p.label}`,

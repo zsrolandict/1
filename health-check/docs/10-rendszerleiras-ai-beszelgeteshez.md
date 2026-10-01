@@ -86,7 +86,8 @@ A bal oldali (összecsukható) sávban az oldalak: **Adatgyűjtés → Interjúk
 - **Health Score:** a pillér-egészségek súlyozott átlaga (a típus súlyaival). **Összesített státusz** = a legrosszabb pillér színe.
 - **Akcióterv:** gyors javítás (nem zöld és ≤ 5 munkanap) → 0–30 nap; piros → 31–60 nap; sárga → 61–90 nap; zöld → később.
 - **Prioritás a listában:** 50% pontszám + 50% várható veszteség (a legnagyobbhoz mérve) + gyors javításnál bónusz.
-- **Ajánlat:** a nem zöld tételek becsült szolgáltatási díja divíziónként; beszámítható kredit = min(átvilágítási díj, teljes díj).
+- **Ajánlat:** a nem zöld tételek javítási díja divíziónként; beszámítható kredit = min(átvilágítási díj, teljes díj).
+- **Javítási díj:** tételenként javítási terv – munkalépések (leírással), lépésenként üzletág, szint és óra × az üzletág óradíja; a terjedelemtől (pl. érintett szerződések száma) függő órák; sáv (alsó–felső) a bizonytalanság okával; az ügyfél ráfordítása és a külső költségek külön. Tételenként pontosítható, vagy kézi díj indoklással. Az óradíjak és a sablonok kezdő javaslatok.
 - **Üres értékelés:** amíg egyetlen tétel sincs bepipálva, a program nem mutat „Zöld / 100” eredményt, hanem „Még nincs értékelés” teendőt; export előtt rákérdez.
 
 ## 5b. Nyomon követhetőség
@@ -120,7 +121,7 @@ Ha az árbevétel nincs megadva (új projekt), a képletek 0 Ft-ot adnak, és ez
 
 **Pénzügyi alapadatokból (PA-01…PA-20):** nem tiszta könyvvizsgálói vélemény, folytatási bizonytalanság, tőkevesztés, árbevétel-esés, romló EBITDA, eladósodottság, gyenge likviditás, adótartozás, adóellenőrzési megállapítás, függő kötelezettség, perek, támogatás fenntartási kötelezettséggel, hitelkovenáns / tulajdonosváltási záradék, közeli hitellejárat, tagi kölcsön, késedelmes letétbe helyezés, osztalék gyenge tőke mellett, vezetői levél hiányosságai, felelősségbiztosítás hiánya, beszámoló ↔ adattábla eltérés. Csak elfogadott javaslatként kerülnek a mátrixba.
 
-**Kiegészítők:** típusonkénti tételek (pl. VDD-01 rendezetlen tulajdonosi kölcsönök, FIK-01 kovenánssértés kockázata), **ágazati** tételek 6 ágazatra (Gyártás, Építőipar, Kereskedelem, Tanácsadás, Informatika, Könyvelés – pl. plafon nélküli kötbér, elöregedett géppark), és **egyedi** (katalóguson kívüli) tételek az AI-javaslatokból vagy kézzel. Minden tételhez szakmai indoklás, javasolt intézkedés, munkanap, felelős divízió és becsült díj tartozik.
+**Kiegészítők:** típusonkénti tételek (pl. VDD-01 rendezetlen tulajdonosi kölcsönök, FIK-01 kovenánssértés kockázata), **ágazati** tételek 6 ágazatra (Gyártás, Építőipar, Kereskedelem, Tanácsadás, Informatika, Könyvelés – pl. plafon nélküli kötbér, elöregedett géppark), és **egyedi** (katalóguson kívüli) tételek az AI-javaslatokból vagy kézzel. Minden tételhez szakmai indoklás, javasolt intézkedés, munkanap, felelős divízió és javítási terv (lépések, órák, díj sávval) tartozik.
 
 ## 8. Az AI használata
 
