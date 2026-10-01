@@ -1,5 +1,6 @@
 'use client';
 
+import { DiscardedList } from '@/components/DiscardedList';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
@@ -937,9 +938,9 @@ function DocumentCard({
         <span className="inline-flex items-center gap-1">
           <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> minden tétel mögött ellenőrzött idézet
         </span>
-        {a.discardedUnverified > 0 && <span className="text-amber-700">{a.discardedUnverified} nem igazolható tételt kiszűrt</span>}
         <span>maszkolva: {redacted.length ? redacted.map(([k, n]) => `${n} ${k}`).join(', ') : 'nem volt azonosító'}</span>
       </div>
+      <DiscardedList count={a.discardedUnverified} items={a.discarded} />
 
       {a.facts.length > 0 && (
         <div className="mt-3">

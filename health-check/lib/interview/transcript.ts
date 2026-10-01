@@ -1,3 +1,4 @@
+import { discardedItem, type DiscardedItem } from '@/lib/ai/discarded';
 import type { Contradiction, InterviewAnalysis, InterviewStatement, KnownFact, SuggestedRedFlag, Transcript, TranscriptSegment } from './types';
 
 /** Összehasonlításhoz: kisbetű, ékezet- és írásjel-független, egyszeres szóköz. */
@@ -45,15 +46,19 @@ export function findQuote(transcript: Transcript, quote: string): QuoteMatch | n
  *  - az időbélyeget és a beszélőt a leiratból vesszük, nem a modelltől,
  *  - ellentmondás csak létező ismert tényre hivatkozhat.
  */
-export function verifyAnalysis(raw: Omit<InterviewAnalysis, 'discardedUnverified'>, transcript: Transcript, facts: KnownFact[]): InterviewAnalysis {
-  let discarded = 0;
+export function verifyAnalysis(
+  raw: Omit<InterviewAnalysis, 'discardedUnverified' | 'discarded'>,
+  transcript: Transcript,
+  facts: KnownFact[],
+): InterviewAnalysis {
+  const dropped: DiscardedItem[] = [];
   const factById = new Map(facts.map((f) => [f.id, f]));
 
   const statements: InterviewStatement[] = [];
   for (const s of raw.statements) {
     const m = findQuote(transcript, s.quote);
     if (!m) {
-      discarded++;
+      dropped.push(discardedItem('Állítás', s.summary, s.quote));
       continue;
     }
     statements.push({ ...s, speaker: m.segment.speaker, startMs: m.startMs });
@@ -63,7 +68,7 @@ export function verifyAnalysis(raw: Omit<InterviewAnalysis, 'discardedUnverified
   for (const f of raw.suggestedRedFlags) {
     const m = findQuote(transcript, f.quote);
     if (!m) {
-      discarded++;
+      dropped.push(discardedItem('Javasolt kockázat', f.title, f.quote));
       continue;
     }
     suggestedRedFlags.push({
@@ -78,7 +83,14 @@ export function verifyAnalysis(raw: Omit<InterviewAnalysis, 'discardedUnverified
     const m = findQuote(transcript, c.quote);
     const fact = factById.get(c.conflictingFactId);
     if (!m || !fact) {
-      discarded++;
+      dropped.push(
+        discardedItem(
+          'Ellentmondás',
+          c.claim,
+          c.quote,
+          !m ? 'Az idézet szó szerint nem található a leiratban.' : `Nem létező ismert tényre hivatkozik (${c.conflictingFactId}).`,
+        ),
+      );
       continue;
     }
     contradictions.push({ ...c, startMs: m.startMs, conflictingSource: fact.source });
@@ -90,7 +102,8 @@ export function verifyAnalysis(raw: Omit<InterviewAnalysis, 'discardedUnverified
     suggestedRedFlags: suggestedRedFlags.sort((a, b) => b.confidence - a.confidence),
     contradictions: contradictions.sort((a, b) => SEVERITY[b.severity] - SEVERITY[a.severity]),
     followUpQuestions: raw.followUpQuestions,
-    discardedUnverified: discarded,
+    discardedUnverified: dropped.length,
+    discarded: dropped,
   };
 }
 

@@ -24,6 +24,8 @@ describe('cégkivonat', () => {
     const bad = verifyRegistry({ ...s.raw, owners: [...s.raw.owners, { name: 'X', sharePct: 5, quote: 'X Kft. (üzletrész: 5%)' }] }, s.text);
     expect(bad.owners).toHaveLength(2);
     expect(bad.discardedUnverified).toBe(1);
+    expect(bad.discarded).toHaveLength(1);
+    expect(bad.discarded![0].reason).toContain('nem található');
   });
 
   it('gyártó: két tulajdonos ↔ kérdőív „egy tulajdonos” – súlyos ellentmondás; gyakori vezetőváltás', () => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { DiscardedList } from '@/components/DiscardedList';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import ModuleOff from '../ModuleOff';
 import { useModules } from '../useModules';
@@ -725,8 +726,8 @@ function AnalysisTab({
         <p className="mt-3 flex items-center gap-1.5 text-xs text-slate-500">
           <ShieldCheck className="h-4 w-4 text-emerald-600" />
           Minden tétel mögött szó szerinti idézet van a leiratból.
-          {analysis.discardedUnverified > 0 && ` ${analysis.discardedUnverified} nem igazolható tételt a rendszer kiszűrt.`}
         </p>
+        <DiscardedList count={analysis.discardedUnverified} items={analysis.discarded} />
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">

@@ -1,3 +1,4 @@
+import { discardedItem, type DiscardedItem } from '@/lib/ai/discarded';
 import { z } from 'zod';
 import type { StructuredCall } from '@/lib/ai/structured';
 import type { KnownFact } from '@/lib/interview/types';
@@ -41,7 +42,7 @@ export const RegistrySchema = z.object({
     .describe('Az elmúlt 3 év bejegyzett változásai (tulajdonos, vezető, székhely, tevékenység).'),
 });
 
-export type RegistryData = z.infer<typeof RegistrySchema> & { discardedUnverified: number };
+export type RegistryData = z.infer<typeof RegistrySchema> & { discardedUnverified: number; discarded?: DiscardedItem[] };
 
 export interface RegistryRecord {
   data: RegistryData;
@@ -66,33 +67,34 @@ export async function runRegistryExtraction(call: StructuredCall, text: string):
 }
 
 export function verifyRegistry(raw: z.infer<typeof RegistrySchema>, text: string): RegistryData {
-  let discarded = 0;
-  const q = <T extends { quote: string } | null>(v: T): T | null => {
+  const dropped: DiscardedItem[] = [];
+  const q = <T extends { value: string; quote: string } | null>(v: T, what: string): T | null => {
     if (!v) return null;
     if (inText(text, v.quote)) return v;
-    discarded++;
+    dropped.push(discardedItem(what, v.value, v.quote));
     return null;
   };
-  const list = <T extends { quote: string }>(xs: T[]) =>
+  const list = <T extends { quote: string }>(xs: T[], what: string, label: (x: T) => string) =>
     xs.filter((x) => {
       const ok = inText(text, x.quote);
-      if (!ok) discarded++;
+      if (!ok) dropped.push(discardedItem(what, label(x), x.quote));
       return ok;
     });
   return {
-    name: q(raw.name),
-    registrationNumber: q(raw.registrationNumber),
-    taxNumber: q(raw.taxNumber),
-    seat: q(raw.seat),
+    name: q(raw.name, 'Cégnév'),
+    registrationNumber: q(raw.registrationNumber, 'Cégjegyzékszám'),
+    taxNumber: q(raw.taxNumber, 'Adószám'),
+    seat: q(raw.seat, 'Székhely'),
     foundedYear: raw.foundedYear,
     capitalHuf: raw.capitalHuf,
-    mainActivity: q(raw.mainActivity),
-    owners: list(raw.owners),
-    executives: list(raw.executives),
-    proceedings: list(raw.proceedings),
+    mainActivity: q(raw.mainActivity, 'Fő tevékenység'),
+    owners: list(raw.owners, 'Tulajdonos', (o) => `${o.name}${o.sharePct != null ? ` (${o.sharePct}%)` : ''}`),
+    executives: list(raw.executives, 'Vezető', (e) => `${e.name}, ${e.role}`),
+    proceedings: list(raw.proceedings, 'Eljárás', (p) => p.type),
     seatService: raw.seatService,
-    changes: list(raw.changes),
-    discardedUnverified: discarded,
+    changes: list(raw.changes, 'Változás', (c) => `${c.date}: ${c.what}`),
+    discardedUnverified: dropped.length,
+    discarded: dropped,
   };
 }
 

@@ -84,6 +84,8 @@ describe('findQuote / verifyAnalysis', () => {
     expect(res.suggestedRedFlags).toHaveLength(3);
     expect(res.contradictions).toHaveLength(3);
     expect(res.discardedUnverified).toBe(2);
+    expect(res.discarded).toHaveLength(2);
+    for (const d of res.discarded!) expect(d.reason.length).toBeGreaterThan(10);
     expect(res.contradictions[0].severity).toBe('HIGH');
     expect(res.contradictions[0].conflictingSource).toContain('Nordwind');
     expect(res.statements[0].speaker).toBe('Ügyvezető');

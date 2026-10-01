@@ -1,3 +1,4 @@
+import type { DiscardedItem } from '@/lib/ai/discarded';
 import type { Pillar, RiskItem } from '@/lib/risk/types';
 import type { EngagementKind } from '@/lib/engagement/kinds';
 
@@ -101,4 +102,6 @@ export interface InterviewAnalysis {
   followUpQuestions: string[];
   /** Azok a tételek, amelyeket az idézet-ellenőrzés kiszűrt (nincs benne a leiratban). */
   discardedUnverified: number;
+  /** A kiszűrt elemek, okkal (régi mentésben hiányozhat). */
+  discarded?: DiscardedItem[];
 }

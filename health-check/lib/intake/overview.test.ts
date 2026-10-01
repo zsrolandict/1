@@ -147,5 +147,6 @@ describe('AI-összkép', () => {
     expect(r.suggestions[1].likelihood).toBe(5);
     expect(r.suggestions[0].evidence).toContain('Előzetes tényállás');
     expect(r.discardedUnverified).toBe(2);
+    expect(r.discarded!.map((d) => d.what)).toEqual(['Javasolt kockázat', 'Javasolt kockázat']);
   });
 });

@@ -1,3 +1,4 @@
+import { discardedItem, type DiscardedItem } from '@/lib/ai/discarded';
 import { z } from 'zod';
 import type { StructuredCall } from '@/lib/ai/structured';
 import { ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
@@ -31,6 +32,8 @@ export interface SynthesisSource {
 export interface SynthesisResult {
   suggestions: IntakeSuggestion[];
   discardedUnverified: number;
+  /** A kiszűrt javaslatok, okkal (régi mentésben hiányozhat). */
+  discarded?: DiscardedItem[];
   createdAt: string;
   kind: EngagementKind;
   sourceCount: number;
@@ -158,7 +161,7 @@ ${input.sources.map((s) => `<forras id="${s.id}" tipus="${s.kind}" nev="${s.labe
 
   const raw = await call(SynthesisSchema, SYSTEM, user, 8000);
   const byId = new Map(input.sources.map((s) => [s.id, s]));
-  let discarded = 0;
+  const dropped: DiscardedItem[] = [];
   const suggestions: IntakeSuggestion[] = [];
   const identifiedCodes = new Set(identified.map((r) => r.code));
   for (const r of raw.risks.slice(0, 8)) {
@@ -169,7 +172,23 @@ ${input.sources.map((s) => `<forras id="${s.id}" tipus="${s.kind}" nev="${s.labe
     });
     const code = r.templateCode && templateFor(r.templateCode) && !identifiedCodes.has(r.templateCode) ? r.templateCode : null;
     if (!ev.length) {
-      discarded++;
+      dropped.push(
+        discardedItem(
+          'Javasolt kockázat',
+          r.title,
+          r.evidence.map((e) => `${e.sourceId}: ${e.quote}`).join(' · ') || '(nincs idézet)',
+          r.evidence.length
+            ? r.evidence
+                .map((e) => {
+                  const src = byId.get(e.sourceId);
+                  if (!src) return `${e.sourceId}: nincs ilyen forrás.`;
+                  if (normalize(e.quote).length < 8) return `${e.sourceId}: az idézet túl rövid az ellenőrzéshez.`;
+                  return `${e.sourceId} (${src.label}): az idézet szó szerint nem szerepel benne.`;
+                })
+                .join(' ')
+            : 'Nem adott meg forrást.',
+        ),
+      );
       continue;
     }
     const evidence = ev.map((e) => `${byId.get(e.sourceId)!.label}: „${e.quote}”`).join(' · ');
@@ -192,7 +211,8 @@ ${input.sources.map((s) => `<forras id="${s.id}" tipus="${s.kind}" nev="${s.labe
   }
   return {
     suggestions: suggestions.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)),
-    discardedUnverified: discarded,
+    discardedUnverified: dropped.length,
+    discarded: dropped,
     createdAt: new Date().toISOString(),
     kind: input.kind,
     sourceCount: input.sources.length,

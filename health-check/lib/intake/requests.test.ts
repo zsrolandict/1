@@ -106,5 +106,6 @@ describe('AI-javaslat a tényállásból', () => {
     expect(r.flags.map((f) => f.flag)).toEqual(['MULTIPLE_OWNERS']);
     expect(r.documents.map((d) => d.title)).toEqual(['Vezetés-átadási ütemterv']);
     expect(r.discardedUnverified).toBe(3);
+    expect(r.discarded).toHaveLength(3);
   });
 });

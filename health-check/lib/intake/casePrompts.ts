@@ -1,3 +1,4 @@
+import { discardedItem, type DiscardedItem } from '@/lib/ai/discarded';
 import { z } from 'zod';
 import type { StructuredCall } from '@/lib/ai/structured';
 import { ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
@@ -41,6 +42,8 @@ export interface CaseSuggestion {
   flags: { flag: CaseFlag; quote: string }[];
   documents: { title: string; pillar: Pillar; why: string; quote: string }[];
   discardedUnverified: number;
+  /** A kiszűrt javaslatok, okkal (régi mentésben hiányozhat). */
+  discarded?: DiscardedItem[];
 }
 
 const SYSTEM = `Az ICT Európa tanácsadó cégcsoport átvilágítási asszisztense vagy. Magyar KKV-k átvilágításának
@@ -78,23 +81,27 @@ ${input.current.map((d) => `- ${d.title}`).join('\n')}
 
 Feladat: állapítsd meg a tényállásból az ágazato(ka)t, a létszámot és a jellemzőket, és javasolj legfeljebb 8 extra iratot.`;
   const raw = await call(CaseSuggestionSchema, SYSTEM, user, 6000);
-  let discarded = 0;
+  const dropped: DiscardedItem[] = [];
   const flags = raw.flags.filter((f) => {
     const ok = inText(input.profile.narrative, f.quote) && !input.profile.flags.includes(f.flag);
-    if (!ok && !input.profile.flags.includes(f.flag)) discarded++;
+    if (!ok && !input.profile.flags.includes(f.flag))
+      dropped.push(discardedItem('Jellemző', FLAG_LABEL[f.flag], f.quote, 'Az idézet szó szerint nem található a tényállásban.'));
     return ok;
   });
   const existing = new Set(input.current.map((d) => normalize(d.title)));
   const documents = raw.documents.slice(0, 8).filter((d) => {
-    const ok = inText(input.profile.narrative, d.quote) && !existing.has(normalize(d.title));
-    if (!ok) discarded++;
-    return ok;
+    const found = inText(input.profile.narrative, d.quote);
+    const dup = existing.has(normalize(d.title));
+    if (!found || dup)
+      dropped.push(discardedItem('Irat', d.title, d.quote, dup ? 'Már szerepel az iratlistában.' : 'Az idézet szó szerint nem található a tényállásban.'));
+    return found && !dup;
   });
   return {
     sectors: raw.sectors.filter((s) => !input.profile.sectors.includes(s)),
     headcount: raw.headcount != null && raw.headcount > 0 ? raw.headcount : null,
     flags: [...new Map(flags.map((f) => [f.flag, f])).values()],
     documents,
-    discardedUnverified: discarded,
+    discardedUnverified: dropped.length,
+    discarded: dropped,
   };
 }

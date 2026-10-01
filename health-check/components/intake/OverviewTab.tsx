@@ -1,5 +1,6 @@
 'use client';
 
+import { DiscardedList } from '@/components/DiscardedList';
 import { useState } from 'react';
 import { AlertTriangle, ArrowLeftRight, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
 import type { Conflict, Severity } from '@/lib/intake/crossChecks';
@@ -63,9 +64,9 @@ export default function OverviewTab({
             {synthesis && (
               <p className="mt-1 text-xs text-brand-900/70">
                 Utolsó futtatás: {new Date(synthesis.createdAt).toLocaleString('hu-HU')} · {synthesis.suggestions.length} javaslat
-                {synthesis.discardedUnverified ? ` · ${synthesis.discardedUnverified} nem igazolhatót kiszűrt` : ''}
               </p>
             )}
+            {synthesis && <DiscardedList count={synthesis.discardedUnverified} items={synthesis.discarded} noun="javaslatot" />}
           </div>
           <button
             onClick={run}

@@ -85,6 +85,8 @@ describe('kiolvasás értelmezése', () => {
     );
     expect(out.financials!.values.map((v) => v.year)).toEqual([2025]);
     expect(out.discardedUnverified).toBe(2);
+    expect(out.discarded).toHaveLength(2);
+    expect(out.discarded!.some((d) => d.what === 'Kiolvasott szám')).toBe(true);
   });
 });
 

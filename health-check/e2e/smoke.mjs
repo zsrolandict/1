@@ -151,6 +151,21 @@ try {
   const thread = await p.locator('section[aria-label="Vélemény és felülvizsgálat"]').first().innerText();
   check('vélemény-szál: a megjegyzés rögzül, értéket nem változtat', /2027-ig határozott idejű/.test(thread), thread.slice(0, 200));
 
+  await p.evaluate(() => (location.hash = 'adatok'));
+  await p.waitForTimeout(700);
+  await p.getByRole('button', { name: /5\. Összkép/ }).click();
+  await p.getByRole('button', { name: /Összkép (készítése|újra)/ }).click();
+  await p.waitForTimeout(1500);
+  const dropped = p.locator('details', { hasText: 'a rendszer kiszűrt' }).first();
+  await dropped.locator('summary').click();
+  const droppedText = await dropped.innerText();
+  if (process.env.SHOT) await dropped.screenshot({ path: process.env.SHOT });
+  check(
+    'összkép: a kiszűrt javaslat okkal listázva',
+    /Kitalált adóhatósági vizsgálat/.test(droppedText) && /40 millió/.test(droppedText),
+    droppedText.slice(0, 200),
+  );
+
   check('nincs JavaScript-hiba', errors.length === 0, errors.join(' | '));
 } catch (e) {
   check('a teszt végigfutott', false, e instanceof Error ? e.message.split('\n')[0] : String(e));

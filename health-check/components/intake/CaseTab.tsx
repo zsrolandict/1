@@ -1,5 +1,6 @@
 'use client';
 
+import { DiscardedList } from '@/components/DiscardedList';
 import { useMemo, useRef, useState } from 'react';
 import { ClipboardCopy, Loader2, Plus, Sparkles, Trash2 } from 'lucide-react';
 import type { EngagementKind } from '@/lib/engagement/kinds';
@@ -211,9 +212,9 @@ export default function CaseTab({
           <div className="rounded-xl border border-brand-200 bg-brand-50/50 p-4 text-sm shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <h3 className="font-semibold text-brand-900">AI-javaslat</h3>
             <p className="mt-0.5 text-xs text-brand-900/70">
-              Csak a tényállásból szó szerint alátámasztott javaslatok maradtak meg
-              {suggestion.discardedUnverified ? ` (${suggestion.discardedUnverified} nem igazolhatót kiszűrt)` : ''}. Te döntöd el, mit veszel fel.
+              Csak a tényállásból szó szerint alátámasztott javaslatok maradtak meg. Te döntöd el, mit veszel fel.
             </p>
+            <DiscardedList count={suggestion.discardedUnverified} items={suggestion.discarded} noun="javaslatot" />
             {suggestion.sectors.some((x) => !profile.sectors.includes(x)) || (suggestion.headcount && suggestion.headcount !== profile.headcount) ? (
               <button
                 onClick={() => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { DiscardedList } from '@/components/DiscardedList';
 import { useState } from 'react';
 import { AlertTriangle, Building, Loader2, Upload } from 'lucide-react';
 import { extractPlain } from '@/lib/intake/documents/extract';
@@ -188,11 +189,8 @@ export default function RegistryCard({
               Másik cégkivonat
             </button>
           </div>
-          <p className="text-slate-500">
-            {rec.isSample ? 'Kitalált minta. ' : ''}
-            {rec.data.discardedUnverified ? `${rec.data.discardedUnverified} nem igazolható adatot kiszűrt. ` : ''}A figyelmeztetések és ellentmondások az
-            Összkép fülön is megjelennek.
-          </p>
+          <p className="text-slate-500">{rec.isSample ? 'Kitalált minta. ' : ''}A figyelmeztetések és ellentmondások az Összkép fülön is megjelennek.</p>
+          <DiscardedList count={rec.data.discardedUnverified} items={rec.data.discarded} noun="adatot" />
         </div>
       )}
     </div>

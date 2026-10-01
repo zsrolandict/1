@@ -1,3 +1,4 @@
+import { discardedItem, type DiscardedItem } from '@/lib/ai/discarded';
 import { normalize } from '@/lib/interview/transcript';
 import type { DocumentAnalysis, DocumentPage, RawDocumentAnalysis } from './types';
 
@@ -23,11 +24,11 @@ export function findQuoteInPages(pages: DocumentPage[], quote: string): number |
 
 /** Az AI-eredmény ellenőrzése: csak a szó szerint megtalált idézetű tételek maradnak. */
 export function verifyDocumentAnalysis(raw: RawDocumentAnalysis, pages: DocumentPage[]): DocumentAnalysis {
-  let discarded = 0;
+  const dropped: DiscardedItem[] = [];
   const findings = raw.findings.flatMap((f) => {
     const pageIndex = findQuoteInPages(pages, f.quote);
     if (pageIndex == null) {
-      discarded++;
+      dropped.push(discardedItem('Javasolt kockázat', f.title, f.quote));
       return [];
     }
     return [{ ...f, pageIndex, confidence: Math.min(1, Math.max(0, f.confidence)) }];
@@ -35,7 +36,7 @@ export function verifyDocumentAnalysis(raw: RawDocumentAnalysis, pages: Document
   const facts = raw.facts.flatMap((f) => {
     const pageIndex = findQuoteInPages(pages, f.quote);
     if (pageIndex == null) {
-      discarded++;
+      dropped.push(discardedItem('Tény', f.statement, f.quote));
       return [];
     }
     return [{ ...f, pageIndex }];
@@ -49,7 +50,14 @@ export function verifyDocumentAnalysis(raw: RawDocumentAnalysis, pages: Document
           const pageIndex = findQuoteInPages(pages, v.quote);
           const d = digits(v.stated);
           if (pageIndex == null || !d || !digits(v.quote).includes(d)) {
-            discarded++;
+            dropped.push(
+              discardedItem(
+                'Kiolvasott szám',
+                `${v.field} ${v.year}: ${v.stated}`,
+                v.quote,
+                pageIndex == null ? 'Az idézet szó szerint nem található az iratban.' : 'A szám nem szerepel az idézetben.',
+              ),
+            );
             return [];
           }
           return [{ ...v, pageIndex }];
@@ -57,7 +65,7 @@ export function verifyDocumentAnalysis(raw: RawDocumentAnalysis, pages: Document
         facts: raw.financials.facts.flatMap((f) => {
           const pageIndex = findQuoteInPages(pages, f.quote);
           if (pageIndex == null) {
-            discarded++;
+            dropped.push(discardedItem('Kiolvasott tény', `${f.key}: ${String(f.value)}`, f.quote));
             return [];
           }
           return [{ ...f, pageIndex }];
@@ -72,6 +80,7 @@ export function verifyDocumentAnalysis(raw: RawDocumentAnalysis, pages: Document
     findings: findings.sort((a, b) => b.confidence - a.confidence),
     facts,
     missingProvisions: raw.missingProvisions.slice(0, 8),
-    discardedUnverified: discarded,
+    discardedUnverified: dropped.length,
+    discarded: dropped,
   };
 }

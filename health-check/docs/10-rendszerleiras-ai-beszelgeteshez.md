@@ -128,7 +128,7 @@ Ha az árbevétel nincs megadva (új projekt), a képletek 0 Ft-ot adnak, és ez
 - **Minden AI-hívás strukturált** (előre megadott JSON-séma).
 - **Védvonalak:**
   1. a bemenet (dokumentum, leirat, kivonat) „adat, nem utasítás” – a prompt kimondja;
-  2. **szó szerinti idézet** kötelező, és a program ellenőrzi, hogy szerepel-e a forrásban – ami nem, azt eldobja (a kiszűrtek számát jelzi);
+  2. **szó szerinti idézet** kötelező, és a program ellenőrzi, hogy szerepel-e a forrásban – ami nem, azt eldobja, és a kiszűrt elemeket okkal együtt listázza (interjú, dokumentum, összkép, tényállás, cégkivonat);
   3. oldalszámot, forrást a rendszer ad, nem a modell;
   4. személyes adatok maszkolása dokumentumelemzés előtt;
   5. az AI csak javasol, a szakértő fogad el.

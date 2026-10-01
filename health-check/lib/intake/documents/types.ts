@@ -1,3 +1,4 @@
+import type { DiscardedItem } from '@/lib/ai/discarded';
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { Pillar, Scale5 } from '@/lib/risk/types';
 import type { FactKey, FinField } from '../financials/model';
@@ -84,9 +85,11 @@ export interface DocumentAnalysis {
   missingProvisions: string[];
   /** Nem igazolható idézetű, ezért eldobott tételek száma. */
   discardedUnverified: number;
+  /** A kiszűrt elemek, okkal (régi mentésben hiányozhat). */
+  discarded?: DiscardedItem[];
 }
 
-export type RawDocumentAnalysis = Omit<DocumentAnalysis, 'discardedUnverified'>;
+export type RawDocumentAnalysis = Omit<DocumentAnalysis, 'discardedUnverified' | 'discarded'>;
 
 export interface DocumentRecord {
   id: string;
