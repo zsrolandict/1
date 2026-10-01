@@ -1,13 +1,14 @@
 import type { KnownFact } from '@/lib/interview/types';
 import type { Pillar, Scale5 } from '@/lib/risk/types';
 import type { CompanyProfile } from '@/lib/risk/valuation';
+import type { SourceLink } from '@/lib/risk/trail';
 
 /**
  * Adatgyűjtés → Red Flag mátrix. A kérdőív, a táblázatok és a dokumentumok
  * ugyanilyen javaslatokat adnak; a mátrixba csak a szakértő elfogadása után
  * kerülnek (lásd apply.ts).
  */
-export type IntakeOrigin = 'CHECKLIST' | 'DATA_TABLE' | 'AI_DOCUMENT' | 'CROSS_CHECK' | 'AI_SYNTHESIS';
+export type IntakeOrigin = 'CHECKLIST' | 'DATA_TABLE' | 'AI_DOCUMENT' | 'CROSS_CHECK' | 'AI_SYNTHESIS' | 'FINANCIALS';
 
 export const ORIGIN_LABEL: Record<IntakeOrigin, string> = {
   CHECKLIST: 'Kérdőív',
@@ -15,6 +16,7 @@ export const ORIGIN_LABEL: Record<IntakeOrigin, string> = {
   AI_DOCUMENT: 'AI · dokumentum',
   CROSS_CHECK: 'Keresztellenőrzés',
   AI_SYNTHESIS: 'AI · összkép',
+  FINANCIALS: 'Pénzügyi alapadat',
 };
 
 /** Tényadatból pontosított képlet-paraméter. */
@@ -30,8 +32,14 @@ export interface IntakeSuggestion {
   title: string;
   /** Miért javasoljuk (szabály, mutató, AI-indoklás). */
   rationale: string;
-  /** Forrás-hivatkozás a mátrixba és a riportba. */
+  /** Forrás-hivatkozás a mátrixba és a riportba (összefűzött szöveg). */
   evidence: string;
+  /** Pontos hely a bizonyíték-lánchoz (hiányzik = az `evidence`). */
+  ref?: string;
+  /** Szó szerinti idézet, ha van. */
+  quote?: string;
+  /** Hová ugorjon a „Megnyitás”. */
+  link?: SourceLink;
   likelihood: Scale5;
   impact: Scale5;
   valuationPatch?: ValuationPatch;

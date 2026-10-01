@@ -65,7 +65,7 @@ export default function RegistryCard({
   };
 
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <div id="registry" className="scroll-mt-32 rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600" aria-hidden>

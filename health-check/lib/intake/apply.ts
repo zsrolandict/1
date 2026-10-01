@@ -4,9 +4,11 @@ import { sectorRiskTemplate } from '@/lib/risk/sectorRisks';
 import type { RiskItem, RiskSource, Scale5 } from '@/lib/risk/types';
 import { DEFAULT_COMPANY, resolveExposure, type CompanyProfile, type Valuation } from '@/lib/risk/valuation';
 import { SCENARIOS } from '@/lib/scenarios';
+import { addEntry, describeEffect, trailOf, type TrailKind } from '@/lib/risk/trail';
 import { ORIGIN_LABEL, type CompanySuggestion, type IntakeOrigin, type IntakeSuggestion, type ValuationPatch } from './types';
 
 const SOURCE: Record<IntakeOrigin, RiskSource> = {
+  FINANCIALS: 'FINANCIALS',
   CHECKLIST: 'CHECKLIST',
   DATA_TABLE: 'DATA_TABLE',
   AI_DOCUMENT: 'AI_DOCUMENT',
@@ -62,10 +64,26 @@ function raiseExposure(r: RiskItem, estimate: number | null | undefined, company
  *  - A lista nem tartalmazza, de van sablonja → a sablonból vesszük fel.
  *  - Egyébként új, egyedi tétel.
  */
-export function applyIntakeSuggestion(items: RiskItem[], s: IntakeSuggestion, company: CompanyProfile = DEFAULT_COMPANY): RiskItem[] {
+export function applyIntakeSuggestion(items: RiskItem[], s: IntakeSuggestion, company: CompanyProfile = DEFAULT_COMPANY, by: string | null = null): RiskItem[] {
+  const withTrail = (before: RiskItem, after: RiskItem): RiskItem =>
+    addEntry(
+      after,
+      {
+        kind: trailKind(s),
+        actor: s.origin.startsWith('AI_') ? 'AI' : 'RULE',
+        ref: s.ref ?? s.evidence,
+        quote: s.quote,
+        rationale: s.rationale,
+        effect: describeEffect(before, after, s.exposureHufEstimate),
+        confidence: s.confidence,
+        acceptedBy: by,
+        link: s.link,
+      },
+      trailOf(before),
+    );
   const merge = (r: RiskItem): RiskItem => {
     const withValuation: RiskItem = { ...r, valuation: patchValuation(r.valuation, s.valuationPatch) };
-    return {
+    return withTrail(r, {
       ...withValuation,
       identified: true,
       likelihood: r.identified ? clamp5(Math.max(r.likelihood, s.likelihood)) : clamp5(s.likelihood),
@@ -73,7 +91,9 @@ export function applyIntakeSuggestion(items: RiskItem[], s: IntakeSuggestion, co
       ...raiseExposure(withValuation, s.exposureHufEstimate, company),
       source: SOURCE[s.origin],
       evidence: appendEvidence(r.identified ? r.evidence : undefined, s.evidence),
-    };
+      // Meglévő tételnél is megmarad az új forrás indoklása (ha még nincs saját).
+      reasoning: r.reasoning || s.rationale,
+    });
   };
 
   const existing = s.code ? items.find((r) => r.code === s.code) : undefined;
@@ -84,8 +104,9 @@ export function applyIntakeSuggestion(items: RiskItem[], s: IntakeSuggestion, co
 
   const n = items.filter((r) => r.id.startsWith('CUS-')).length + 1;
   const code = `CUS-${String(n).padStart(2, '0')}`;
+  const blank = { identified: false, likelihood: clamp5(s.likelihood), impact: clamp5(s.impact) };
   return [
-    {
+    withTrail(blank as RiskItem, {
       id: `${code}-${Date.now().toString(36)}`,
       code,
       pillar: s.pillar,
@@ -102,9 +123,15 @@ export function applyIntakeSuggestion(items: RiskItem[], s: IntakeSuggestion, co
       serviceFeeHuf: 0,
       source: SOURCE[s.origin],
       evidence: s.evidence,
-    },
+    }),
     ...items,
   ];
+}
+
+/** A cégkivonatból jövő javaslat keresztellenőrzés-eredetű, de a láncban külön forrás. */
+function trailKind(s: IntakeSuggestion): TrailKind {
+  if (s.key.startsWith('REG:')) return 'REGISTRY';
+  return SOURCE[s.origin];
 }
 
 export function applyCompanySuggestion(company: CompanyProfile, s: CompanySuggestion): CompanyProfile {

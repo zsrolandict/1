@@ -186,6 +186,7 @@ export function crossChecks(
       title,
       rationale,
       evidence,
+      link: { page: 'adatok', tab: 'overview', anchor: 'cross-checks' },
       likelihood,
       impact,
       exposureHufEstimate: exposure ?? null,

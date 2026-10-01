@@ -51,9 +51,12 @@ import { ORIGIN_LABEL, type CompanySuggestion, type IntakeResult, type IntakeSug
 import { PILLAR_LABEL } from '@/lib/risk/catalog';
 import { formatHufShort, PILLARS, ragFromScore } from '@/lib/risk/engine';
 import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, type Workspace } from '@/lib/risk/store';
-import type { Rag } from '@/lib/risk/types';
+import type { Rag, RiskItem } from '@/lib/risk/types';
 import { getScenario } from '@/lib/scenarios';
 import { useAiBackend } from '@/components/AiBackendContext';
+import { useIdentity } from '../Identity';
+import UsedBy from '../risk/UsedBy';
+import { useFocusAnchor } from '../useFocusAnchor';
 
 type Tab = 'case' | 'checklist' | 'tables' | 'documents' | 'overview';
 type SourceTab = Exclude<Tab, 'case'>;
@@ -82,6 +85,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
   const [raw, setRaw] = useState<Partial<Record<TableKind, RawTable>>>({});
   const [aiReady, setAiReady] = useState<boolean | null>(null);
   const backend = useAiBackend();
+  const me = useIdentity();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { isOn } = useModules();
@@ -107,6 +111,8 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
     setHydrated(true);
     backend.status().then((s) => setAiReady(s.documents));
   }, []);
+  // „Megnyitás” a bizonyíték-láncból: a forrásra görget és kiemeli.
+  useFocusAnchor(hydrated);
 
   const scenario = getScenario(ws.scenarioId);
   const updateWs = (next: Workspace) => {
@@ -151,13 +157,13 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
   const pendingCount = allSuggestions.filter((s) => !accepted.has(s.key) && !dismissed.has(s.key)).length;
 
   const accept = (s: IntakeSuggestion) => {
-    updateWs({ ...ws, items: applyIntakeSuggestion(ws.items, s, ws.company) });
+    updateWs({ ...ws, items: applyIntakeSuggestion(ws.items, s, ws.company, me.name) });
     updateIntake({ accepted: [...intake.accepted, s.key], dismissed: intake.dismissed.filter((k) => k !== s.key) });
   };
   const acceptMany = (list: IntakeSuggestion[]) => {
     const todo = list.filter((s) => !accepted.has(s.key) && !dismissed.has(s.key));
     if (!todo.length) return;
-    updateWs({ ...ws, items: todo.reduce((items, s) => applyIntakeSuggestion(items, s, ws.company), ws.items) });
+    updateWs({ ...ws, items: todo.reduce((items, s) => applyIntakeSuggestion(items, s, ws.company, me.name), ws.items) });
     updateIntake({ accepted: [...intake.accepted, ...todo.map((s) => s.key)] });
   };
   const dismiss = (key: string) => updateIntake({ dismissed: [...intake.dismissed, key] });
@@ -352,6 +358,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
             )}
             {activeTab === 'tables' && (
               <TablesTab
+                items={ws.items}
                 tables={intake.tables}
                 raw={raw}
                 canSample={hasSampleTables(ws.scenarioId)}
@@ -373,6 +380,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
             )}
             {activeTab === 'documents' && (
               <DocumentsTab
+                items={ws.items}
                 documents={intake.documents}
                 kind={ws.kind}
                 aiReady={aiReady}
@@ -460,7 +468,7 @@ function ChecklistTab({
           <h2 className="border-b border-slate-100 px-4 py-2 text-sm font-semibold text-slate-900">{PILLAR_LABEL[p]}</h2>
           <ol className="divide-y divide-slate-100">
             {CHECKLIST.filter((q) => q.pillar === p && isVisible(q, answers, sectors)).map((q) => (
-              <li key={q.id} className={`px-4 py-3 ${q.showIf ? 'bg-slate-50/60 pl-8' : ''}`}>
+              <li key={q.id} id={`q-${q.id}`} className={`scroll-mt-32 px-4 py-3 ${q.showIf ? 'bg-slate-50/60 pl-8' : ''}`}>
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0 flex-1 basis-72">
                     <p className="text-sm text-slate-900">
@@ -546,6 +554,7 @@ function AnswerInput({ q, value, onChange }: { q: ChecklistQuestion; value: Answ
 // ── Adattáblák ────────────────────────────────────────────────────
 
 function TablesTab({
+  items,
   tables,
   raw,
   canSample,
@@ -554,6 +563,7 @@ function TablesTab({
   onRemove,
   onChangeRaw,
 }: {
+  items: RiskItem[];
   tables: Partial<Record<TableKind, TableAnalysis>>;
   raw: Partial<Record<TableKind, RawTable>>;
   canSample: boolean;
@@ -575,7 +585,11 @@ function TablesTab({
         const r = raw[kind];
         const missing = r ? missingColumns(kind, r.mapping) : [];
         return (
-          <div key={kind} className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <div
+            key={kind}
+            id={`table-${kind}`}
+            className="scroll-mt-32 rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1 basis-64">
                 <h2 className="text-base font-bold tracking-tight text-slate-900">{spec.label}</h2>
@@ -698,6 +712,7 @@ function TablesTab({
                 )}
               </div>
             )}
+            <UsedBy items={items} anchor={`table-${kind}`} />
           </div>
         );
       })}
@@ -708,6 +723,7 @@ function TablesTab({
 // ── Dokumentumok ──────────────────────────────────────────────────
 
 function DocumentsTab({
+  items,
   documents,
   kind,
   aiReady,
@@ -717,6 +733,7 @@ function DocumentsTab({
   onSample,
   onRemove,
 }: {
+  items: RiskItem[];
   documents: DocumentRecord[];
   kind: EngagementKind;
   aiReady: boolean | null;
@@ -781,6 +798,7 @@ function DocumentsTab({
       {documents.map((d) => (
         <DocumentCard
           key={d.id}
+          items={items}
           d={d}
           kind={kind}
           sample={d.isSample ? samples.find((s) => s.fileName === d.fileName) : undefined}
@@ -792,11 +810,13 @@ function DocumentsTab({
 }
 
 function DocumentCard({
+  items,
   d,
   kind,
   sample,
   onRemove,
 }: {
+  items: RiskItem[];
   d: DocumentRecord;
   kind: EngagementKind;
   sample?: (typeof SAMPLE_DOCUMENTS)[string][number];
@@ -807,7 +827,7 @@ function DocumentCard({
   const redacted = Object.entries(d.redactions);
   const where = (i: number | null) => (i != null ? d.pageLabels[i] : '');
   return (
-    <article className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <article id={`doc-${d.id}`} className="scroll-mt-32 rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -875,6 +895,7 @@ function DocumentCard({
           )}
         </div>
       )}
+      <UsedBy items={items} anchor={`doc-${d.id}`} />
     </article>
   );
 }

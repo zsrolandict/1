@@ -112,6 +112,7 @@ function suggestion(
     title: t.title,
     rationale,
     evidence,
+    link: { page: 'adatok', tab: 'tables', anchor: `table-${kind}` },
     likelihood,
     impact,
     valuationPatch,

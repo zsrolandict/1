@@ -39,6 +39,7 @@ import { PILLARS } from '@/lib/risk/engine';
 import { applySuggestion, DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, type Workspace } from '@/lib/risk/store';
 import type { Pillar } from '@/lib/risk/types';
 import { intakeFacts, loadIntake, missingRequests } from '@/lib/intake/state';
+import { useIdentity } from '../Identity';
 
 /** A mintaeset tényei + az adatgyűjtésből (kérdőív, táblák, dokumentumok) jövő tények. */
 function factsFor(ws: Pick<Workspace, 'projectId' | 'scenarioId'>, kind: EngagementKind): KnownFact[] {
@@ -86,6 +87,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   const [tab, setTab] = useState<Tab>('plan');
   const [status, setStatus] = useState<AiStatus | null>(null);
   const backend = useAiBackend();
+  const me = useIdentity();
 
   const [facts, setFacts] = useState<KnownFact[]>(getScenario(DEFAULT_WORKSPACE.scenarioId).facts);
   const scenario = getScenario(ws.scenarioId);
@@ -217,7 +219,7 @@ export default function InterviewWorkspace({ showPrint = true }: { showPrint?: b
   const acceptFlag = (f: SuggestedRedFlag, key: string) => {
     const when = f.startMs != null ? `, ${formatMs(f.startMs)}` : '';
     const evidence = `„${f.quote}” – ${roleLabel} interjú${when}`;
-    updateWs({ ...ws, items: applySuggestion(ws.items, f, evidence, ws.company) });
+    updateWs({ ...ws, items: applySuggestion(ws.items, f, evidence, ws.company, { ref: `${roleLabel} interjú${when}`, by: me.name }) });
     updateRec({ accepted: [...rec.accepted, key] });
   };
 

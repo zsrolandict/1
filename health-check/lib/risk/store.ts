@@ -7,6 +7,7 @@ import { BLANK, getScenario, GYARTO, isDemoScenario, type Scenario } from '@/lib
 import { catalogDefault, PILLAR_LABEL } from './catalog';
 import type { RiskItem, Scale5 } from './types';
 import { DEFAULT_COMPANY, resolveExposure, type CompanyProfile } from './valuation';
+import { addEntry, describeEffect, trailOf } from './trail';
 
 /**
  * MVP munkaállapot (egy projekt) a böngészőben. Élesben ugyanez a forma
@@ -285,44 +286,70 @@ const clamp5 = (n: number): Scale5 => Math.min(5, Math.max(1, Math.round(n))) as
  * Katalógustételnél: azonosítottá tesszük, a súlyosságot sosem csökkentjük.
  * Egyéb esetben új, egyedi tétel jön létre.
  */
-export function applySuggestion(items: RiskItem[], s: SuggestedRedFlag, evidence: string, company: CompanyProfile = DEFAULT_COMPANY): RiskItem[] {
+export function applySuggestion(
+  items: RiskItem[],
+  s: SuggestedRedFlag,
+  evidence: string,
+  company: CompanyProfile = DEFAULT_COMPANY,
+  src: { ref?: string; by?: string | null } = {},
+): RiskItem[] {
+  const withTrail = (before: Pick<RiskItem, 'identified' | 'likelihood' | 'impact'> & Partial<RiskItem>, after: RiskItem): RiskItem =>
+    addEntry(
+      after,
+      {
+        kind: 'AI_INTERVIEW',
+        actor: 'AI',
+        ref: src.ref ?? evidence,
+        quote: s.quote,
+        rationale: s.rationale,
+        effect: describeEffect(before, after, s.exposureHufEstimate),
+        confidence: s.confidence,
+        acceptedBy: src.by ?? null,
+        link: { page: 'interjuk' },
+      },
+      before.id ? trailOf(before as RiskItem) : [],
+    );
   const existing = s.templateCode ? items.find((r) => r.code === s.templateCode) : undefined;
   if (existing) {
     return items.map((r) =>
       r.id !== existing.id
         ? r
-        : {
+        : withTrail(r, {
             ...r,
             identified: true,
             likelihood: clamp5(Math.max(r.likelihood, s.likelihood)),
             impact: clamp5(Math.max(r.impact, s.impact)),
             ...raiseExposure(r, s.exposureHufEstimate, company),
             source: 'AI_INTERVIEW',
-            evidence,
-          },
+            evidence: r.identified && r.evidence && !r.evidence.includes(evidence) ? `${r.evidence} · ${evidence}` : evidence,
+            reasoning: r.reasoning || s.rationale,
+          }),
     );
   }
   const n = items.filter((r) => r.id.startsWith('CUS-')).length + 1;
   const code = `CUS-${String(n).padStart(2, '0')}`;
   return [
-    {
-      id: `${code}-${Date.now().toString(36)}`,
-      code,
-      pillar: s.pillar,
-      title: s.title,
-      description: `${PILLAR_LABEL[s.pillar]} · interjúból`,
-      reasoning: s.rationale,
-      identified: true,
-      likelihood: clamp5(s.likelihood),
-      impact: clamp5(s.impact),
-      exposureHuf: s.exposureHufEstimate ?? 0,
-      remediationDays: 5,
-      remediation: '',
-      division: 'ADVISORY',
-      serviceFeeHuf: 0,
-      source: 'AI_INTERVIEW',
-      evidence,
-    },
+    withTrail(
+      { identified: false, likelihood: s.likelihood, impact: s.impact },
+      {
+        id: `${code}-${Date.now().toString(36)}`,
+        code,
+        pillar: s.pillar,
+        title: s.title,
+        description: `${PILLAR_LABEL[s.pillar]} · interjúból`,
+        reasoning: s.rationale,
+        identified: true,
+        likelihood: clamp5(s.likelihood),
+        impact: clamp5(s.impact),
+        exposureHuf: s.exposureHufEstimate ?? 0,
+        remediationDays: 5,
+        remediation: '',
+        division: 'ADVISORY',
+        serviceFeeHuf: 0,
+        source: 'AI_INTERVIEW',
+        evidence,
+      },
+    ),
     ...items,
   ];
 }

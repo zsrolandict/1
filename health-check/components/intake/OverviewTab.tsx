@@ -46,7 +46,7 @@ export default function OverviewTab({
 
   return (
     <section className="space-y-4">
-      <div className="rounded-xl border border-brand-200 bg-brand-50/50 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div id="synthesis" className="scroll-mt-32 rounded-xl border border-brand-200 bg-brand-50/50 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1 basis-72">
             <h2 className="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900">
@@ -83,7 +83,7 @@ export default function OverviewTab({
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div id="cross-checks" className="scroll-mt-32 rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-2.5">
           <h2 className="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600" aria-hidden>

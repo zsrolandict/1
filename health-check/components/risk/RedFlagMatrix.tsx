@@ -58,6 +58,11 @@ import ExportPdfButton, { browserDownload, slug, type SaveFile } from '@/compone
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, hourSplit, PM_HOURS, type EngagementKind } from '@/lib/engagement/kinds';
 import { KIND_RISKS } from '@/lib/engagement/kindRisks';
 import { adjustmentsFor, describeAdjustment, formatAdjustment, KIND_ADJUSTMENTS_STATUS, type KindAdjustment } from '@/lib/engagement/adjustments';
+import { addEntry, missingReasons, recordChange, sourceCount } from '@/lib/risk/trail';
+import { EvidencePanel, HealthExplain } from './EvidencePanel';
+import { deriveHealth } from '@/lib/risk/derivation';
+import { useIdentity } from '../Identity';
+import { useFocusAnchor } from '../useFocusAnchor';
 
 const SOURCE_LABEL: Partial<Record<RiskSource, string>> = {
   CHECKLIST: 'Kérdőív',
@@ -66,6 +71,7 @@ const SOURCE_LABEL: Partial<Record<RiskSource, string>> = {
   AI_SYNTHESIS: 'AI · összkép',
   AI_DOCUMENT: 'AI · dokumentum',
   AI_INTERVIEW: 'AI · interjú',
+  FINANCIALS: 'Pénzügyi adat',
 };
 const SCALE: Scale5[] = [1, 2, 3, 4, 5];
 const DENSE_KEY = 'ict-hc:matrix-dense';
@@ -145,6 +151,7 @@ export default function RedFlagMatrix({
     }
   };
   const modules = useModules();
+  const me = useIdentity();
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
@@ -203,10 +210,13 @@ export default function RedFlagMatrix({
     [hydrated, projectId, scenarioId],
   );
   const sectorExtras = missingSectorRisks(sectors, items);
+  const suggested = (r: RiskItem, why: string): RiskItem => addEntry(r, { kind: 'SUGGESTED', actor: 'RULE', ref: why, acceptedBy: me.name });
   const addKindRisk = (code: string) => {
     const item = KIND_RISKS[kind].find((k) => k.code === code);
-    if (item) setItems((xs) => [{ ...item, source: 'MANUAL' }, ...xs]);
+    if (item) setItems((xs) => [suggested({ ...item, source: 'MANUAL' }, `Az átvilágítás típusa (${profile.label}) miatt javasolt tétel`), ...xs]);
   };
+  const addSectorRisks = (list: RiskItem[]) =>
+    setItems((xs) => [...xs, ...list.map((k) => suggested(k, `Az ágazatban (${sectors.map((x) => SECTOR_LABEL[x]).join(', ')}) gyakori kockázat`))]);
   const scoredById = useMemo(() => new Map(result.risks.map((r) => [r.id, r])), [result]);
 
   const visible = items
@@ -226,7 +236,20 @@ export default function RedFlagMatrix({
     .sort((a, b) => a.f - b.f || a.i - b.i)
     .map((x) => x.r);
 
-  const update = (id: string, patch: Partial<RiskItem>) => setItems((xs) => xs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  // Minden szakértői módosítás a tétel változásnaplójába kerül (csökkentésnél indoklás kell).
+  const update = (id: string, patch: Partial<RiskItem>) =>
+    setItems((xs) => xs.map((r) => (r.id === id ? recordChange(r, { ...r, ...patch }, me.name, (x) => resolveExposure(x, company).valueHuf) : r)));
+
+  // Ugrás egy sorra más oldalról (forrásnézet): szűrők törlése, sor lenyitása.
+  useFocusAnchor(hydrated, (anchor) => {
+    if (!anchor.startsWith('risk-')) return;
+    const id = anchor.slice(5);
+    setPillarFilter('ALL');
+    setOnlyIdentified(false);
+    setQuery('');
+    setCell(null);
+    setExpanded((s) => new Set(s).add(id));
+  });
 
   const addCustom = () => {
     const pillar: Pillar = pillarFilter === 'ALL' ? 'FINANCE' : pillarFilter;
@@ -539,6 +562,8 @@ export default function RedFlagMatrix({
 
               <HeatMap risks={result.risks} selected={cell} onSelect={setCell} />
             </section>
+
+            <HealthExplain pillars={deriveHealth(pillars, profile.weights, totals.healthScore).pillars} total={totals.healthScore} labels={PILLAR_LABEL} />
           </>
         )}
       </div>
@@ -566,13 +591,13 @@ export default function RedFlagMatrix({
               <div className="flex flex-wrap items-center gap-2 text-xs [&+&]:mt-3 [&+&]:border-t [&+&]:border-slate-100 [&+&]:pt-3">
                 <span className="font-medium text-slate-700">Az ágazatban ({sectors.map((x) => SECTOR_LABEL[x]).join(', ')}) gyakori kockázatok:</span>
                 <button
-                  onClick={() => setItems((xs) => [...xs, ...sectorExtras])}
+                  onClick={() => addSectorRisks(sectorExtras)}
                   className="rounded-full bg-brand-600 px-3 py-1 font-semibold text-white shadow-sm hover:bg-brand-700"
                 >
                   Mind a {sectorExtras.length} felvétele
                 </button>
                 {sectorExtras.map((k) => (
-                  <SuggestChip key={k.code} title={k.description} onClick={() => setItems((xs) => [...xs, k])}>
+                  <SuggestChip key={k.code} title={k.description} onClick={() => addSectorRisks([k])}>
                     {k.title}
                   </SuggestChip>
                 ))}
@@ -776,6 +801,7 @@ export default function RedFlagMatrix({
                   key={r.id}
                   risk={r}
                   focus={focusCodes.has(r.code)}
+                  materialityHuf={materialityHuf}
                   company={company}
                   expanded={expanded.has(r.id)}
                   onToggleExpand={() =>
@@ -929,6 +955,7 @@ export default function RedFlagMatrix({
 function RiskRow({
   risk: r,
   focus,
+  materialityHuf,
   company,
   expanded,
   onToggleExpand,
@@ -941,6 +968,7 @@ function RiskRow({
 }: {
   risk: RiskItem;
   focus: boolean;
+  materialityHuf: number;
   company: CompanyProfile;
   expanded: boolean;
   onToggleExpand: () => void;
@@ -959,15 +987,17 @@ function RiskRow({
   // A nem azonosított sorokon is mutatjuk, milyen besorolást kapna – halványan.
   const rag: Rag = eff.rag;
   const isCustom = r.id.startsWith('CUS-');
+  const sources = sourceCount(r);
+  const unexplained = missingReasons(r).length;
 
   return (
     <Fragment>
-      <tr className={`transition-colors hover:bg-slate-50/60 ${r.identified ? '' : 'text-slate-500'}`}>
+      <tr id={`risk-${r.id}`} className={`scroll-mt-32 transition-colors hover:bg-slate-50/60 ${r.identified ? '' : 'text-slate-500'}`}>
         <td className="px-3 py-2 align-top">
           <div className="flex items-center gap-1">
             <button
               onClick={onToggleExpand}
-              aria-label={expanded ? 'Részletek bezárása' : 'Indoklás és képlet'}
+              aria-label={expanded ? 'Részletek bezárása' : 'Miért? Források, levezetés, képlet'}
               aria-expanded={expanded}
               className="mt-0.5 text-slate-500 hover:text-slate-900"
             >
@@ -1013,6 +1043,22 @@ function RiskRow({
               >
                 {SOURCE_LABEL[r.source]}
               </Badge>
+            )}
+            {sources > 1 && (
+              <button
+                onClick={onToggleExpand}
+                className="text-[11px] font-semibold text-brand-700 hover:underline"
+                title="Független források – a lenyitott sorban"
+              >
+                {sources} forrás
+              </button>
+            )}
+            {unexplained > 0 && (
+              <button onClick={onToggleExpand} title="A súlyosság csökkentéséhez indoklás kell – a lenyitott sorban írható">
+                <Badge tone="amber" icon={<AlertTriangle className="h-3 w-3" />}>
+                  Indoklás hiányzik
+                </Badge>
+              </button>
             )}
           </div>
           {isCustom ? (
@@ -1179,6 +1225,9 @@ function RiskRow({
                 </span>
               </label>
             )}
+            <div className="mb-4">
+              <EvidencePanel risk={r} eff={eff} materialityHuf={materialityHuf} onChange={onChange} />
+            </div>
             <RiskDetails risk={r} company={company} onChange={onChange} />
           </td>
         </tr>

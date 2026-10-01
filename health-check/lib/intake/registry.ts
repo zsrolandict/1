@@ -153,6 +153,7 @@ export function registryFindings(rec: RegistryRecord, state: IntakeState, ref = 
       title,
       rationale,
       evidence: `${src}: ${evidence}`,
+      link: { page: 'adatok', tab: 'case', anchor: 'registry' },
       likelihood: L,
       impact: I,
     });

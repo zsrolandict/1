@@ -1,4 +1,5 @@
 import type { KindAdjustment } from '@/lib/engagement/adjustments';
+import type { ChangeEntry, EvidenceEntry } from './trail';
 import type { Valuation } from './valuation';
 
 // Kockázati motor – domain típusok.
@@ -39,8 +40,12 @@ export interface RiskItem {
   serviceFeeHuf: number;
   /** Honnan származik a tétel. Hiányzik = katalógus / kézi. */
   source?: RiskSource;
-  /** Bizonyíték: idézet + hivatkozás (dokumentum oldal, interjú időbélyeg). */
+  /** Bizonyíték: idézet + hivatkozás (dokumentum oldal, interjú időbélyeg). Összefűzött szöveg; a részletek a `trail`-ben. */
   evidence?: string;
+  /** Bizonyíték-lánc: minden forrás külön, hellyel, idézettel, hatással, elfogadóval. */
+  trail?: EvidenceEntry[];
+  /** A szakértő módosításai (csökkentésnél indoklással). */
+  history?: ChangeEntry[];
   /** Szakmai indoklás a riportba – a katalógusból előtöltve, szerkeszthető. */
   reasoning?: string;
   /** Forintosító képlet + szakértői felülírás. Hiányzik = kézi `exposureHuf`. */
@@ -53,7 +58,7 @@ export interface RiskItem {
 
 export type RemediationStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'ACCEPTED_RISK';
 
-export type RiskSource = 'MANUAL' | 'CHECKLIST' | 'DATA_TABLE' | 'CROSS_CHECK' | 'AI_DOCUMENT' | 'AI_INTERVIEW' | 'AI_SYNTHESIS';
+export type RiskSource = 'MANUAL' | 'CHECKLIST' | 'DATA_TABLE' | 'CROSS_CHECK' | 'AI_DOCUMENT' | 'AI_INTERVIEW' | 'AI_SYNTHESIS' | 'FINANCIALS';
 
 export interface ScoredRisk extends RiskItem {
   /** A szakértő által megadott (korrekció előtti) értékek; likelihood/impact már a korrigált. */

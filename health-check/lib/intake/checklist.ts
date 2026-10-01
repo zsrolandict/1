@@ -791,6 +791,8 @@ export function evaluateChecklist(answers: ChecklistAnswers, kind: EngagementKin
       title: template?.title ?? first.rule.title ?? first.q.short,
       rationale: notes.join(' '),
       evidence,
+      ref: questions.map((q) => `${q.id} ${q.short} – ${formatAnswer(q, answers[q.id])}`).join('; '),
+      link: { page: 'adatok', tab: 'checklist', anchor: `q-${questions[0].id}` },
       likelihood,
       impact,
       valuationPatch,
