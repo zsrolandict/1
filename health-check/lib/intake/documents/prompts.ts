@@ -7,6 +7,9 @@ import type { Scale5 } from '@/lib/risk/types';
 import { templateFor } from '../apply';
 import type { DocumentAnalysis, DocumentPage } from './types';
 import { verifyDocumentAnalysis } from './verify';
+import { DOC_TYPES, type DocType } from './docTypes';
+import { FACT_SPEC, FIN_FIELD_LABEL, FIN_FIELDS, FACT_GROUPS, type FactKey, type FinField } from '../financials/model';
+import { rawFacts, rawValues } from '../financials/extract';
 
 // Dokumentum-AI: prompt, séma és ellenőrzés. Szolgáltató-független: a hívást
 // (`call`) a szerver vagy a böngészős előnézet adja.
@@ -41,6 +44,32 @@ const DocumentSchema = z.object({
   missingProvisions: z.array(z.string()).describe('Ilyen típusú dokumentumban szokásos, de hiányzó rendelkezések (legfeljebb 5).'),
 });
 
+const FIELD_KEYS = FIN_FIELDS.map((f) => f.field) as [FinField, ...FinField[]];
+const FACT_KEYS = FACT_GROUPS.flatMap((g) => g.facts.map((f) => f.key)) as [FactKey, ...FactKey[]];
+
+const FinancialsSchema = z.object({
+  unit: z.enum(['HUF', 'THOUSAND_HUF', 'MILLION_HUF']).describe('A számok egysége az iratban (beszámolóban jellemzően ezer Ft).'),
+  values: z
+    .array(
+      z.object({
+        field: z.enum(FIELD_KEYS),
+        year: z.number().int().describe('Az üzleti év, amelyre a szám vonatkozik (pl. 2025).'),
+        stated: z.string().describe('A szám PONTOSAN úgy, ahogy az iratban áll, pl. "2 104 350" vagy "(12 400)".'),
+        quote: z.string().describe('SZÓ SZERINTI idézet: a sor, amelyben a szám áll (a sor megnevezése és a szám).'),
+      }),
+    )
+    .describe('Beszámolósorok évenként; csak ami az iratban szerepel.'),
+  facts: z
+    .array(
+      z.object({
+        key: z.enum(FACT_KEYS),
+        value: z.string().describe('Az érték szövegesen: igen/nem, szám, dátum (ÉÉÉÉ-HH-NN), vagy a vélemény típusa.'),
+        quote: z.string().describe('SZÓ SZERINTI idézet, amely az értéket alátámasztja.'),
+      }),
+    )
+    .describe('Csak a kért tények, ha az iratban egyértelműen szerepelnek.'),
+});
+
 const CATALOG_TEXT = [...DEFAULT_CATALOG, ...Object.values(KIND_RISKS).flat()]
   .map((r) => `${r.code} [${PILLAR_LABEL[r.pillar]}] ${r.title} – ${r.description}`)
   .join('\n');
@@ -73,23 +102,57 @@ export async function runDocumentAnalysis(
     fileName: string;
     pages: DocumentPage[];
     kind: EngagementKind;
+    docType?: DocType;
   },
 ): Promise<DocumentAnalysis> {
   const k = ENGAGEMENT_KINDS[input.kind];
+  const spec = input.docType ? DOC_TYPES[input.docType] : undefined;
+  const wantsFin = Boolean(spec?.fields?.length || spec?.facts?.length);
+  const typeText = spec && input.docType !== 'AUTO' ? `\nIrattípus (a tanácsadó szerint): ${spec.label}.` : '';
+  const lookFor = spec?.lookFor.length ? `\nEbben az irattípusban különösen keresd:\n${spec.lookFor.map((x) => `- ${x}`).join('\n')}` : '';
+  const finText = wantsFin
+    ? `\n\nPénzügyi kiolvasás (financials):${
+        spec!.fields?.length
+          ? `\n- values: ezeket a sorokat olvasd ki minden évre, amely az iratban szerepel (tárgyév és előző év): ${spec!.fields.map((f) => `${f} = ${FIN_FIELD_LABEL[f]}`).join('; ')}.`
+          : ''
+      }${
+        spec!.facts?.length ? `\n- facts: ${spec!.facts.map((f) => `${f} = ${FACT_SPEC[f].label}`).join('; ')}. Csak ami egyértelműen szerepel.` : ''
+      }\n- A számot pontosan úgy add meg, ahogy áll; az egységet a unit mezőben. Ne számolj, ne becsülj.`
+    : '';
   const body = input.pages.map((p, i) => `<oldal n="${i + 1}" cimke="${p.label}">\n${p.text}\n</oldal>`).join('\n');
-  const user = `Átvilágítás típusa: ${k.label}. Címzett: ${k.audience}. Cél: ${k.purpose}
+  const user = `Átvilágítás típusa: ${k.label}. Címzett: ${k.audience}. Cél: ${k.purpose}${typeText}${lookFor}
 
 <dokumentum fajlnev="${input.fileName.replace(/"/g, "'")}">
 ${body}
 </dokumentum>
 
 Feladat: állapítsd meg a dokumentum típusát, foglald össze, és gyűjtsd ki a vizsgálat szempontjából lényeges kockázatokat
-(katalóguskóddal, ha illeszkedik), az interjún ellenőrzendő tényeket és a hiányzó szokásos rendelkezéseket.`;
+(katalóguskóddal, ha illeszkedik), az interjún ellenőrzendő tényeket és a hiányzó szokásos rendelkezéseket.${finText}`;
 
-  const raw = await call(DocumentSchema, SYSTEM, user, 16000);
+  const schema = wantsFin ? DocumentSchema.extend({ financials: FinancialsSchema }) : DocumentSchema;
+  const raw = (await call(schema, SYSTEM, user, 16000)) as z.infer<typeof DocumentSchema> & { financials?: z.infer<typeof FinancialsSchema> };
+  const allowedFields = new Set(spec?.fields ?? []);
+  const allowedFacts = new Set(spec?.facts ?? []);
+  const fin = raw.financials;
   return verifyDocumentAnalysis(
     {
       documentType: raw.documentType,
+      docType: input.docType,
+      ...(wantsFin && fin
+        ? {
+            financials: {
+              unit: fin.unit,
+              values: rawValues(
+                fin.values.filter((v) => allowedFields.has(v.field)),
+                fin.unit,
+              ),
+              facts: rawFacts(
+                fin.facts.filter((f) => allowedFacts.has(f.key)),
+                fin.unit,
+              ),
+            },
+          }
+        : {}),
       summary: raw.summary,
       findings: raw.findings.map((f) => ({
         ...f,

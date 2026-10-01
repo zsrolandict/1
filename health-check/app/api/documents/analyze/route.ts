@@ -6,6 +6,7 @@ import { extractDocument } from '@/lib/intake/documents/extract.server';
 import { analyzeExtracted } from '@/lib/intake/documents/pipeline';
 import { errorResponse } from '../../_errors';
 import { EngagementKindSchema } from '@/lib/engagement/kindSchema';
+import { isDocType } from '@/lib/intake/documents/docTypes';
 
 export const maxDuration = 300;
 
@@ -29,13 +30,15 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   const file = form?.get('file');
   const kind = Kind.safeParse(form?.get('kind'));
+  const rawType = form?.get('docType');
+  const docType = isDocType(rawType) ? rawType : undefined;
   if (!(file instanceof File) || !kind.success) return NextResponse.json({ error: 'Hibás kérés.' }, { status: 400 });
   if (file.size > MAX_DOCUMENT_BYTES) {
     return NextResponse.json({ error: 'A dokumentum túl nagy (max. 20 MB).' }, { status: 413 });
   }
   try {
     const extracted = await extractDocument(file.name, new Uint8Array(await file.arrayBuffer()));
-    return NextResponse.json(await analyzeExtracted(parseStructured, extracted, kind.data, { maxChars: MAX_DOCUMENT_CHARS, maxPages: MAX_PAGES }));
+    return NextResponse.json(await analyzeExtracted(parseStructured, extracted, kind.data, { maxChars: MAX_DOCUMENT_CHARS, maxPages: MAX_PAGES }, docType));
   } catch (err) {
     return errorResponse(err);
   }

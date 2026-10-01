@@ -40,8 +40,34 @@ export function verifyDocumentAnalysis(raw: RawDocumentAnalysis, pages: Document
     }
     return [{ ...f, pageIndex }];
   });
+  // Pénzügyi kiolvasás: az idézetnek szerepelnie kell az iratban, és a számnak az idézetben.
+  const digits = (x: string) => x.replace(/\D/g, '');
+  const financials = raw.financials
+    ? {
+        unit: raw.financials.unit,
+        values: raw.financials.values.flatMap((v) => {
+          const pageIndex = findQuoteInPages(pages, v.quote);
+          const d = digits(v.stated);
+          if (pageIndex == null || !d || !digits(v.quote).includes(d)) {
+            discarded++;
+            return [];
+          }
+          return [{ ...v, pageIndex }];
+        }),
+        facts: raw.financials.facts.flatMap((f) => {
+          const pageIndex = findQuoteInPages(pages, f.quote);
+          if (pageIndex == null) {
+            discarded++;
+            return [];
+          }
+          return [{ ...f, pageIndex }];
+        }),
+      }
+    : undefined;
   return {
     documentType: raw.documentType,
+    docType: raw.docType,
+    ...(financials ? { financials } : {}),
     summary: raw.summary,
     findings: findings.sort((a, b) => b.confidence - a.confidence),
     facts,

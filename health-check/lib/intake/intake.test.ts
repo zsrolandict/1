@@ -309,14 +309,17 @@ describe('dokumentumok', () => {
 
   it('mintadokumentumok: a kitalált idézet kiesik, a többi oldalszámmal megmarad', () => {
     for (const [id, docs] of Object.entries(SAMPLE_DOCUMENTS)) {
-      docs.forEach((d, i) => {
-        const rec = sampleDocumentRecord(d, `${id}-${i}`);
-        expect(rec.analysis.findings.length, d.fileName).toBeGreaterThan(0);
-        expect(rec.analysis.findings.every((f) => f.pageIndex != null)).toBe(true);
-        expect(rec.analysis.facts.length, d.fileName).toBe(d.analysis.facts.length);
-        const expectedDiscard = d.analysis.findings.filter((f) => f.title === 'Engedményezési tilalom').length;
-        expect(rec.analysis.discardedUnverified, d.fileName).toBe(expectedDiscard);
-      });
+      // A beszámoló-csomag külön tesztje: financials.test.ts
+      docs
+        .filter((d) => !d.analysis.financials)
+        .forEach((d, i) => {
+          const rec = sampleDocumentRecord(d, `${id}-${i}`);
+          expect(rec.analysis.findings.length, d.fileName).toBeGreaterThan(0);
+          expect(rec.analysis.findings.every((f) => f.pageIndex != null)).toBe(true);
+          expect(rec.analysis.facts.length, d.fileName).toBe(d.analysis.facts.length);
+          const expectedDiscard = d.analysis.findings.filter((f) => f.title === 'Engedményezési tilalom').length;
+          expect(rec.analysis.discardedUnverified, d.fileName).toBe(expectedDiscard);
+        });
     }
     const keret = sampleDocumentRecord(SAMPLE_DOCUMENTS.gyarto[0], 'k');
     expect(keret.redactions).toMatchObject({ telefon: 2, 'e-mail': 2 });

@@ -1,4 +1,5 @@
 import { checklistProgress } from '@/lib/intake/checklist';
+import { hasFinancials, normalizeFinancials } from '@/lib/intake/financials/model';
 import type { IntakeState } from '@/lib/intake/state';
 import type { InterviewRecords } from '@/lib/interview/records';
 import type { ModuleId } from '@/lib/modules';
@@ -23,7 +24,7 @@ export const PAGE_LABEL: Record<PageId, string> = {
 export function isPageId(s: string): s is PageId {
   return (PAGE_IDS as string[]).includes(s);
 }
-export type IntakeTab = 'case' | 'checklist' | 'tables' | 'documents' | 'overview';
+export type IntakeTab = 'case' | 'financials' | 'checklist' | 'tables' | 'documents' | 'overview';
 
 export interface GuideStep {
   id: string;
@@ -49,6 +50,7 @@ export function guideSteps(g: GuideInput): GuideStep[] {
   const { intake } = g;
   const p = checklistProgress(intake.answers, intake.profile.sectors);
   const tables = Object.keys(intake.tables).length;
+  const finDone = hasFinancials(normalizeFinancials(intake.financials));
   const analyzed = Object.values(g.interviews).filter((r) => r?.analysis).length;
   const profileDone = intake.profile.sectors.length > 0 || intake.profile.narrative.trim().length > 0;
   const steps: GuideStep[] = [
@@ -69,6 +71,15 @@ export function guideSteps(g: GuideInput): GuideStep[] {
       detail: intake.registry ? 'Kiolvasva.' : 'Nincs beolvasva.',
       how: 'Másold be az e-cégjegyzék ingyenes cégkivonatát a Tényállás fülön: tulajdonosok, vezetők, eljárások, változások.',
       target: { page: 'adatok', tab: 'case' },
+    },
+    {
+      id: 'financials',
+      module: 'FINANCIALS',
+      title: 'Pénzügyi alapadatok',
+      done: finDone,
+      detail: finDone ? 'Kulcsszámok és tények rögzítve.' : 'Még nincs beszámoló-adat.',
+      how: 'Töltsd fel a beszámolót, a kiegészítő mellékletet és a könyvvizsgálói jelentést (Dokumentumok fül, irattípussal), vagy írd be a kulcsszámokat. Minden értékhez forrás tartozik.',
+      target: { page: 'adatok', tab: 'financials' },
     },
     {
       id: 'checklist',

@@ -22,7 +22,7 @@ describe('kalauz', () => {
     const all = MODULES.map((m) => m.id);
     const steps = guideSteps({ ...base, disabled: all });
     expect(steps.map((s) => s.id)).toEqual(['matrix']);
-    expect(guideSteps({ ...base, disabled: ['CASE', 'REGISTRY'] })[0].id).toBe('checklist');
+    expect(guideSteps({ ...base, disabled: ['CASE', 'REGISTRY', 'FINANCIALS'] })[0].id).toBe('checklist');
   });
 
   it('minden lépés kész → nincs következő', () => {
@@ -42,7 +42,7 @@ describe('kalauz', () => {
       snapshots: 1,
       hoursLogged: 2,
       benchmarked: true,
-      disabled: ['CHECKLIST'],
+      disabled: ['CHECKLIST', 'FINANCIALS'],
     });
     expect(nextStep(steps)).toBeNull();
   });

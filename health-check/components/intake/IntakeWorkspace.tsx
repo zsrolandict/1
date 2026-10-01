@@ -21,6 +21,7 @@ import {
   Upload,
   X,
   Lightbulb,
+  Landmark,
 } from 'lucide-react';
 import { ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 import { applyCompanySuggestion, applyIntakeSuggestion, isCompanySuggestionApplied } from '@/lib/intake/apply';
@@ -36,7 +37,7 @@ import { BTN_PRIMARY, Callout, PageHeader, TabBar, TabButton, TabCount } from '.
 import ProjectStagesCard from '../ui/ProjectStagesCard';
 import ModuleOff from '../ModuleOff';
 import { useModules } from '../useModules';
-import { INTAKE_TAB_EVENT, takeRequestedIntakeTab } from '@/lib/guide';
+import { INTAKE_TAB_EVENT, requestIntakeTab, takeRequestedIntakeTab } from '@/lib/guide';
 import { INTAKE_MODULES, type ModuleId } from '@/lib/modules';
 import OverviewTab from './OverviewTab';
 import { crossChecks } from '@/lib/intake/crossChecks';
@@ -57,10 +58,21 @@ import { useAiBackend } from '@/components/AiBackendContext';
 import { useIdentity } from '../Identity';
 import UsedBy from '../risk/UsedBy';
 import { useFocusAnchor } from '../useFocusAnchor';
+import FinancialsTab from './FinancialsTab';
+import { normalizeFinancials } from '@/lib/intake/financials/model';
+import { markReceived, pendingExtractions, requestsFor } from '@/lib/intake/financials/approve';
+import { DOC_TYPE_GROUPS, DOC_TYPES, type DocType } from '@/lib/intake/documents/docTypes';
 
-type Tab = 'case' | 'checklist' | 'tables' | 'documents' | 'overview';
+type Tab = 'case' | 'financials' | 'checklist' | 'tables' | 'documents' | 'overview';
 type SourceTab = Exclude<Tab, 'case'>;
-const TAB_MODULE: Record<Tab, ModuleId> = { case: 'CASE', checklist: 'CHECKLIST', tables: 'TABLES', documents: 'DOCUMENTS', overview: 'OVERVIEW' };
+const TAB_MODULE: Record<Tab, ModuleId> = {
+  case: 'CASE',
+  financials: 'FINANCIALS',
+  checklist: 'CHECKLIST',
+  tables: 'TABLES',
+  documents: 'DOCUMENTS',
+  overview: 'OVERVIEW',
+};
 
 /** A feltöltött tábla nyers rácsa csak memóriában él (oszlop-javításhoz, újraszámoláshoz). */
 interface RawTable {
@@ -126,7 +138,10 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
       return next;
     });
 
-  const baseResults = useMemo(() => intakeResults(intake, ws.kind), [intake, ws.kind]);
+  const baseResults = useMemo(
+    () => intakeResults(intake, ws.kind, { company: ws.company, materialityHuf: ws.materialityHuf }),
+    [intake, ws.kind, ws.company, ws.materialityHuf],
+  );
   // Összkép: keresztellenőrzés + AI-szintézis (az interjúk is forrásai)
   const records = useMemo(() => (hydrated ? loadRecords(ws.projectId) : {}), [hydrated, ws.projectId, tab]);
   const allFacts = useMemo(
@@ -144,7 +159,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
     },
   };
   const synthesize = async () => {
-    const pending = [baseResults.checklist, baseResults.tables, baseResults.documents].flatMap((r) =>
+    const pending = [baseResults.checklist, baseResults.tables, baseResults.documents, baseResults.financials].flatMap((r) =>
       r.suggestions.filter((x) => !accepted.has(x.key)).map((x) => x.title),
     );
     const synthesis = await backend.synthesize({ kind: ws.kind, companyName: ws.companyName, sources, existing: ws.items, pending });
@@ -153,7 +168,13 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
   const accepted = useMemo(() => new Set(intake.accepted), [intake.accepted]);
   const dismissed = useMemo(() => new Set(intake.dismissed), [intake.dismissed]);
 
-  const allSuggestions = [...results.checklist.suggestions, ...results.tables.suggestions, ...results.documents.suggestions, ...results.overview.suggestions];
+  const allSuggestions = [
+    ...results.financials.suggestions,
+    ...results.checklist.suggestions,
+    ...results.tables.suggestions,
+    ...results.documents.suggestions,
+    ...results.overview.suggestions,
+  ];
   const pendingCount = allSuggestions.filter((s) => !accepted.has(s.key) && !dismissed.has(s.key)).length;
 
   const accept = (s: IntakeSuggestion) => {
@@ -221,8 +242,13 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
   };
 
   // ── Dokumentumok ────────────────────────────────────────────────
-  const addDocument = (d: DocumentRecord) => updateIntake({ documents: [d, ...intake.documents.filter((x) => x.fileName !== d.fileName)] });
-  const uploadDocument = async (file: File) => {
+  // A feltöltött irat a típusa szerinti bekérési tételt „Beérkezett”-re állítja.
+  const addDocument = (d: DocumentRecord) =>
+    updateIntake({
+      documents: [d, ...intake.documents.filter((x) => x.fileName !== d.fileName)],
+      requestStatus: markReceived(intake.requestStatus, requestsFor(d)),
+    });
+  const uploadDocument = async (file: File, docType: DocType) => {
     setError(null);
     setBusy(true);
     try {
@@ -231,7 +257,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
         const pre = extractPlain(file.name, new Uint8Array(await file.arrayBuffer()));
         if (documentChars(pre.pages) < 20) throw new Error('A dokumentumban nincs feldolgozható szöveg.');
       }
-      const body = await backend.analyzeDocument(file, ws.kind);
+      const body = await backend.analyzeDocument(file, ws.kind, docType);
       addDocument({
         id: `D${Date.now().toString(36)}`,
         fileName: file.name,
@@ -250,6 +276,9 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
   if (!hydrated) return null;
 
   const progress = checklistProgress(intake.answers, intake.profile.sectors);
+  const financials = normalizeFinancials(intake.financials);
+  const finPending = pendingExtractions(intake.documents, financials).length;
+  const finCount = finPending ? `${finPending} jóváhagyásra` : `${financials.years.length} év`;
   const tableCount = Object.keys(intake.tables).length;
 
   return (
@@ -286,9 +315,14 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
             0. Tényállás, iratbekérés <TabCount>{requestList(intake, ws.kind).length}</TabCount>
           </TabButton>
         )}
+        {isOn('FINANCIALS') && (
+          <TabButton active={activeTab === 'financials'} onClick={() => setTab('financials')} icon={<Landmark className="h-4 w-4" />}>
+            1. Pénzügyi alapadatok <TabCount>{finCount}</TabCount>
+          </TabButton>
+        )}
         {isOn('CHECKLIST') && (
           <TabButton active={activeTab === 'checklist'} onClick={() => setTab('checklist')} icon={<ClipboardList className="h-4 w-4" />}>
-            1. Kérdőív{' '}
+            2. Kérdőív{' '}
             <TabCount>
               {progress.answered}/{progress.total}
             </TabCount>
@@ -296,17 +330,17 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
         )}
         {isOn('TABLES') && (
           <TabButton active={activeTab === 'tables'} onClick={() => setTab('tables')} icon={<Table2 className="h-4 w-4" />}>
-            2. Adattáblák <TabCount>{tableCount}/4</TabCount>
+            3. Adattáblák <TabCount>{tableCount}/4</TabCount>
           </TabButton>
         )}
         {isOn('DOCUMENTS') && (
           <TabButton active={activeTab === 'documents'} onClick={() => setTab('documents')} icon={<FileText className="h-4 w-4" />}>
-            3. Dokumentumok <TabCount>{intake.documents.length}</TabCount>
+            4. Dokumentumok <TabCount>{intake.documents.length}</TabCount>
           </TabButton>
         )}
         {isOn('OVERVIEW') && (
           <TabButton active={activeTab === 'overview'} onClick={() => setTab('overview')} icon={<Sparkles className="h-4 w-4" />}>
-            4. Összkép <TabCount>{cross.conflicts.length} ellentmondás</TabCount>
+            5. Összkép <TabCount>{cross.conflicts.length} ellentmondás</TabCount>
           </TabButton>
         )}
       </TabBar>
@@ -376,6 +410,16 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
                 sourceCount={sources.length}
                 aiReady={aiReady}
                 onSynthesize={synthesize}
+              />
+            )}
+            {activeTab === 'financials' && (
+              <FinancialsTab
+                financials={financials}
+                documents={intake.documents}
+                items={ws.items}
+                me={me.name}
+                onChange={(next) => updateIntake({ financials: next })}
+                onGoDocuments={() => setTab('documents')}
               />
             )}
             {activeTab === 'documents' && (
@@ -739,19 +783,45 @@ function DocumentsTab({
   aiReady: boolean | null;
   busy: boolean;
   samples: (typeof SAMPLE_DOCUMENTS)[string];
-  onUpload: (f: File) => void;
+  onUpload: (f: File, docType: DocType) => void;
   onSample: (i: number) => void;
   onRemove: (id: string) => void;
 }) {
+  const [docType, setDocType] = useState<DocType>('AUTO');
   return (
     <section className="space-y-4">
       <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1 basis-72 text-sm text-slate-600">
             <p>
-              Szerződés, szabályzat, létesítő okirat (PDF, DOCX, TXT). Az AI tételenként javasol, <b>szó szerinti idézettel és oldalszámmal</b>; amit nem talál
-              meg a szövegben, azt a rendszer eldobja.
+              Beszámoló, melléklet, könyvvizsgálói jelentés, szerződés, szabályzat (PDF, DOCX, TXT). Az AI tételenként javasol,{' '}
+              <b>szó szerinti idézettel és oldalszámmal</b>; amit nem talál meg a szövegben, azt a rendszer eldobja. Az irattípus megadásával célzottan keres,
+              pénzügyi iratnál a számokat is kiolvassa (a Pénzügyi alapadatok fülön hagyod jóvá), és a bekérési listán „Beérkezett” lesz.
             </p>
+            <label className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700">
+              Irattípus
+              <select
+                value={docType}
+                onChange={(e) => setDocType(e.target.value as DocType)}
+                className="min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-700"
+              >
+                <option value="AUTO">{DOC_TYPES.AUTO.label}</option>
+                {DOC_TYPE_GROUPS.map((g) => (
+                  <optgroup key={g} label={g}>
+                    {(Object.keys(DOC_TYPES) as DocType[])
+                      .filter((t) => DOC_TYPES[t].group === g)
+                      .map((t) => (
+                        <option key={t} value={t}>
+                          {DOC_TYPES[t].label}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+            {docType !== 'AUTO' && DOC_TYPES[docType].lookFor.length > 0 && (
+              <p className="mt-1.5 text-xs text-slate-500">Célzottan keresi: {DOC_TYPES[docType].lookFor.join('; ')}.</p>
+            )}
             <p className="mt-2 flex items-start gap-2 text-xs text-slate-500">
               <EyeOff className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               Feldolgozás előtt maszkoljuk az e-mail-címet, telefonszámot, bankszámlát, adóazonosító jelet, TAJ- és igazolványszámot. A fájlt nem tároljuk, csak
@@ -773,7 +843,7 @@ function DocumentsTab({
               className="sr-only"
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) onUpload(f);
+                if (f) onUpload(f, docType);
                 e.target.value = '';
               }}
             />
@@ -835,7 +905,18 @@ function DocumentCard({
             {d.isSample && <span className="rounded bg-amber-100 px-1.5 font-medium text-amber-800">Minta-elemzés</span>}
           </p>
           <h3 className="mt-0.5 truncate font-medium text-slate-900">{d.fileName}</h3>
-          <p className="text-xs text-slate-500">{a.documentType}</p>
+          <p className="text-xs text-slate-500">
+            {a.docType && a.docType !== 'AUTO' && <span className="mr-1.5 font-semibold text-brand-700">{DOC_TYPES[a.docType].label} ·</span>}
+            {a.documentType}
+          </p>
+          {a.financials && a.financials.values.length + a.financials.facts.length > 0 && (
+            <button
+              onClick={() => requestIntakeTab('financials')}
+              className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700 ring-1 ring-inset ring-brand-600/20 hover:bg-brand-100"
+            >
+              <Landmark className="h-3 w-3" /> {a.financials.values.length + a.financials.facts.length} adat kiolvasva → Pénzügyi alapadatok
+            </button>
+          )}
         </div>
         <button onClick={onRemove} aria-label="Dokumentum eltávolítása" className="text-slate-500 hover:text-red-600">
           <Trash2 className="h-4 w-4" />

@@ -1,6 +1,7 @@
 import { redactPages } from '../documents/redact';
 import type { DocumentFormat, DocumentPage, DocumentRecord, RawDocumentAnalysis } from '../documents/types';
 import { verifyDocumentAnalysis } from '../documents/verify';
+import { financialSampleDocuments } from './financialDocs';
 
 /**
  * KITALÁLT mintadokumentumok (szerződésrészletek) és előre elkészített
@@ -373,10 +374,10 @@ Szállító: Példa Szoftverház Kft.
 };
 
 export const SAMPLE_DOCUMENTS: Record<string, SampleDocument[]> = {
-  gyarto: [GYARTO_KERET, GYARTO_MEGBIZASI],
-  epitoipar: [EPITO_VALLALKOZASI],
-  konyvelo: [KONYVELO_KERET],
-  'it-fejleszto': [IT_KERET],
+  gyarto: [GYARTO_KERET, GYARTO_MEGBIZASI, ...financialSampleDocuments('gyarto')],
+  epitoipar: [EPITO_VALLALKOZASI, ...financialSampleDocuments('epitoipar')],
+  konyvelo: [KONYVELO_KERET, ...financialSampleDocuments('konyvelo')],
+  'it-fejleszto': [IT_KERET, ...financialSampleDocuments('it-fejleszto')],
 };
 
 /** Mintadokumentum → rekord, ugyanazzal a maszkolással és ellenőrzéssel, mint élesben. */

@@ -11,6 +11,7 @@ import type { PageId } from '@/lib/guide';
 export type ModuleId =
   | 'CASE'
   | 'REGISTRY'
+  | 'FINANCIALS'
   | 'CHECKLIST'
   | 'TABLES'
   | 'DOCUMENTS'
@@ -35,6 +36,13 @@ export interface ModuleInfo {
 export const MODULES: ModuleInfo[] = [
   { id: 'CASE', area: 'Adatgyűjtés', label: 'Tényállás és iratbekérés', description: 'Ágazat, létszám, jellemzők; ebből az iratbekérési lista.', ai: false },
   { id: 'REGISTRY', area: 'Adatgyűjtés', label: 'Cégkivonat', description: 'Nyilvános cégadatok kiolvasása a cégkivonatból, figyelmeztető jelek.', ai: true },
+  {
+    id: 'FINANCIALS',
+    area: 'Adatgyűjtés',
+    label: 'Pénzügyi alapadatok',
+    description: 'Beszámoló, melléklet, könyvvizsgálói jelentés kulcsszámai és beírható tények, szabályokkal.',
+    ai: false,
+  },
   { id: 'CHECKLIST', area: 'Adatgyűjtés', label: 'Ügyfélkérdőív', description: 'Igen/nem kérdések, szabályalapú előjelölés.', ai: false },
   { id: 'TABLES', area: 'Adatgyűjtés', label: 'Adattáblák', description: 'Vevő-, szállító-, bér- és szerződéslista mutatói.', ai: false },
   { id: 'DOCUMENTS', area: 'Adatgyűjtés', label: 'Dokumentumelemzés', description: 'Szerződések, szabályzatok AI-elemzése idézettel.', ai: true },
@@ -47,7 +55,7 @@ export const MODULES: ModuleInfo[] = [
   { id: 'KNOWLEDGE', area: 'Projekt', label: 'Tudástár', description: 'Anonim tapasztalatok a lezárt projektekből.', ai: false },
 ];
 
-export const INTAKE_MODULES: ModuleId[] = ['CASE', 'CHECKLIST', 'TABLES', 'DOCUMENTS', 'OVERVIEW'];
+export const INTAKE_MODULES: ModuleId[] = ['CASE', 'FINANCIALS', 'CHECKLIST', 'TABLES', 'DOCUMENTS', 'OVERVIEW'];
 export const PROJECT_MODULES: ModuleId[] = ['TIMESHEET', 'KNOWLEDGE'];
 
 /** Melyik oldal mely modulokból áll; null = mindig látszik (Red Flag mátrix). */

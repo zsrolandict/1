@@ -1,5 +1,6 @@
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { DocumentAnalysis, DocumentFormat } from '@/lib/intake/documents/types';
+import type { DocType } from '@/lib/intake/documents/docTypes';
 import type { CaseSuggestion } from '@/lib/intake/casePrompts';
 import type { SynthesisResult, SynthesisSource } from '@/lib/intake/synthesis';
 import type { RegistryData } from '@/lib/intake/registry';
@@ -35,7 +36,7 @@ export interface AiBackend {
   suggestQuestions(context: GuideContext): Promise<InterviewQuestion[]>;
   transcribe(file: File, opts: { consent: boolean; speakers: number }): Promise<Transcript>;
   analyzeInterview(req: { transcript: Transcript; role: IntervieweeRole; kind: EngagementKind; facts: KnownFact[] }): Promise<InterviewAnalysis>;
-  analyzeDocument(file: File, kind: EngagementKind): Promise<DocumentResult>;
+  analyzeDocument(file: File, kind: EngagementKind, docType?: DocType): Promise<DocumentResult>;
   suggestCase(req: CaseRequest): Promise<CaseSuggestion>;
   synthesize(req: SynthesisRequest): Promise<SynthesisResult>;
   extractRegistry(text: string): Promise<RegistryData>;
@@ -91,10 +92,11 @@ export const serverBackend: AiBackend = {
   async analyzeInterview(req) {
     return (await callApi<{ analysis: InterviewAnalysis }>('/api/interviews/analyze', json(req))).analysis;
   },
-  async analyzeDocument(file, kind) {
+  async analyzeDocument(file, kind, docType) {
     const form = new FormData();
     form.append('file', file);
     form.append('kind', kind);
+    if (docType) form.append('docType', docType);
     return callApi<DocumentResult>('/api/documents/analyze', { method: 'POST', body: form });
   },
   async suggestCase(req) {

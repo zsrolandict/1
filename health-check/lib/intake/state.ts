@@ -10,6 +10,9 @@ import type { TableAnalysis } from './tables/metrics';
 import type { TableKind } from './tables/spec';
 import type { IntakeResult } from './types';
 import { markSaved, markSaveFailed } from '@/lib/localSave';
+import { normalizeFinancials, type FinancialProfile } from './financials/model';
+import { financialFindings } from './financials/rules';
+import { DEFAULT_COMPANY, type CompanyProfile } from '@/lib/risk/valuation';
 
 /**
  * Adatgyűjtés munkaállapota egy projekthez. Élesben a `checklist_responses`,
@@ -28,6 +31,8 @@ export interface IntakeState {
   synthesis?: SynthesisResult | null;
   /** Kiolvasott cégkivonat. */
   registry?: RegistryRecord | null;
+  /** Pénzügyi alapadatok (beszámoló kulcsszámai, beírható tények), forrással. */
+  financials?: FinancialProfile;
   answers: ChecklistAnswers;
   tables: Partial<Record<TableKind, TableAnalysis>>;
   documents: DocumentRecord[];
@@ -56,7 +61,7 @@ export function loadIntake(scenarioId: string): IntakeState {
     const raw = localStorage.getItem(intakeKey(scenarioId));
     if (!raw) return EMPTY_INTAKE;
     const saved = JSON.parse(raw) as Partial<IntakeState>;
-    return { ...EMPTY_INTAKE, ...saved, profile: normalizeProfile(saved.profile ?? {}) };
+    return { ...EMPTY_INTAKE, ...saved, profile: normalizeProfile(saved.profile ?? {}), financials: normalizeFinancials(saved.financials) };
   } catch {
     return EMPTY_INTAKE;
   }
@@ -83,9 +88,16 @@ export interface IntakeResults {
   checklist: IntakeResult;
   tables: IntakeResult;
   documents: IntakeResult;
+  financials: IntakeResult;
 }
 
-export function intakeResults(state: IntakeState, kind: EngagementKind): IntakeResults {
+/** A pénzügyi szabályok a cégadatokhoz és a küszöbhöz mérnek; hiányzik = alapértékek. */
+export interface IntakeContext {
+  company?: CompanyProfile;
+  materialityHuf?: number;
+}
+
+export function intakeResults(state: IntakeState, kind: EngagementKind, ctx: IntakeContext = {}): IntakeResults {
   const merge = (rs: IntakeResult[]): IntakeResult => ({
     suggestions: rs.flatMap((r) => r.suggestions),
     companySuggestions: rs.flatMap((r) => r.companySuggestions),
@@ -95,6 +107,14 @@ export function intakeResults(state: IntakeState, kind: EngagementKind): IntakeR
     checklist: evaluateChecklist(state.answers, kind, state.profile.sectors),
     tables: merge(Object.values(state.tables).map((t) => t!.result)),
     documents: merge(state.documents.map(documentToIntake)),
+    financials: financialFindings(normalizeFinancials(state.financials), {
+      kind,
+      company: ctx.company ?? DEFAULT_COMPANY,
+      materialityHuf: ctx.materialityHuf ?? 50_000_000,
+      tables: state.tables,
+      headcount: state.profile.headcount,
+      litigationFlag: state.profile.flags.includes('LITIGATION'),
+    }),
   };
 }
 
@@ -102,7 +122,7 @@ export function intakeResults(state: IntakeState, kind: EngagementKind): IntakeR
 export function intakeFacts(state: IntakeState, kind: EngagementKind): KnownFact[] {
   const r = intakeResults(state, kind);
   const reg = state.registry ? registryFindings(state.registry, state).facts : [];
-  return [...r.documents.facts, ...r.tables.facts, ...r.checklist.facts, ...reg];
+  return [...r.documents.facts, ...r.tables.facts, ...r.checklist.facts, ...r.financials.facts, ...reg];
 }
 
 /** A teljes iratlista: szabály alapú lista + felvett extra iratok. */

@@ -1,5 +1,7 @@
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { Pillar, Scale5 } from '@/lib/risk/types';
+import type { FactKey, FinField } from '../financials/model';
+import type { DocType } from './docTypes';
 
 /**
  * Dokumentumelemzés. A fájlt a szerver csak memóriában dolgozza fel, nem tárolja;
@@ -41,9 +43,40 @@ export interface DocumentFact {
   pageIndex: number | null;
 }
 
+/** Beszámolósor kiolvasva (forintra átváltva), az ellenőrzött idézettel. */
+export interface ExtractedValue {
+  field: FinField;
+  year: number;
+  valueHuf: number;
+  /** A szám úgy, ahogy az iratban áll (pl. „2 104 350”). */
+  stated: string;
+  quote: string;
+  pageIndex: number | null;
+}
+
+/** Tény kiolvasva (pl. könyvvizsgálói vélemény típusa), idézettel. */
+export interface ExtractedFact {
+  key: FactKey;
+  value: string | number | boolean;
+  quote: string;
+  pageIndex: number | null;
+}
+
+export type FinUnit = 'HUF' | 'THOUSAND_HUF' | 'MILLION_HUF';
+
+export interface FinancialExtraction {
+  unit: FinUnit;
+  values: ExtractedValue[];
+  facts: ExtractedFact[];
+}
+
 export interface DocumentAnalysis {
   /** Pl. „Vevői keretszerződés”. */
   documentType: string;
+  /** A tanácsadó által választott (vagy felismert) irattípus. */
+  docType?: DocType;
+  /** Pénzügyi iratnál a kiolvasott számok és tények (jóváhagyásra várnak). */
+  financials?: FinancialExtraction;
   summary: string;
   findings: DocumentFinding[];
   facts: DocumentFact[];

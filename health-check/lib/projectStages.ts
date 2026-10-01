@@ -16,7 +16,7 @@ export interface Stage {
 }
 
 const STAGES: { id: string; label: string; page: PageId; steps: string[] }[] = [
-  { id: 'intake', label: 'Adatgyűjtés', page: 'adatok', steps: ['case', 'registry', 'checklist', 'tables', 'documents', 'overview'] },
+  { id: 'intake', label: 'Adatgyűjtés', page: 'adatok', steps: ['case', 'registry', 'financials', 'checklist', 'tables', 'documents', 'overview'] },
   { id: 'interviews', label: 'Interjúk', page: 'interjuk', steps: ['interviews'] },
   { id: 'assess', label: 'Értékelés', page: 'matrix', steps: ['matrix'] },
   { id: 'close', label: 'Lezárás', page: 'projekt', steps: ['timesheet', 'followup', 'knowledge'] },

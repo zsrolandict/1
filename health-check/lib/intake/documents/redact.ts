@@ -13,7 +13,8 @@ const PATTERNS: { label: string; tag: string; re: RegExp }[] = [
   { label: 'IBAN', tag: '[bankszámla]', re: /\bHU\d{2}(?:[ ]?\d{4}){6}\b/g },
   { label: 'bankszámla', tag: '[bankszámla]', re: /\b\d{8}-\d{8}(?:-\d{8})?\b/g },
   { label: 'adóazonosító jel', tag: '[adóazonosító]', re: /\b8\d{9}\b/g },
-  { label: 'TAJ', tag: '[TAJ]', re: /\b\d{3}[ -]\d{3}[ -]\d{3}\b/g },
+  // A beszámoló számoszlopai („475 900 451 300”) ne legyenek TAJ-szám: szám előtte vagy utána nem állhat.
+  { label: 'TAJ', tag: '[TAJ]', re: /(?<!\d[ -])\b\d{3}[ -]\d{3}[ -]\d{3}\b(?![ -]\d)/g },
   { label: 'telefon', tag: '[telefon]', re: /(?:\+36|\b06)[ /-]?\(?\d{1,2}\)?[ /-]?\d{3}[ -]?\d{3,4}\b/g },
   { label: 'igazolványszám', tag: '[igazolvány]', re: /\b\d{6}[A-Z]{2}\b/g },
 ];

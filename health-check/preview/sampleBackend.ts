@@ -90,11 +90,11 @@ export const sampleBackend: AiBackend = {
   async analyzeInterview(req) {
     return runInterviewAnalysis(sampleCall, req);
   },
-  async analyzeDocument(file, kind) {
+  async analyzeDocument(file, kind, docType) {
     if (file.size > 20 * 1024 * 1024) throw new Error('A dokumentum túl nagy (max. 20 MB).');
     const doc = await extractDocument(file.name, new Uint8Array(await file.arrayBuffer()));
     // A claude.ai bemeneti korlátja miatt itt kb. 40 ezer karakter fér egy elemzésbe.
-    return analyzeExtracted(sampleCall, doc, kind, { maxChars: 40_000, maxPages: 60 });
+    return analyzeExtracted(sampleCall, doc, kind, { maxChars: 40_000, maxPages: 60 }, docType);
   },
   async suggestCase(req) {
     return runCaseSuggestion(sampleCall, req);
