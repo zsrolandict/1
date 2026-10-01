@@ -14,8 +14,14 @@ const tanacsado: CaseProfile = {
 describe('iratbekérési lista', () => {
   it('az alap iratkör mindig benne van, kötelezőként', () => {
     const base = buildRequestList(EMPTY_PROFILE, 'HEALTH_CHECK').filter((d) => d.source === 'BASE');
-    expect(base).toHaveLength(15);
+    expect(base).toHaveLength(18);
     expect(base.every((d) => d.priority === 'REQUIRED')).toBe(true);
+    expect(base.map((d) => d.id)).toEqual(expect.arrayContaining(['B16', 'B17', 'B19']));
+  });
+
+  it('tranzakciónál a támogatási szerződés kötelező, finanszírozásnál a zálogjogok', () => {
+    expect(buildRequestList(EMPTY_PROFILE, 'VENDOR_DD').find((d) => d.id === 'K22')?.priority).toBe('REQUIRED');
+    expect(buildRequestList(EMPTY_PROFILE, 'FINANCING_READINESS').find((d) => d.id === 'K23')?.priority).toBe('REQUIRED');
   });
 
   it('tanácsadó cég, 30 fő, generációváltás: a cél, az ágazat, a létszám és a jellemző is ad iratot', () => {

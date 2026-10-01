@@ -39,17 +39,18 @@ Az órakeretből 2 óra projektvezetés, a többi a súlyok szerint oszlik a pil
 
 ## 3. Egy átvilágítás menete a programban
 
-A felső menü oldalai: **Adatgyűjtés → Interjúk → Red Flag mátrix → Projekt**. A jobb alsó sarokban a **Kalauz** mutatja a következő lépést („Odaviszlek” gombbal), a jobb felső sarokban a **projektválasztó** és a **mentésjelző** van.
+A bal oldali (összecsukható) sávban az oldalak: **Adatgyűjtés → Interjúk → Red Flag mátrix → Projekt**, alatta a **Kalauz**, amely a következő lépést mutatja („Odaviszlek” gombbal). A felső sávban a **projektválasztó** és a **mentésjelző** van. Minden oldal tetején a projekt négy szakasza látszik (Adatgyűjtés → Interjúk → Értékelés → Lezárás), kattintható.
 
 1. **Új projekt** (cégnév + típus) – üres katalógussal, mintaadat nélkül indul. Mellette 4 kitalált **bemutató cég** (gyártó, építőipari, könyvelő, IT-fejlesztő) próbálgatáshoz.
-2. **Adatgyűjtés** (5 fül):
+2. **Adatgyűjtés** (6 fül):
    - **0. Tényállás és iratbekérés:** ágazat, létszám, jellemzők (pl. generációváltás, több tulajdonos, közbeszerzés), szabad leírás. Ebből áll össze az **iratbekérési lista** (alap iratkör minden projektben + a típus/ágazat/jellemzők szerinti extra iratok, indokkal; állapot: bekérve / beérkezett / hiányzik / nem releváns). Itt olvasható be a **cégkivonat** is.
-   - **1. Kérdőív:** kb. 30 alapkérdés + ágazati kérdések, feltételes megjelenítéssel; a jelző válaszokból szabályalapú kockázati javaslat lesz.
-   - **2. Adattáblák:** vevő- és szállítói folyószámla, bérlista, szerződéslista (CSV/XLSX, a böngészőben dolgozva fel); mutatók pl. vevőkoncentráció, 90/180 napon túli tételek; küszöb fölött javaslat.
-   - **3. Dokumentumok:** szerződések, szabályzatok (PDF, DOCX, TXT) AI-elemzése a személyes adatok maszkolása után, idézettel és oldalszámmal.
-   - **4. Összkép:** a források keresztellenőrzése (ellentmondások, pl. a kérdőív szerint nincs vevőkoncentráció, a tábla szerint van), és AI-szintézis, amely több forrás összeolvasásából talál új kockázatot.
+   - **1. Pénzügyi alapadatok:** a beszámoló kulcsszámai 3 évre, mutatók (EBITDA, likviditás, eladósodottság, tőkehelyzet, fizetési idők), és beírható tények (könyvvizsgálói vélemény, NAV-tartozás, függő kötelezettségek, perek, hitelek, támogatások, tagi kölcsön, létszám, biztosítás). Minden értékhez forrás tartozik. Az iratból (beszámoló, kiegészítő melléklet, könyvvizsgálói jelentés…) az AI kiolvassa a számokat idézettel, a tanácsadó hagyja jóvá. Szabályok javasolnak belőle tételeket (pl. nem tiszta vélemény, tőkevesztés, árbevétel-esés).
+   - **2. Kérdőív:** kb. 30 alapkérdés + ágazati kérdések, feltételes megjelenítéssel; a jelző válaszokból szabályalapú kockázati javaslat lesz.
+   - **3. Adattáblák:** vevő- és szállítói folyószámla, bérlista, szerződéslista (CSV/XLSX, a böngészőben dolgozva fel); mutatók pl. vevőkoncentráció, 90/180 napon túli tételek; küszöb fölött javaslat.
+   - **4. Dokumentumok:** iratok (PDF, DOCX, TXT) AI-elemzése a személyes adatok maszkolása után, idézettel és oldalszámmal. Feltöltéskor **irattípus** választható (23 típus: beszámoló, melléklet, könyvvizsgálói jelentés, vezetői levél, NAV-folyószámla, adóellenőrzés, hitel- és támogatási szerződés, létesítő okirat, vevői/szállítói szerződés, munkaszerződés, bérlet, biztosítás, adatvédelem, peres irat…); típusonként célzott „mit keresünk” lista, és a bekérési listán az irat „Beérkezett” lesz.
+   - **5. Összkép:** a források keresztellenőrzése (ellentmondások, pl. a kérdőív szerint nincs vevőkoncentráció, a tábla szerint van), és AI-szintézis, amely több forrás összeolvasásából talál új kockázatot.
 3. **Interjúk:** a típusból és a bejelölt kockázatokból **interjúterv** (kivel, miért, mennyi ideig) és célzott **kérdéslista**; hangfelvétel/videó → **leirat** (több beszélő is), vagy beírt jegyzet → **AI-elemzés**: állítások, javasolt kockázatok, **ellentmondások** az ismert tényekkel, utókérdések. Ha az átvilágítás típusa közben változik, a program jelzi, hogy az elemzést újra kell futtatni.
-4. **Red Flag mátrix:** a katalógus tételei (bepipálás = fennáll), 1–5 valószínűség és hatás, forintosítás, pillér-egészség, 5×5 hőtérkép, akcióterv, ajánlat. Kiegészítők: **Mi lenne, ha…** (javítások hatásának szimulációja), **Vevői kérdéslista** (eladói átvilágításnál a várható vevői kérdések, válaszvázlat, iratok), **Utókövetés** (javítási állapot, pillanatkép, összevetés 3–6 hónap múlva). Export: **PDF-riport**, **Excel**.
+4. **Red Flag mátrix:** a katalógus tételei (bepipálás = fennáll), 1–5 valószínűség és hatás, forintosítás, pillér-egészség, 5×5 hőtérkép, akcióterv, ajánlat. Tapadó belső menü a szakaszokhoz, részletes vagy tömör táblázatnézet. Minden tételnél **Miért?** panel: a források idővonala (hely, idézet, indoklás, hatás, ki fogadta el), ugrás a forrásra, a pontszám levezetése, a módosítások naplója (csökkentésnél kötelező indoklás). Kiegészítők: **Mi lenne, ha…** (javítások hatásának szimulációja), **Vevői kérdéslista** (eladói átvilágításnál a várható vevői kérdések, válaszvázlat, iratok), **Utókövetés** (javítási állapot, pillanatkép, összevetés 3–6 hónap múlva). Export: **PDF-riport** (benne „A vizsgálat terjedelme” fejezet és „Bizonyítéktár” melléklet), **Excel** (Bizonyítéktár, Változásnapló, Vizsgálati terjedelem munkalap).
 5. **Projekt:** **Időkeret** (órarögzítés pillérenként, 80%/100% riasztás, belső költség, fedezet a díjhoz képest) és **Tudástár** (a lezárt projektek anonim összesítője: mi gyakori egy ágazatban, mi nincs itt jelölve, hol tér el a katalógus a tapasztalattól).
 
 **Modulkapcsolók:** a Kalauz „Modulok” fülén 12 modul kikapcsolható (pl. cégkivonat, interjúk, tudástár); a kikapcsolt modul eltűnik a menüből és a lépések közül, az adatai megmaradnak. A Red Flag mátrix mindig bekapcsolt.
@@ -62,7 +63,9 @@ A felső menü oldalai: **Adatgyűjtés → Interjúk → Red Flag mátrix → P
 | Ágazati katalógusok (6 ágazat) | kézi | saját tételek és kérdések |
 | Cégkivonat | AI-kiolvasás + szabályok | pl. folyamatban lévő eljárás → piros javaslat; gyakori vezetőváltás; ellentmondás a kérdőívvel |
 | Kérdőív, adattáblák | kézi, szabályalapú | küszöbök, feltételek |
-| Dokumentumelemzés | AI | maszkolás után, idézettel |
+| Dokumentumelemzés | AI | maszkolás után, idézettel; irattípus szerint célzottan |
+| Pénzügyi alapadatok | kézi + AI-kiolvasás jóváhagyással + szabályok | a szám benne kell legyen az idézetben; ezer Ft → Ft átváltás a programban |
+| Bizonyíték-lánc, változásnapló | kézi (automatikus rögzítés) | minden elfogadásnál és módosításnál |
 | Keresztellenőrzés | kézi (szabály) | források összevetése |
 | Összkép-szintézis | AI | csak új, több forrásból adódó kockázat |
 | Interjúterv, kérdések | kézi (+ AI-bővítés) | |
@@ -86,6 +89,14 @@ A felső menü oldalai: **Adatgyűjtés → Interjúk → Red Flag mátrix → P
 - **Ajánlat:** a nem zöld tételek becsült szolgáltatási díja divíziónként; beszámítható kredit = min(átvilágítási díj, teljes díj).
 - **Üres értékelés:** amíg egyetlen tétel sincs bepipálva, a program nem mutat „Zöld / 100” eredményt, hanem „Még nincs értékelés” teendőt; export előtt rákérdez.
 
+## 5b. Nyomon követhetőség
+
+- **Bizonyíték-lánc:** minden tételhez forráslista; minden forrás külön bejegyzés (pontos hely, szó szerinti idézet, indoklás, hatás a pontszámra, ki fogadta el, mikor, AI-nál bizonyosság). A második forrás nem írja felül az elsőt.
+- **Levezetés:** megadott érték → típus-korrekció → pontszám → kitettség → várható veszteség → lényegességi küszöb → besorolás; Health Score pillérenként és súlyozva.
+- **Változásnapló:** kézi pipálás és módosítás naplózva; a súlyosság csökkentéséhez indoklás kell, hiánya látszik a sorban és a riport belső jelzésében.
+- **Forrásnézet:** egy iratnál vagy táblánál látszik, mely tételek születtek belőle.
+- **Riport:** „A vizsgálat terjedelme” (mit láttunk, mit nem) és „Bizonyítéktár” melléklet.
+
 ## 6. Forintosítás
 
 A tételek kitettségét képletek becsülik a cégadatokból (éves árbevétel, fedezeti hányad, tényleges és iparági vevői fizetési idő – DSO); tételenként szakértői felülírással:
@@ -103,6 +114,8 @@ Ha az árbevétel nincs megadva (új projekt), a képletek 0 Ft-ot adnak, és ez
 - Jog: LEG-01 Change of Control záradék kulcsszerződésben · LEG-02 Hiányzó IP-átruházás · LEG-03 Elavult létesítő okirat / SZMSZ · LEG-04 GDPR megfelelés hiányosságai
 - Operáció: OPS-01 Beszállítói koncentráció (> 40%) · OPS-02 Technológiai adósság (nem támogatott ERP) · OPS-03 Hiányzó üzletmenet-folytonossági terv · OPS-04 Engedélyek / hatósági megfelelés lejárata · OPS-05 Vevőkoncentráció (> 25%)
 - HR: HR-01 Kulcsember-függőség · HR-02 Színlelt vállalkozói jogviszonyok · HR-03 Hiányos munkaidő-nyilvántartás · HR-04 Nem versenyképes javadalmazás / magas fluktuáció
+
+**Pénzügyi alapadatokból (PA-01…PA-20):** nem tiszta könyvvizsgálói vélemény, folytatási bizonytalanság, tőkevesztés, árbevétel-esés, romló EBITDA, eladósodottság, gyenge likviditás, adótartozás, adóellenőrzési megállapítás, függő kötelezettség, perek, támogatás fenntartási kötelezettséggel, hitelkovenáns / tulajdonosváltási záradék, közeli hitellejárat, tagi kölcsön, késedelmes letétbe helyezés, osztalék gyenge tőke mellett, vezetői levél hiányosságai, felelősségbiztosítás hiánya, beszámoló ↔ adattábla eltérés. Csak elfogadott javaslatként kerülnek a mátrixba.
 
 **Kiegészítők:** típusonkénti tételek (pl. VDD-01 rendezetlen tulajdonosi kölcsönök, FIK-01 kovenánssértés kockázata), **ágazati** tételek 6 ágazatra (Gyártás, Építőipar, Kereskedelem, Tanácsadás, Informatika, Könyvelés – pl. plafon nélküli kötbér, elöregedett géppark), és **egyedi** (katalóguson kívüli) tételek az AI-javaslatokból vagy kézzel. Minden tételhez szakmai indoklás, javasolt intézkedés, munkanap, felelős divízió és becsült díj tartozik.
 
@@ -124,7 +137,7 @@ Ha az árbevétel nincs megadva (új projekt), a képletek 0 Ft-ot adnak, és ez
 - **Mentés fájlba / visszatöltés** (JSON): a projekt minden adata; visszatöltéskor ellenőrzött szerkezet, mindig új projektként (meglévőt nem ír felül). Ha régóta nincs fájlba mentés, a program figyelmeztet.
 - **Több projekt egyszerre:** az aktív projekt böngészőlaponként külön; a **Projektjeim** áttekintő mutatja minden projekt haladását, következő lépését, és ott folytatja, ahol abbahagytad. Ha ugyanazt a projektet két lapon módosítják, a program jelez.
 - **Tudástár:** a lezárt projektekből csak anonim adat (típus, ágazat, árbevétel-sáv, katalógustételek besorolása) – cégnév, összeg, bizonyíték nem.
-- **Adatbázis (előkészítve, még nincs bekötve):** Supabase (PostgreSQL, EU régió), 9 migráció, sorszintű jogosultsággal (RLS) – pl. a HR-szakértő csak HR-dokumentumot és a bizalmas interjút látja, az ügyfél csak a saját feltöltéseit –, audit naplóval.
+- **Adatbázis (előkészítve, még nincs bekötve):** Supabase (PostgreSQL, EU régió), 10 migráció, sorszintű jogosultsággal (RLS) – pl. a HR-szakértő csak HR-dokumentumot és a bizalmas interjút látja, az ügyfél csak a saját feltöltéseit –, audit naplóval.
 
 ## 10. Technológia és biztonság
 
@@ -132,7 +145,7 @@ Ha az árbevétel nincs megadva (új projekt), a képletek 0 Ft-ot adnak, és ez
 - **Riport:** PDF a böngészőben (react-pdf), Excel saját íróval.
 - **Bejelentkezés:** Supabase (céges Microsoft-fiók vagy meghívásos e-mail link); beállítás nélkül az AI-funkciók zárva.
 - **Szerveroldali védelmek:** minden AI-végpont bejelentkezett belső felhasználót kér; felhasználónkénti hívásszám-korlát (40 AI-hívás, 10 leirat óránként); bemenet-ellenőrzés és méretkorlátok; tömörítési bomba elleni védelem; belső hibarészlet nem jut ki; biztonsági fejlécek (CSP, keretezés tiltása); belépés után csak saját oldalra irányít vissza.
-- **Minőség:** automatikus ellenőrzés (CI) minden változásnál – típusok, lint, formázás, 220 unit teszt, build, adatbázis-migrációk és jogosultsági füsttesztek, két böngészős füstteszt (előnézet és éles build).
+- **Minőség:** automatikus ellenőrzés (CI) minden változásnál – típusok, lint, formázás, 252 unit teszt, build, adatbázis-migrációk és jogosultsági füsttesztek, két böngészős füstteszt (előnézet és éles build).
 - **Monitoring:** strukturált, tartalom nélküli napló minden AI-hívásról és hibáról (riasztás állítható rá).
 
 ## 11. Állapot és korlátok (béta)
@@ -153,7 +166,7 @@ Ha az árbevétel nincs megadva (új projekt), a képletek 0 Ft-ot adnak, és ez
 
 1. Az ágazati katalógusok (6 ágazat) szakmai átnézése és jóváhagyása.
 2. A belső óraköltségek (partner / szenior / junior) véglegesítése – most tervezet: 25 000 / 15 000 / 9 000 Ft/óra.
-3. A típusfüggő korrekciók és a képlet-paraméterek jóváhagyása.
+3. A típusfüggő korrekciók, a képlet-paraméterek és a pénzügyi szabályok küszöbeinek jóváhagyása (pl. árbevétel-esés 20%, nettó adósság/EBITDA 3,5×, likviditási ráta 1).
 4. Egy ár mind a 7 típusra, vagy típusonként külön csomag? Meddig érvényes a kredit?
 5. Dokumentumok megőrzési ideje lezárás után; ki üzemelteti a rendszert; melyik AI-szolgáltatóval köt DPA-t a cég.
 6. Pilot: melyik 2–3 projekt, kik vesznek részt.

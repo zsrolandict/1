@@ -10,7 +10,7 @@ Ez a leírás annak szól, aki a programot fejleszti, élesíti vagy üzemelteti
 | `npm run check` | Típusellenőrzés + lint + unit tesztek – commit előtt. |
 | `npm run format` | Prettier-formázás (a CI csak ellenőrzi: `format:check`). |
 | `npm run build` | Éles build. |
-| `npm run e2e` | Előnézet-build + böngészős füstteszt (12 lépés, szerver és AI-kulcs nélkül). Helyi Chromiummal: `CHROMIUM_PATH=/út/chrome npm run e2e`. |
+| `npm run e2e` | Előnézet-build + böngészős füstteszt (15 lépés, szerver és AI-kulcs nélkül). Helyi Chromiummal: `CHROMIUM_PATH=/út/chrome npm run e2e`. |
 | `npm run build && npm run e2e:next` | A Next-alkalmazás füsttesztje éles buildön: oldalak, biztonsági fejlécek (CSP), belépés-visszairányítás, `?projekt=`, hidratálási és CSP-hibák. |
 | `bash scripts/db-smoke.sh` | Az összes migráció + jogosultsági füsttesztek egy **üres** PostgreSQL-adatbázison (a `PG*` környezeti változók szerint). |
 | `npm run build:preview:publish` | Kattintható előnézet (claude.ai Artifact) közzétehető fájlokra bontva: `dist-preview/publish/` (index.html, app.js, app.css, fonts). |

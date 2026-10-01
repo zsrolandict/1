@@ -22,6 +22,7 @@ Belső eszköz az ICT Európa átvilágítási szolgáltatásaihoz. Nem csak ven
 | 12 | Üzemeltetés: parancsok, CI, élesítés, visszaállítás, kulcscsere | [`docs/08-uzemeltetes.md`](docs/08-uzemeltetes.md), `.github/workflows/health-check-ci.yml` |
 | 13 | AI-promptok: mit kér, miért, hogyan ellenőrzött | [`docs/09-ai-promptok.md`](docs/09-ai-promptok.md) |
 | 14 | Teljes rendszerleírás egy dokumentumban (AI-beszélgetéshez, pl. Gemini) | [`docs/10-rendszerleiras-ai-beszelgeteshez.md`](docs/10-rendszerleiras-ai-beszelgeteshez.md) |
+| 15 | Bizonyíték-lánc (Miért? panel, levezetés, változásnapló) és pénzügyi alapadatok (beszámoló, melléklet, könyvvizsgálói jelentés, szabályok), vizsgálati terjedelem és bizonyítéktár a riportban | [`docs/11-javaslat-nyomonkovethetoseg-es-alapadatok.md`](docs/11-javaslat-nyomonkovethetoseg-es-alapadatok.md), [`docs/07-bovitett-modulok.md`](docs/07-bovitett-modulok.md), `0010` migráció |
 
 ## Futtatás
 
@@ -61,7 +62,9 @@ psql -d hc_test -f supabase/tests/00_auth_stub.sql \
                 -f supabase/migrations/0007_sectors_overview.sql \
                 -f supabase/migrations/0008_snapshots.sql \
                 -f supabase/migrations/0009_registry_benchmark_timesheet.sql \
-                -f supabase/tests/07_benchmark_smoke.sql
+                -f supabase/tests/07_benchmark_smoke.sql \
+                -f supabase/migrations/0010_evidence_financials.sql \
+                -f supabase/tests/08_evidence_financials_smoke.sql
 ```
 
 A füstteszt öt felhasználó nézőpontjából ellenőrzi a láthatóságot: partner mindent lát, HR-szakértő csak HR-dokumentumot és kulcsember-interjút, pénzügyi szakértő csak főkönyvet, ügyfél csak a saját feltöltéseit, idegen ügyfél semmit. Emellett ellenőrzi, hogy a kredit-főkönyv append-only és nem mehet negatívba, és hogy pénzügyi szakértő nem írhat HR red flaget. Az interjús teszt azt ellenőrzi, hogy bizalmas (HR 361) interjút csak a HR-szakértő és a partner lát, az ügyfél egyetlen interjút sem, hozzájárulás nélkül nem menthető felvétel, és AI-találat nem létezhet idézet nélkül.

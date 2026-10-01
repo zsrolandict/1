@@ -113,6 +113,32 @@ try {
   await p.waitForTimeout(300);
   check('órarögzítés a rögzítő nevével', (await p.locator('tbody tr').first().innerText()).includes('Teszt Elek'));
 
+  // Pénzügyi alapadatok: minta beszámoló → jóváhagyás → szabályjavaslat → mátrix, bizonyíték-lánc a elfogadó nevével
+  await p.locator('nav button[aria-haspopup]').click();
+  await p.getByRole('button', { name: 'Építőipari cég', exact: true }).click();
+  await p.waitForTimeout(600);
+  await p.evaluate(() => (location.hash = 'adatok'));
+  await p.waitForTimeout(700);
+  await p.getByRole('button', { name: /Dokumentumok/ }).first().click();
+  await p.getByRole('button', { name: /^Beszamolo_/ }).click();
+  await p.getByRole('button', { name: /^Konyvvizsgaloi_/ }).click();
+  await p.getByRole('button', { name: /Pénzügyi alapadatok/ }).first().click();
+  await p.waitForTimeout(400);
+  const pending = Number((await p.getByText(/jóváhagyásra várnak \(\d+\)/).innerText()).match(/\((\d+)\)/)?.[1] ?? 0);
+  check('beszámolóból kiolvasott értékek jóváhagyásra várnak', pending >= 30, String(pending));
+  await p.getByRole('button', { name: 'Mind átvétele' }).click();
+  await p.waitForTimeout(400);
+  check('szabályjavaslat a könyvvizsgálói véleményből', (await p.getByText('Nem tiszta könyvvizsgálói vélemény').count()) > 0);
+  await p.getByRole('button', { name: /Mind \(\d+\) elfogad/ }).click();
+  await p.waitForTimeout(400);
+  await p.evaluate(() => (location.hash = 'matrix'));
+  await p.waitForTimeout(800);
+  const row = p.locator('tr', { hasText: 'PA-01' }).first();
+  await row.getByRole('button', { name: /Miért\?/ }).click();
+  await p.waitForTimeout(300);
+  const why = await p.locator('section[aria-label="Bizonyíték-lánc"]').first().innerText();
+  check('Miért? panel: forrás, idézet, elfogadó', /Pénzügyi alapadatok/.test(why) && /Teszt Elek/.test(why), why.slice(0, 200));
+
   check('nincs JavaScript-hiba', errors.length === 0, errors.join(' | '));
 } catch (e) {
   check('a teszt végigfutott', false, e instanceof Error ? e.message.split('\n')[0] : String(e));

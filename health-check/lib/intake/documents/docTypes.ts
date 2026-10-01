@@ -88,7 +88,7 @@ export const DOC_TYPES: Record<DocType, DocTypeSpec> = {
       'átlagos statisztikai létszám',
       'lízing, támogatások',
     ],
-    requests: ['B03'],
+    requests: ['B03', 'B16'],
     fields: ['provisions'],
     facts: [
       'contingentHuf',
@@ -115,27 +115,27 @@ export const DOC_TYPES: Record<DocType, DocTypeSpec> = {
       'figyelemfelhívás',
       'kulcsfontosságú könyvvizsgálati kérdések',
     ],
-    requests: ['B03'],
+    requests: ['B03', 'B17'],
     facts: ['auditOpinion', 'goingConcern', 'emphasisOfMatter'],
   },
   MGMT_LETTER: {
     label: 'Könyvvizsgálói vezetői levél (management letter)',
     group: 'Pénzügyi beszámoló',
     lookFor: ['belső kontroll hiányosságai', 'javasolt intézkedések és a vezetés válasza', 'ismétlődő megállapítások'],
-    requests: [],
+    requests: ['B17'],
     facts: ['managementLetterIssues'],
   },
   BUSINESS_REPORT: {
     label: 'Üzleti jelentés',
     group: 'Pénzügyi beszámoló',
     lookFor: ['a vezetés által megnevezett kockázatok', 'tervek, beruházások', 'piaci helyzet'],
-    requests: [],
+    requests: ['B16'],
   },
   RESOLUTION: {
     label: 'Beszámolót elfogadó / osztalékról szóló határozat',
     group: 'Pénzügyi beszámoló',
     lookFor: ['a beszámoló elfogadása', 'osztalék összege', 'eredménytartalék felhasználása'],
-    requests: [],
+    requests: ['B18'],
     facts: ['dividendHuf'],
   },
   INTERIM: {
@@ -148,7 +148,7 @@ export const DOC_TYPES: Record<DocType, DocTypeSpec> = {
     label: 'NAV-folyószámla / adóigazolás',
     group: 'Adó és hatóság',
     lookFor: ['tartozás adónemenként', 'késedelmi pótlék', 'fizetési könnyítés, részletfizetés', 'köztartozásmentesség'],
-    requests: ['B10'],
+    requests: ['B10', 'B19'],
     facts: ['taxDebtHuf', 'taxClean'],
   },
   TAX_AUDIT: {
@@ -162,7 +162,7 @@ export const DOC_TYPES: Record<DocType, DocTypeSpec> = {
     label: 'Adóbevallás (társasági adó, iparűzési adó, ÁFA)',
     group: 'Adó és hatóság',
     lookFor: ['adóalap és a beszámoló egyezése', 'önellenőrzés', 'ÁFA-bevallás és az Online Számla eltérése'],
-    requests: ['B10'],
+    requests: ['B10', 'K24', 'B20'],
     facts: ['selfRevisions'],
   },
   LOAN: {
@@ -175,7 +175,7 @@ export const DOC_TYPES: Record<DocType, DocTypeSpec> = {
       'biztosítékok, zálogjog',
       'felmondási okok',
     ],
-    requests: ['B09'],
+    requests: ['B09', 'K09', 'K23'],
     facts: ['loanHuf', 'loanMaturity', 'covenantsOk', 'loanChangeOfControl', 'pledges'],
   },
   GRANT: {
@@ -188,7 +188,7 @@ export const DOC_TYPES: Record<DocType, DocTypeSpec> = {
       'tulajdonosváltáshoz szükséges hozzájárulás',
       'visszafizetési feltételek',
     ],
-    requests: [],
+    requests: ['K22'],
     facts: ['grantHuf', 'grantSustainUntil', 'grantOwnerChangeConsent'],
   },
   ARTICLES: {

@@ -7,6 +7,7 @@ import { PILLAR_LABEL } from '@/lib/risk/catalog';
 import type { RiskItem, Scale5 } from '@/lib/risk/types';
 import { templateFor } from './apply';
 import type { IntakeState } from './state';
+import { FACT_SPEC, FIN_FIELD_LABEL, hasFinancials, normalizeFinancials } from './financials/model';
 import type { IntakeSuggestion } from './types';
 
 /**
@@ -19,7 +20,7 @@ import type { IntakeSuggestion } from './types';
 
 export interface SynthesisSource {
   id: string;
-  kind: 'TÉNYÁLLÁS' | 'KÉRDŐÍV' | 'ADATTÁBLA' | 'DOKUMENTUM' | 'INTERJÚ';
+  kind: 'TÉNYÁLLÁS' | 'KÉRDŐÍV' | 'PÉNZÜGYI ADAT' | 'ADATTÁBLA' | 'DOKUMENTUM' | 'INTERJÚ';
   label: string;
   text: string;
 }
@@ -43,6 +44,19 @@ export function buildSources(state: IntakeState, records: InterviewRecords, fact
   const checklistFacts = facts.filter((f) => f.id.startsWith('CHK-'));
   if (checklistFacts.length) {
     out.push({ id: 'K1', kind: 'KÉRDŐÍV', label: 'Ügyfélkérdőív válaszai', text: checklistFacts.map((f) => f.statement).join('\n') });
+  }
+  // Pénzügyi alapadatok: a jóváhagyott kulcsszámok és tények, forrással (az AI ebből is idézhet).
+  const fin = normalizeFinancials(state.financials);
+  if (hasFinancials(fin)) {
+    const lines = [
+      ...fin.years.flatMap((y) =>
+        (Object.keys(y.values) as (keyof typeof y.values)[]).map((k) => `${y.year} ${FIN_FIELD_LABEL[k]}: ${y.values[k]!.toLocaleString('hu-HU')} Ft`),
+      ),
+      ...(Object.keys(fin.facts) as (keyof typeof fin.facts)[])
+        .filter((k) => fin.facts[k] != null)
+        .map((k) => `${FACT_SPEC[k].label}: ${String(fin.facts[k])}`),
+    ];
+    out.push({ id: 'P1', kind: 'PÉNZÜGYI ADAT', label: 'Pénzügyi alapadatok', text: lines.join('\n') });
   }
   Object.values(state.tables).forEach((tbl, i) => {
     if (!tbl) return;

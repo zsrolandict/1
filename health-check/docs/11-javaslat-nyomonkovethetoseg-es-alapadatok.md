@@ -5,7 +5,7 @@ A javaslat két kérdésre válaszol, amelyeket a bemutatón a végrehajtó olda
 1. **Honnan jön egy következtetés?** Egy-egy kockázatnál nem volt egyértelmű, mi alapján került be, és miért annyi a súlya.
 2. **Több alapadat kellene.** Az utolsó lezárt beszámoló, a kiegészítő melléklet és a könyvvizsgálói jelentés is legyen csatolható, és a rendszer dolgozzon is belőlük.
 
-Ez még javaslat, nincs leprogramozva. A végén ütemezés és nyitott kérdések vannak.
+**Állapot (2026. október):** mind a négy lépés elkészült (lásd 3. pont), a bétában kipróbálható. Ami még a szakértőkre vár: a küszöbök és paraméterek jóváhagyása, és a 4. pont nyitott kérdései. Részletes leírás: `docs/07-bovitett-modulok.md` (Bizonyíték-lánc, Pénzügyi alapadatok).
 
 ---
 
@@ -146,7 +146,16 @@ A már bekért iratoknál is érdemes típusonként rögzíteni, mit kell keresn
 
 ---
 
-## 3. Javasolt sorrend
+## 3. Sorrend és megvalósítás
+
+Mind a négy lépés elkészült:
+
+1. **Kész:** bizonyíték-lánc, „Miért?” panel, levezetés (tétel és Health Score), változásnapló kötelező indoklással, forrásnézet.
+2. **Kész:** „Pénzügyi alapadatok” fül, beírható kulcsszámok és tények, irattípusos kiolvasás jóváhagyással, 20 szabály (PA-01…PA-20) és keresztellenőrzések.
+3. **Kész:** feltöltés → „Beérkezett”; PDF: „A vizsgálat terjedelme” és „Bizonyítéktár”; Excel: Bizonyítéktár, Változásnapló, Vizsgálati terjedelem.
+4. **Kész:** adó, hatóság, finanszírozás, támogatás (beírható tények, szabályok, új bekérési tételek), 23 irattípus célzott ellenőrzőlistával.
+
+Az eredeti javaslat szerinti sorrend:
 
 1. **Bizonyíték-lánc + „Miért?” panel + levezetés + változásnapló** (1.1–1.5). Ez közvetlenül a kollégák kérdésére felel, és minden későbbi forrás erre épül.
 2. **Pénzügyi alapadatok fül:** beírható kulcsszámok (2.3), beszámoló, melléklet és könyvvizsgálói jelentés célzott kiolvasása jóváhagyással (2.1), az első szabályok és keresztellenőrzések (2.4).

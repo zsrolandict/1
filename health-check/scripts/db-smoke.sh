@@ -13,6 +13,7 @@ files=(
   "$M/0005_intake.sql" "$T/05_intake_smoke.sql"
   "$M/0006_case_profile_requests.sql" "$T/06_requests_smoke.sql"
   "$M/0007_sectors_overview.sql" "$M/0008_snapshots.sql" "$M/0009_registry_benchmark_timesheet.sql" "$T/07_benchmark_smoke.sql"
+  "$M/0010_evidence_financials.sql" "$T/08_evidence_financials_smoke.sql"
 )
 # Minden migráció benne van-e a listában? (új migrációnál ne maradjon ki)
 for m in "$M"/*.sql; do

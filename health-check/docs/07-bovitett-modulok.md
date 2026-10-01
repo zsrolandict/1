@@ -129,3 +129,25 @@ Minden piros és sárga tételhez elkészíti a várható vevői kérdéseket, e
 - **Magyarázó ⓘ ikonok** a szakkifejezések mellett (Health Score, összesített státusz, bruttó kitettség, várható veszteség, pontszám, lényegességi küszöb, fedezeti hányad, fizetési idő / DSO, súly, típusfüggő korrekció, kiemelt tételek, Red Flag mátrix). A szövegek egy helyen vannak (`lib/glossary.ts`), és a motor tényleges szabályait írják le.
 - **Kódok helyett nevek:** a „Fókusz: FIN-01…” sor helyett „Kiemelt tételek” a tételek nevével; a javasolt tételek gombjain a név; a sorokban „Kiemelt” címke; a típusfüggő korrekció szövegesen („a cél miatt valószínűség +1 → 5 × 4”).
 - **A mátrix teteje:** fejléc → eredmény (státusz, Health Score, összegek, pillérek, hőtérkép) → javasolt további tételek → összecsukható „Cégadatok és átvilágítás-típus” doboz (egy sorban összefoglalva; nyitva, ha hiányzik az árbevétel) → kockázati tételek.
+
+## Bizonyíték-lánc: minden következtetés útja
+
+- **Mit tud:** minden kockázati tételhez forráslista. Minden forrás külön bejegyzés: típus (kérdőív, adattábla, dokumentum, interjú, összkép, cégkivonat, pénzügyi alapadat, szakértői döntés), ki javasolta (szabály, AI, szakértő), pontos hely (irat és oldal, kérdés és válasz, táblamutató és küszöb, interjú-időbélyeg), szó szerinti idézet, indoklás, hatás a pontszámra, ki fogadta el és mikor, AI-nál a bizonyosság.
+- **Miért? panel** (a sor lenyitásakor): idővonal a forrásokkal, **Megnyitás** gomb a forrásra (kiemeléssel), a pontszám és a várható veszteség **levezetése** lépésenként, és a **szakértői módosítások** naplója. A Health Score számítása a pillérek alatt lenyitható.
+- **Változásnapló:** a kézi pipálás és a pontszám/összeg módosítása naplózva (ki, mikor, mit). Ha a szakértő **csökkenti** a súlyosságot, indoklást kell írnia; amíg nincs, a sorban „Indoklás hiányzik” jelvény látszik, és a riport belső jelzése felsorolja.
+- **Forrásnézet:** a dokumentumnál, táblánál és a pénzügyi adatoknál „Ebből a mátrixban” – kattintásra a mátrix sorára ugrik.
+- **Riport:** a részletező kártyákon a források (legfeljebb kettő), a PDF végén **Bizonyítéktár** melléklet, az Excelben Bizonyítéktár és Változásnapló munkalap.
+- **Kód:** `lib/risk/trail.ts`, `lib/risk/derivation.ts`, `components/risk/EvidencePanel.tsx`, `lib/focus.ts`. Régi mentésnél a szöveges bizonyítékból egy bejegyzés lesz.
+- **Adatbázis:** `red_flags.evidence_trail`, `red_flags.change_log` (0010).
+
+## Pénzügyi alapadatok
+
+- **Mit tud:** az Adatgyűjtés új fülén a beszámoló kulcsszámai legfeljebb 3 évre (eredménykimutatás és mérleg főbb sorai), mutatók (EBITDA, EBITDA-ráta, árbevétel-változás, nettó adósság/EBITDA, likviditási ráta, saját tőke/jegyzett tőke, vevői és szállítói fizetési idő, fedezeti hányad közelítése), és beírható tények öt csoportban: könyvvizsgálat és beszámoló, adó és hatóság, jogviták és függő kötelezettségek, finanszírozás és támogatás, létszám és biztosítás. Minden érték mellett a forrása (irat oldallal és idézettel, kézi bevitel, ügyfél szóbeli közlése, interjú, nyilvános adat).
+- **Iratból:** a Dokumentumok fülön az irattípus kiválasztásával (pl. éves beszámoló, kiegészítő melléklet, könyvvizsgálói jelentés) az AI kiolvassa a számokat és tényeket; ezek „jóváhagyásra várnak” a Pénzügyi alapadatok fülön, idézettel. Átvétel vagy elvetés a tanácsadó döntése.
+- **Szabályok** (`lib/intake/financials/rules.ts`, sablonok: `lib/risk/financialRisks.ts`, PA-01…PA-20): nem tiszta könyvvizsgálói vélemény, folytatási bizonytalanság, tőkevesztés, árbevétel-esés, romló EBITDA, eladósodottság, gyenge likviditás, adótartozás, adóellenőrzési megállapítás, függő kötelezettség, perek, támogatás fenntartási kötelezettséggel, hitelkovenáns / tulajdonosváltási záradék, közeli hitellejárat, tagi kölcsön, késedelmes letétbe helyezés, osztalék gyenge tőke mellett, vezetői levél hiányosságai, felelősségbiztosítás hiánya, beszámoló ↔ adattábla eltérés. Cégadat-javaslat: árbevétel, fedezeti hányad, tényleges fizetési idő a beszámolóból.
+- **Küszöbök** (`thresholds.ts`): kezdő javaslatok, szakértői jóváhagyásra várnak; a riport módszertana jelzi.
+- **Iratbekérés:** a feltöltött irat a típusa szerinti bekérési tételt „Beérkezett”-re állítja (a „Nem releváns” marad). Új bekérési tételek: kiegészítő melléklet és üzleti jelentés, könyvvizsgálói jelentés és vezetői levél, beszámolót elfogadó határozatok, adóigazolás, önellenőrzések, támogatási szerződések, zálogjogok, adóbevallás és beszámoló egyeztetése.
+- **Riport:** új fejezet „A vizsgálat terjedelme” – mit láttunk (iratok, táblák, interjúk, beszámoló-évek) és mit nem (bekért, de be nem érkezett iratok); az Excelben külön munkalap.
+- **Bemutató:** a 4 kitalált céghez kitalált beszámoló-csomag (beszámoló, melléklet, könyvvizsgálói jelentés) a Dokumentumok fülön.
+- **Adatbázis:** `financial_profiles` (pénzügyi pillér szerinti jogosultsággal), `documents.doc_type` (0010).
+
