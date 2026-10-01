@@ -6,8 +6,15 @@ import { strToU8, zipSync } from 'fflate';
  * Böngészőben és szerveren is fut; a fájl a gépen készül, nem megy sehova.
  */
 
-export type CellFormat = 'text' | 'huf' | 'int' | 'pct' | 'wrap';
-export type CellValue = string | number | null | undefined;
+export type CellFormat = 'text' | 'huf' | 'int' | 'pct' | 'wrap' | 'dec' | 'input' | 'inputHuf' | 'inputPct' | 'inputDec';
+
+/** Képletes vagy egyedi formátumú cella: `f` = Excel-képlet (angol függvénynevek, vessző), `v` = a program által számolt érték (megnyitáskor újraszámol). */
+export interface CellObj {
+  f?: string;
+  v?: string | number | null;
+  fmt?: CellFormat;
+}
+export type CellValue = string | number | null | undefined | CellObj;
 
 export interface SheetColumn {
   header: string;
@@ -22,7 +29,19 @@ export interface Sheet {
 }
 
 // cellXfs sorrendje a styles.xml-ben
-const STYLE: Record<CellFormat | 'header', number> = { text: 0, header: 1, huf: 2, int: 3, pct: 4, wrap: 5 };
+const STYLE: Record<CellFormat | 'header', number> = {
+  text: 0,
+  header: 1,
+  huf: 2,
+  int: 3,
+  pct: 4,
+  wrap: 5,
+  dec: 6,
+  input: 7,
+  inputHuf: 8,
+  inputPct: 9,
+  inputDec: 10,
+};
 
 const esc = (s: string) =>
   s
@@ -54,7 +73,17 @@ function sheetNames(sheets: Sheet[]): string[] {
   });
 }
 
-function cell(ref: string, v: CellValue, style: number): string {
+function cell(ref: string, raw: CellValue, colStyle: number): string {
+  if (raw != null && typeof raw === 'object') {
+    const style = raw.fmt ? STYLE[raw.fmt] : colStyle;
+    if (!raw.f) return cell(ref, raw.v, style);
+    const f = `<f>${esc(raw.f.replace(/^=/, ''))}</f>`;
+    if (typeof raw.v === 'number' && Number.isFinite(raw.v)) return `<c r="${ref}" s="${style}">${f}<v>${raw.v}</v></c>`;
+    if (raw.v == null || raw.v === '') return `<c r="${ref}" s="${style}" t="str">${f}<v></v></c>`;
+    return `<c r="${ref}" s="${style}" t="str">${f}<v>${esc(String(raw.v))}</v></c>`;
+  }
+  const v = raw;
+  const style = colStyle;
   if (v == null || v === '') return `<c r="${ref}" s="${style}"/>`;
   if (typeof v === 'number' && Number.isFinite(v)) return `<c r="${ref}" s="${style}"><v>${v}</v></c>`;
   return `<c r="${ref}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${esc(String(v))}</t></is></c>`;
@@ -81,17 +110,24 @@ const STYLES_XML =
   '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
   '<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0&quot; Ft&quot;"/></numFmts>' +
   '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
-  '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
-  '<fill><patternFill patternType="solid"><fgColor rgb="FFE2E8F0"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+  '<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
+  '<fill><patternFill patternType="solid"><fgColor rgb="FFE2E8F0"/><bgColor indexed="64"/></patternFill></fill>' +
+  '<fill><patternFill patternType="solid"><fgColor rgb="FFFEF3C7"/><bgColor indexed="64"/></patternFill></fill></fills>' +
   '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
   '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-  '<cellXfs count="6">' +
+  '<cellXfs count="11">' +
   '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"><alignment vertical="top"/></xf>' +
   '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"><alignment vertical="top" wrapText="1"/></xf>' +
   '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"><alignment vertical="top"/></xf>' +
   '<xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"><alignment vertical="top"/></xf>' +
   '<xf numFmtId="9" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"><alignment vertical="top"/></xf>' +
   '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>' +
+  '<xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"><alignment vertical="top"/></xf>' +
+  // Szerkeszthető bemenet: halványsárga kitöltés (szöveg, Ft, %, tizedes)
+  '<xf numFmtId="0" fontId="0" fillId="3" borderId="0" xfId="0" applyFill="1"><alignment vertical="top"/></xf>' +
+  '<xf numFmtId="164" fontId="0" fillId="3" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1"><alignment vertical="top"/></xf>' +
+  '<xf numFmtId="9" fontId="0" fillId="3" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1"><alignment vertical="top"/></xf>' +
+  '<xf numFmtId="4" fontId="0" fillId="3" borderId="0" xfId="0" applyNumberFormat="1" applyFill="1"><alignment vertical="top"/></xf>' +
   '</cellXfs>' +
   '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
   '</styleSheet>';
@@ -124,7 +160,8 @@ export function writeXlsx(sheets: Sheet[]): Uint8Array {
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
         '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
         names.map((n, i) => `<sheet name="${esc(n)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('') +
-        '</sheets></workbook>',
+        // Képletes munkafüzet: megnyitáskor újraszámol (a tárolt érték a program számítása).
+        '</sheets><calcPr fullCalcOnLoad="1"/></workbook>',
     ),
     'xl/_rels/workbook.xml.rels': strToU8(
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +

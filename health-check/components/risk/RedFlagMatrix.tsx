@@ -27,6 +27,7 @@ import {
   ArrowRight,
   ClipboardList,
   AlertTriangle,
+  Sigma,
   Rows3,
   Rows4,
   Lightbulb,
@@ -316,6 +317,15 @@ export default function RedFlagMatrix({
     }, `red-flag-${fileBase}.xlsx`);
   };
 
+  /** Levezetés-munkafüzet: ugyanaz a számítás élő képletekkel, a tanácsadó munkájához (minden tétel, a nem azonosítottak is). */
+  const exportDerivationWorkbook = () =>
+    save(async () => {
+      const { exportDerivation } = await import('@/lib/report/derivationWorkbook');
+      const { XLSX_MIME } = await import('@/lib/report/xlsx');
+      const bytes = exportDerivation({ companyName, kind, company, materialityHuf, assessment: result, scope }, items);
+      return new Blob([bytes.slice().buffer], { type: XLSX_MIME });
+    }, `levezetes-${fileBase}.xlsx`);
+
   /** Üres értékelésből (Zöld / 100) félrevezető riport lenne: előbb rákérdezünk. */
   const confirmEmptyExport = async () => {
     if (result.totals.identified > 0) return true;
@@ -385,6 +395,13 @@ export default function RedFlagMatrix({
           </ToolbarButton>
           <ToolbarButton onClick={exportExcel} icon={<FileSpreadsheet className="h-3.5 w-3.5" />}>
             Excel
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={exportDerivationWorkbook}
+            icon={<Sigma className="h-3.5 w-3.5" />}
+            title="Munkafüzet élő képletekkel: átírható változók, látszik, mi mit eredményez"
+          >
+            Levezetés
           </ToolbarButton>
           {showPrint && (
             <ToolbarButton onClick={async () => (await confirmEmptyExport()) && window.print()} icon={<Printer className="h-3.5 w-3.5" />}>
@@ -1556,9 +1573,9 @@ function SectionNav({ sections }: { sections: { id: string; label: string }[] })
   );
 }
 
-function ToolbarButton({ onClick, icon, children }: { onClick: () => void; icon: ReactNode; children: ReactNode }) {
+function ToolbarButton({ onClick, icon, title, children }: { onClick: () => void; icon: ReactNode; title?: string; children: ReactNode }) {
   return (
-    <button onClick={onClick} className={BTN_TOOL}>
+    <button onClick={onClick} title={title} className={BTN_TOOL}>
       {icon}
       {children}
     </button>
