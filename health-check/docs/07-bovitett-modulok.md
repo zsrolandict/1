@@ -169,6 +169,12 @@ Minden piros és sárga tételhez elkészíti a várható vevői kérdéseket, e
 - **Felület:** a százalékos mező 0–100 közé, a szám mező véges, nemnegatív értékre korlátoz; ágazati kérdés kiemelése javítva (QR1–QR4).
 - **Teszt:** `lib/intake/checklistValidation.test.ts`.
 
+## Szabályösszevonás, adatbázis-szinkron, determinizmus (audit K6, K7)
+
+- **Domináns szabály (K6):** ha egy tételre több szabály vagy forrás ad (valószínűség, hatás) párt, a legnagyobb L × I szorzatú pár érvényes **egészében**; holtversenynél a nagyobb hatású. Korábban a két maximumot külön vettük, ami olyan kombinációt is adhatott (pl. 5×2 és 2×5 → 5×5), amit egyik forrás sem állított. Érvényes a kérdőív szabálycsoportjaira, és arra is, amikor adatgyűjtési vagy interjú-javaslatot egy már azonosított tételbe olvasztunk; nem azonosított tételnél a katalógus kiinduló értéke nem számít megállapításnak (`lib/risk/dominant.ts`).
+- **Egy igazság a kódban és az adatbázisban (K7):** a 0013-as migráció `kind_adjustments` táblája és `red_flag_rag_for(likelihood, impact, exposure, materiality, kind, code, ignore)` függvénye ugyanazt a típuskorrekciót és 1–5 igazítást alkalmazza, mint a motor. A seed a TypeScript forrásból generált (`lib/db/sqlSync.ts`); a `supabase/tests/11_rag_parity.sql` 568 esetben veti össze az adatbázis besorolását a TS-motor elvárt eredményével. Ha a korrekciós tábla vagy a motor változik, a `lib/db/sqlSync.test.ts` elbukik → `npm run db:sync` (új migrációt ír, a régit nem módosítja).
+- **Determinizmus:** a tételek sorrendje teljes kulcs szerint (prioritás, pont, várható veszteség, kód, azonosító), a pillér-egészség szorzata rögzített sorrendben – ugyanaz a bemenet bármilyen sorrendben ugyanazt az eredményt és akciótervet adja (`lib/risk/engineEdges.test.ts`).
+
 ## Javítási terv és díj
 
 - **Mit tud:** minden tételnél a díj nem egy szám, hanem **javítási terv**: cél (mit kap az ügyfél), 2–6 munkalépés leírással, lépésenként ki végzi (üzletág, partner / szenior / junior), hány óra, milyen óradíjjal – ebből a díj. Mellette **sáv** (alsó – felső) és hogy mitől függ, az **ügyfél saját ráfordítása**, a díjban **nem szereplő külső költségek** (illeték, hatósági díj, licenc) és a feltételezések.

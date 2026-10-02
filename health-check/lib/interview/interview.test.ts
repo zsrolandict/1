@@ -132,15 +132,24 @@ describe('applySuggestion', () => {
     confidence: 0.8,
   };
 
-  it('katalógustételt azonosít, a súlyosságot nem csökkenti', () => {
+  it('nem azonosított katalógustételt azonosít: a javaslat párja érvényes (a katalógus-alapérték nem megállapítás, K6)', () => {
     const items = applySuggestion(DEFAULT_CATALOG, s, 'idézet');
     const leg03 = items.find((r) => r.code === 'LEG-03')!;
     expect(leg03.identified).toBe(true);
-    expect(leg03.likelihood).toBe(4);
-    expect(leg03.impact).toBe(2); // az eredeti 2 megmarad, nem csökken 1-re
+    expect([leg03.likelihood, leg03.impact]).toEqual([4, 1]);
     expect(leg03.exposureHuf).toBe(2_000_000);
     expect(leg03.source).toBe('AI_INTERVIEW');
     expect(items).toHaveLength(DEFAULT_CATALOG.length);
+  });
+
+  it('azonosított tételnél a domináns pár marad: nem keveredik új, senki által nem állított kombináció (K6)', () => {
+    const base = DEFAULT_CATALOG.map((r) => (r.code === 'LEG-03' ? { ...r, identified: true, likelihood: 2 as const, impact: 2 as const } : r));
+    // 2×2 = 4 és 4×1 = 4: holtverseny → a nagyobb hatású (a meglévő) marad; nem lesz 4×2.
+    const tie = applySuggestion(base, s, 'idézet').find((r) => r.code === 'LEG-03')!;
+    expect([tie.likelihood, tie.impact]).toEqual([2, 2]);
+    // Erősebb javaslat (5×3 = 15) egészében felülírja.
+    const strong = applySuggestion(base, { ...s, likelihood: 5, impact: 3 }, 'idézet').find((r) => r.code === 'LEG-03')!;
+    expect([strong.likelihood, strong.impact]).toEqual([5, 3]);
   });
 
   it('ismeretlen kódnál új egyedi tétel jön létre', () => {

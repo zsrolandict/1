@@ -4,6 +4,7 @@ import type { KnownFact } from '@/lib/interview/types';
 import type { Pillar, Scale5 } from '@/lib/risk/types';
 import type { Sector } from './requests';
 import { templateFor } from './apply';
+import { dominant } from '@/lib/risk/dominant';
 import type { IntakeResult, IntakeSuggestion, ValuationPatch } from './types';
 
 /**
@@ -853,8 +854,10 @@ export function evaluateChecklist(answers: ChecklistAnswers, kind: EngagementKin
     const first = hs[0];
     const code = first.code;
     const template = code ? templateFor(code) : undefined;
-    const likelihood = Math.max(...hs.map((h) => h.rule.likelihood)) as Scale5;
-    const impact = Math.max(...hs.map((h) => h.rule.impact)) as Scale5;
+    // Domináns szabály (K6): a legnagyobb L × I szorzatú szabály párja egészében; holtversenynél a nagyobb hatású.
+    const top = dominant(hs.map((h) => ({ likelihood: h.rule.likelihood, impact: h.rule.impact, h })))!;
+    const likelihood = top.likelihood as Scale5;
+    const impact = top.impact as Scale5;
     let valuationPatch: ValuationPatch | undefined;
     for (const h of hs) {
       const a = answers[h.q.id];
@@ -864,7 +867,8 @@ export function evaluateChecklist(answers: ChecklistAnswers, kind: EngagementKin
     }
     const questions = [...new Map(hs.map((h) => [h.q.id, h.q])).values()];
     const evidence = `Ügyfélkérdőív: ${questions.map((q) => `${q.id} ${q.short} – ${formatAnswer(q, answers[q.id])}`).join('; ')}`;
-    const notes = [...new Set(hs.map((h) => h.rule.note))];
+    // A domináns szabály indoklása elöl, a többi utána (a bizonyíték minden illeszkedő kérdést felsorol).
+    const notes = [...new Set([top.h.rule.note, ...hs.map((h) => h.rule.note)])];
     const patchKey = valuationPatch ? (valuationPatch.type === 'REVENUE_SHARE' ? valuationPatch.share : valuationPatch.count) : '';
     suggestions.push({
       key: `CHK:${groupKey}:${likelihood}${impact}:${patchKey}`,
@@ -884,6 +888,11 @@ export function evaluateChecklist(answers: ChecklistAnswers, kind: EngagementKin
 
   suggestions.sort((a, b) => b.likelihood * b.impact - a.likelihood * a.impact);
   return { suggestions, companySuggestions: [], facts, ...(rejectedAnswers.length ? { rejectedAnswers } : {}) };
+}
+
+/** A szövegben (bizonyíték, hivatkozás) szereplő kérdés-azonosítók – alap (Q01) és ágazati (QR1, QG2…) is. */
+export function questionIdsIn(text: string): string[] {
+  return [...new Set(text.match(/\bQ[A-Z]?\d+\b/g) ?? [])].filter((id) => BY_ID.has(id));
 }
 
 export function checklistQuestion(id: string): ChecklistQuestion | undefined {

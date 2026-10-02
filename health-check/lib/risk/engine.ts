@@ -133,8 +133,24 @@ export function scoreRisk(risk: RiskItem, options: Partial<EngineOptions> = {}):
  * és egy-egy kritikus tétel erősebben hat, mint sok apró.
  */
 function healthScore(risks: Pick<ScoredRisk, 'score'>[]): number {
-  const remaining = risks.reduce((acc, r) => acc * (1 - (r.score / 25) * 0.6), 1);
+  // Rögzített sorrend (pont szerint): a lebegőpontos szorzat így nem függ a tételek sorrendjétől.
+  const scores = risks.map((r) => r.score).sort((a, b) => a - b);
+  const remaining = scores.reduce((acc, s) => acc * (1 - (s / 25) * 0.6), 1);
   return Math.round(remaining * 100);
+}
+
+/**
+ * Teljes rendezési kulcs (determinizmus): prioritás, pont, várható veszteség
+ * csökkenő, majd kód és azonosító – holtversenynél sem a bemenet sorrendje dönt.
+ */
+function byPriority(a: ScoredRisk, b: ScoredRisk): number {
+  return (
+    b.priority - a.priority ||
+    b.score - a.score ||
+    b.expectedLossHuf - a.expectedLossHuf ||
+    (a.code < b.code ? -1 : a.code > b.code ? 1 : 0) ||
+    (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+  );
 }
 
 function pillarRag(summary: { red: number; amber: number; healthScore: number }): Rag {
@@ -159,7 +175,7 @@ export function assess(items: RiskItem[], partial: Partial<EngineOptions> = {}):
       ...r,
       priority: (r.score / 25) * 0.5 + (r.expectedLossHuf / maxLoss) * 0.5 + (r.quickWin ? 0.15 : 0),
     }))
-    .sort((a, b) => b.priority - a.priority);
+    .sort(byPriority);
 
   const pillars = emptyRecord(PILLARS, () => null as unknown as PillarSummary);
   for (const pillar of PILLARS) {

@@ -12,6 +12,7 @@ Ez a leírás annak szól, aki a programot fejleszti, élesíti vagy üzemelteti
 | `npm run build` | Éles build. |
 | `npm run e2e` | Előnézet-build + böngészős füstteszt (15 lépés, szerver és AI-kulcs nélkül). Helyi Chromiummal: `CHROMIUM_PATH=/út/chrome npm run e2e`. |
 | `npm run build && npm run e2e:next` | A Next-alkalmazás füsttesztje éles buildön: oldalak, biztonsági fejlécek (CSP), belépés-visszairányítás, `?projekt=`, hidratálási és CSP-hibák. |
+| `npm run db:sync` | A típuskorrekciós SQL-seed és a besorolás-paritásteszt újragenerálása a TypeScript forrásból; változásnál új migrációt ír. |
 | `bash scripts/db-smoke.sh` | Az összes migráció + jogosultsági füsttesztek egy **üres** PostgreSQL-adatbázison (a `PG*` környezeti változók szerint). |
 | `npm run build:preview:publish` | Kattintható előnézet (claude.ai Artifact) közzétehető fájlokra bontva: `dist-preview/publish/` (index.html, app.js, app.css, fonts). |
 

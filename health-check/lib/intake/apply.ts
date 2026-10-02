@@ -1,3 +1,4 @@
+import { clampPair, mergeFinding } from '@/lib/risk/dominant';
 import { KIND_RISKS } from '@/lib/engagement/kindRisks';
 import { catalogDefault, PILLAR_LABEL } from '@/lib/risk/catalog';
 import { sectorRiskTemplate } from '@/lib/risk/sectorRisks';
@@ -87,8 +88,8 @@ export function applyIntakeSuggestion(items: RiskItem[], s: IntakeSuggestion, co
     return withTrail(r, {
       ...withValuation,
       identified: true,
-      likelihood: r.identified ? clamp5(Math.max(r.likelihood, s.likelihood)) : clamp5(s.likelihood),
-      impact: r.identified ? clamp5(Math.max(r.impact, s.impact)) : clamp5(s.impact),
+      // Domináns szabály (K6): a meglévő megállapítás és a javaslat közül az erősebb pár egészében.
+      ...clampPair(mergeFinding(r, s)),
       ...raiseExposure(withValuation, s.exposureHufEstimate, company),
       source: SOURCE[s.origin],
       evidence: appendEvidence(r.identified ? r.evidence : undefined, s.evidence),

@@ -17,7 +17,8 @@
     "build:preview:publish": "vite build --config preview/vite.config.ts && node scripts/split-preview.mjs",
     "e2e": "vite build --config preview/vite.config.ts && node scripts/split-preview.mjs --harness && node e2e/smoke.mjs",
     "check": "npm run typecheck && npm run lint && npm test",
-    "e2e:next": "node e2e/next-smoke.mjs"
+    "e2e:next": "node e2e/next-smoke.mjs",
+    "db:sync": "WRITE_SQL=1 vitest run lib/db/sqlSync.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.129.0",

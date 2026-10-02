@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 import { applyCompanySuggestion, applyIntakeSuggestion, isCompanySuggestionApplied } from '@/lib/intake/apply';
-import { CHECKLIST, checklistProgress, isVisible, type Answer, type ChecklistQuestion } from '@/lib/intake/checklist';
+import { CHECKLIST, checklistProgress, isVisible, questionIdsIn, type Answer, type ChecklistQuestion } from '@/lib/intake/checklist';
 import { documentChars, extractPlain, SUPPORTED_DOCUMENTS } from '@/lib/intake/documents/extract';
 import type { DocumentAnalysis, DocumentFormat, DocumentRecord } from '@/lib/intake/documents/types';
 import { SAMPLE_ANSWERS } from '@/lib/intake/samples/checklist';
@@ -391,7 +391,7 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
                 }}
                 onSample={SAMPLE_ANSWERS[ws.scenarioId] ? () => updateIntake({ answers: SAMPLE_ANSWERS[ws.scenarioId], invalidAnswers: undefined }) : undefined}
                 onClear={() => updateIntake({ answers: {}, invalidAnswers: undefined })}
-                flagged={new Set(results.checklist.suggestions.flatMap((s) => s.evidence.match(/\bQR?\d+\b/g) ?? []))}
+                flagged={new Set(results.checklist.suggestions.flatMap((s) => questionIdsIn(s.evidence)))}
                 rejected={[
                   ...Object.entries(intake.invalidAnswers ?? {}).map(([id, x]) => ({ id, reason: `${x.reason}; mentett érték: ${JSON.stringify(x.value)}` })),
                   ...(results.checklist.rejectedAnswers ?? []),

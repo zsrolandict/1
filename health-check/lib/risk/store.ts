@@ -11,6 +11,7 @@ import { catalogDefault, PILLAR_LABEL } from './catalog';
 import type { RiskItem, Scale5 } from './types';
 import { DEFAULT_COMPANY, resolveExposure, type CompanyProfile } from './valuation';
 import { addEntry, describeEffect, trailOf } from './trail';
+import { clampPair, mergeFinding } from './dominant';
 
 /**
  * MVP munkaállapot (egy projekt) a böngészőben. Élesben ugyanez a forma
@@ -407,8 +408,8 @@ export function applySuggestion(
         : withTrail(r, {
             ...r,
             identified: true,
-            likelihood: clamp5(Math.max(r.likelihood, s.likelihood)),
-            impact: clamp5(Math.max(r.impact, s.impact)),
+            // Domináns szabály (K6); nem azonosított tételnél a katalógus-alapérték nem számít megállapításnak.
+            ...clampPair(mergeFinding(r, s)),
             ...raiseExposure(r, s.exposureHufEstimate, company),
             source: 'AI_INTERVIEW',
             evidence: r.identified && r.evidence && !r.evidence.includes(evidence) ? `${r.evidence} · ${evidence}` : evidence,
