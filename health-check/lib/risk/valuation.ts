@@ -88,12 +88,15 @@ export function computeFormula(formula: Formula, c: CompanyProfile): FormulaResu
       return { valueHuf: Math.round(value), explanation: parts.join(' '), unapprovedParameter: false };
     }
     case 'PER_ITEM': {
-      const count = Math.max(0, Math.round(formula.count));
-      const unit = Math.max(0, formula.unitAmountHuf);
+      const count = bounded(formula.count, MAX_COUNT, true);
+      const unit = bounded(formula.unitAmountHuf, MAX_UNIT_HUF, false);
       const param = formula.paramKey ? EXPERT_PARAMETERS[formula.paramKey] : undefined;
+      const invalid = count == null || unit == null;
+      if (invalid) return { valueHuf: 0, explanation: INVALID, unapprovedParameter: false };
+      const capped = formula.count > MAX_COUNT || formula.unitAmountHuf > MAX_UNIT_HUF;
       return {
-        valueHuf: count * unit,
-        explanation: `${count} db (${formula.label}) × ${short(unit)}`,
+        valueHuf: Math.round(count * unit),
+        explanation: `${count} db (${formula.label}) × ${short(unit)}${capped ? ' – a megadott érték a felső korlát fölött volt, ellenőrizd!' : ''}`,
         unapprovedParameter: Boolean(param && !param.approved && unit === param.valueHuf),
       };
     }
@@ -121,24 +124,46 @@ export interface ExposureResolution {
 export function resolveExposure(item: RiskItem, c: CompanyProfile): ExposureResolution {
   const v = item.valuation;
   if (!v || v.formula.type === 'MANUAL') {
-    return { valueHuf: Math.max(0, item.exposureHuf || 0), source: 'MANUAL', explanation: 'Kézi becslés', unapprovedParameter: false };
+    const ok = Number.isFinite(item.exposureHuf);
+    return { valueHuf: money(item.exposureHuf), source: 'MANUAL', explanation: ok ? 'Kézi becslés' : INVALID, unapprovedParameter: false };
   }
   const computed = computeFormula(v.formula, c);
   if (v.overrideHuf != null) {
     return {
-      valueHuf: Math.max(0, v.overrideHuf),
+      valueHuf: money(v.overrideHuf),
       source: 'OVERRIDE',
-      explanation: `Szakértői felülírás (képlet szerint ≈ ${short(computed.valueHuf ?? 0)})`,
+      explanation: Number.isFinite(v.overrideHuf) ? `Szakértői felülírás (képlet szerint ≈ ${short(computed.valueHuf ?? 0)})` : INVALID,
       unapprovedParameter: false,
     };
   }
   return {
-    valueHuf: computed.valueHuf ?? 0,
+    valueHuf: money(computed.valueHuf ?? 0),
     source: 'FORMULA',
-    explanation: computed.explanation,
+    explanation: Number.isFinite(computed.valueHuf ?? 0) ? computed.explanation : INVALID,
     unapprovedParameter: computed.unapprovedParameter,
   };
 }
+
+/** Darabszám-alapú képlet felső korlátai: ennél nagyobb érték elírás vagy manipulált bemenet. */
+export const MAX_COUNT = 100_000;
+export const MAX_UNIT_HUF = 10_000_000_000;
+
+/**
+ * Szám a [0, max] tartományban. Nem szám (szöveg, undefined), NaN, végtelen
+ * vagy negatív érték: null – a hívó 0 Ft-tal és „érvénytelen” magyarázattal
+ * számol, így semmi nem csorog tovább a kitettségbe és a várható veszteségbe.
+ */
+function bounded(x: unknown, max: number, integer: boolean): number | null {
+  if (typeof x !== 'number' || !Number.isFinite(x) || x < 0) return null;
+  const v = Math.min(max, x);
+  return integer ? Math.round(v) : v;
+}
+
+/** Pénzösszeg: nem véges (NaN, végtelen) vagy negatív érték helyett 0 – a magyarázat jelzi. */
+function money(x: number): number {
+  return Number.isFinite(x) ? Math.max(0, Math.round(x)) : 0;
+}
+const INVALID = 'Érvénytelen összeg vagy paraméter – 0 Ft-tal számolva, javítsd!';
 
 function clamp01(x: number): number {
   return Math.min(1, Math.max(0, Number.isFinite(x) ? x : 0));

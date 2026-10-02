@@ -62,15 +62,25 @@ export function worstRag(a: Rag, b: Rag): Rag {
   return RAG_RANK[a] >= RAG_RANK[b] ? a : b;
 }
 
-const clampScale = (n: number): Scale5 => Math.min(5, Math.max(1, Math.round(n))) as Scale5;
+/**
+ * 1–5 skálára igazítás. Szövegként érkező szám is számként számít (különben
+ * a „4” + 1 szövegösszefűzés lenne); hiányzó vagy érvénytelen érték a
+ * legsúlyosabb (5): adathiány miatt egy tétel nem lehet csendben zöld.
+ */
+export const clampScale = (n: unknown): Scale5 => {
+  const x = typeof n === 'number' ? n : typeof n === 'string' && n.trim() !== '' ? Number(n) : NaN;
+  return (Number.isFinite(x) ? Math.min(5, Math.max(1, Math.round(x))) : 5) as Scale5;
+};
 
 export function scoreRisk(risk: RiskItem, options: Partial<EngineOptions> = {}): Omit<ScoredRisk, 'priority'> {
   const plan = estimateRemediation(risk);
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const adj = risk.ignoreKindAdjustment ? undefined : opts.adjustments?.[risk.code];
-  const likelihood = clampScale(risk.likelihood + (adj?.dL ?? 0));
-  const impact = clampScale(risk.impact + (adj?.dI ?? 0));
-  const adjusted = likelihood !== risk.likelihood || impact !== risk.impact;
+  const baseLikelihood = clampScale(risk.likelihood);
+  const baseImpact = clampScale(risk.impact);
+  const likelihood = clampScale(baseLikelihood + (adj?.dL ?? 0));
+  const impact = clampScale(baseImpact + (adj?.dI ?? 0));
+  const adjusted = likelihood !== baseLikelihood || impact !== baseImpact;
   const score = likelihood * impact;
   const resolved = resolveExposure(risk, opts.company);
   const exposure = resolved.valueHuf;
@@ -91,8 +101,8 @@ export function scoreRisk(risk: RiskItem, options: Partial<EngineOptions> = {}):
     ...risk,
     likelihood,
     impact,
-    baseLikelihood: risk.likelihood,
-    baseImpact: risk.impact,
+    baseLikelihood,
+    baseImpact,
     adjustment: adjusted && adj ? adj : undefined,
     exposureHuf: exposure,
     exposureSource: resolved.source,

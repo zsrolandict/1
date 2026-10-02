@@ -3,6 +3,8 @@ import type { SuggestedRedFlag } from '@/lib/interview/types';
 import type { PageId } from '@/lib/guide';
 import { markSaved, markSaveFailed } from '@/lib/localSave';
 import { readJson as read, readRaw, removeKey, writeJson as write } from '@/lib/storage';
+import { CompanySchema, describeIssue, ItemSchema, MoneySchema } from '@/lib/backupSchema';
+import { EngagementKindSchema } from '@/lib/engagement/kindSchema';
 import { BLANK, getScenario, GYARTO, isDemoScenario, type Scenario } from '@/lib/scenarios';
 import { catalogDefault, PILLAR_LABEL } from './catalog';
 import type { RiskItem, Scale5 } from './types';
@@ -44,6 +46,8 @@ export interface ProjectMeta {
 const INDEX_KEY = 'ict-hc:projects:v1';
 const ACTIVE_KEY = 'ict-hc:active-project:v1';
 const wsKey = (id: string) => `ict-hc:workspace:v3:${id}`;
+/** A sémán elbukott, kizárt tételek projektenként (nem vesznek el, a mátrix jelzi őket). */
+const quarantineKey = (id: string) => `ict-hc:quarantine:v1:${id}`;
 /** A korábbi, egyprojektes tárolás (migráláshoz). */
 export const STORAGE_KEY = 'ict-hc:workspace:v2';
 const LEGACY_KEY = 'ict-hc:red-flag-matrix:v1';
@@ -70,18 +74,87 @@ export function workspaceFromScenario(s: Scenario, projectId: string = s.id): Wo
 
 export const DEFAULT_WORKSPACE: Workspace = workspaceFromScenario(GYARTO);
 
+export interface QuarantinedItem {
+  code: string;
+  title: string;
+  /** Az első sémahiba („likelihood: …”). */
+  reason: string;
+  /** Az eredeti, elbukott tétel – visszaállításhoz vagy kézi javításhoz. */
+  raw: unknown;
+  at: string;
+}
+
+/**
+ * A böngészős tárolóból betöltött munkaállapot ellenőrzése ugyanazokkal a
+ * sémákkal, mint a fájlból visszatöltés (`lib/backupSchema.ts`). Kézzel
+ * átírt vagy sérült mentés így nem juthat a motorba. Hibás mező helyett a
+ * minta értéke (cégadat mezőnként, típus, küszöb); hibás tétel nem kerül
+ * az értékelésbe, de nem is vész el: karanténba kerül, és a mátrix jelzi.
+ */
 function normalize(saved: Partial<Workspace>, projectId: string): Workspace {
   const scenarioId = saved.scenarioId === BLANK.id ? BLANK.id : getScenario(saved.scenarioId ?? projectId).id;
   const base = getScenario(scenarioId);
+  const kind = EngagementKindSchema.safeParse(saved.kind);
+  const materiality = MoneySchema.safeParse(saved.materialityHuf);
   return {
     projectId,
     scenarioId,
     companyName: typeof saved.companyName === 'string' ? saved.companyName : base.companyName,
-    company: { ...DEFAULT_COMPANY, ...(saved.company ?? {}) },
-    kind: saved.kind ?? base.kind,
-    materialityHuf: typeof saved.materialityHuf === 'number' ? saved.materialityHuf : base.materialityHuf,
-    items: Array.isArray(saved.items) ? saved.items.map(hydrateItem) : base.items,
+    company: parseCompany(saved.company),
+    kind: kind.success ? kind.data : base.kind,
+    materialityHuf: materiality.success ? materiality.data : base.materialityHuf,
+    items: Array.isArray(saved.items) ? parseItems(saved.items, projectId) : base.items,
   };
+}
+
+/** Cégadatok mezőnként: a hibás mező helyett az alapérték, a jó mezők megmaradnak. */
+function parseCompany(raw: unknown): CompanyProfile {
+  const src = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const out: CompanyProfile = { ...DEFAULT_COMPANY };
+  for (const key of Object.keys(CompanySchema.shape) as (keyof CompanyProfile)[]) {
+    const r = CompanySchema.shape[key].safeParse(src[key]);
+    if (r.success) out[key] = r.data;
+  }
+  return out;
+}
+
+function parseItems(raw: unknown[], projectId: string): RiskItem[] {
+  const ok: RiskItem[] = [];
+  const bad: QuarantinedItem[] = [];
+  for (const x of raw) {
+    const r = ItemSchema.safeParse(x);
+    if (r.success) {
+      ok.push(hydrateItem(r.data as RiskItem));
+      continue;
+    }
+    const o = (x && typeof x === 'object' ? x : {}) as Record<string, unknown>;
+    bad.push({
+      code: typeof o.code === 'string' ? o.code : '?',
+      title: typeof o.title === 'string' ? o.title : '(cím nélkül)',
+      reason: describeIssue(r.error),
+      raw: x,
+      at: new Date().toISOString(),
+    });
+  }
+  if (bad.length) addToQuarantine(projectId, bad);
+  return ok;
+}
+
+function addToQuarantine(projectId: string, items: QuarantinedItem[]): void {
+  const prev = loadQuarantine(projectId);
+  const seen = new Set(prev.map((q) => JSON.stringify(q.raw)));
+  const fresh = items.filter((q) => !seen.has(JSON.stringify(q.raw)));
+  if (fresh.length) write(quarantineKey(projectId), [...prev, ...fresh]);
+}
+
+/** A projekt karanténba tett (sérült) tételei. */
+export function loadQuarantine(projectId: string): QuarantinedItem[] {
+  const saved = read<QuarantinedItem[]>(quarantineKey(projectId));
+  return Array.isArray(saved) ? saved : [];
+}
+
+export function clearQuarantine(projectId: string): void {
+  removeKey(quarantineKey(projectId));
 }
 
 function metaFor(ws: Workspace, prev: ProjectMeta | undefined, now: string): ProjectMeta {
@@ -268,6 +341,7 @@ export function openDemo(scenarioId: string): void {
 /** A projekt munkaállapotának és listabejegyzésének törlése (a modulok adatait a projects.ts törli). */
 export function removeProjectWorkspace(id: string): void {
   removeKey(wsKey(id));
+  removeKey(quarantineKey(id));
   write(
     INDEX_KEY,
     listProjects().filter((p) => p.id !== id),

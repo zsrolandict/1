@@ -36,7 +36,15 @@ import {
 import { assess, scoreRisk, AUDIT_FEE_HUF, DIVISIONS, formatHuf, formatHufShort, PILLARS, ragFromScore, WINDOWS } from '@/lib/risk/engine';
 import { catalogDefault, DEFAULT_CATALOG, DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
 import type { Division, Pillar, Rag, RiskItem, RiskSource, Scale5, ScoredRisk } from '@/lib/risk/types';
-import { DEFAULT_WORKSPACE, loadWorkspace, saveWorkspace, workspaceFromScenario } from '@/lib/risk/store';
+import {
+  clearQuarantine,
+  DEFAULT_WORKSPACE,
+  loadQuarantine,
+  loadWorkspace,
+  saveWorkspace,
+  workspaceFromScenario,
+  type QuarantinedItem,
+} from '@/lib/risk/store';
 import { useConfirm } from '../ConfirmDialog';
 import { hasRevenue } from '@/lib/risk/valuation';
 import { useNav } from '../Nav';
@@ -159,6 +167,7 @@ export default function RedFlagMatrix({
   const me = useIdentity();
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const [quarantine, setQuarantine] = useState<QuarantinedItem[]>([]);
 
   // Munkapéldány visszatöltése (csak kényelmi funkció – a forrás az adatbázis).
   useEffect(() => {
@@ -170,6 +179,7 @@ export default function RedFlagMatrix({
     setCompany(ws.company);
     setScenarioId(ws.scenarioId);
     setProjectId(ws.projectId);
+    setQuarantine(loadQuarantine(ws.projectId));
     try {
       setDenseState(localStorage.getItem(DENSE_KEY) === '1');
     } catch {
@@ -653,6 +663,33 @@ export default function RedFlagMatrix({
             )}
           </div>
         </Card>
+      )}
+
+      {quarantine.length > 0 && (
+        <details role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 print:hidden">
+          <summary className="cursor-pointer font-medium">
+            {quarantine.length} tétel sérült volt a mentésben, ezért kimaradt az értékelésből – mi a hiba?
+          </summary>
+          <ul className="mt-2 space-y-1 text-xs">
+            {quarantine.map((q, i) => (
+              <li key={i}>
+                <span className="font-mono">{q.code}</span> {q.title}: {q.reason}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs">
+            Az eredeti adat nem veszett el (karantén). Vedd fel újra a tételt helyes értékekkel, utána a jelzés elvethető.{' '}
+            <button
+              onClick={() => {
+                clearQuarantine(projectId);
+                setQuarantine([]);
+              }}
+              className="font-medium underline"
+            >
+              Jelzés elvetése
+            </button>
+          </p>
+        </details>
       )}
 
       {/* ── Beállítások: cégadatok + átvilágítás-típus (összecsukható) ── */}
