@@ -4,12 +4,17 @@ import { NextResponse } from 'next/server';
 import { dataPolicy, limitFor, RateLimiter, type LimitKind } from '@/lib/ai/policy';
 import { authMode, isStaffRole, type AuthMode } from './mode';
 import { logEvent } from '@/lib/monitoring';
+import { distributedHit } from './rateLimit';
+import { AUTH_COOKIE_OPTIONS } from './cookies';
+
+export { AUTH_COOKIE_OPTIONS };
 
 export type Access = { ok: true; mode: AuthMode; userId: string | null; role: string | null } | { ok: false; response: NextResponse };
 
 export async function supabaseServer() {
   const store = await cookies();
   return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    cookieOptions: AUTH_COOKIE_OPTIONS,
     cookies: {
       getAll: () => store.getAll(),
       setAll: (list) => {
@@ -50,7 +55,8 @@ export async function requireStaff(): Promise<Access> {
   return { ok: true, mode, userId: data.user.id, role: profile.role };
 }
 
-const limiter = new RateLimiter();
+/** Csak fejlesztői (DEMO) módban: egy folyamat, memóriában. Élesben az adatbázis számol. */
+const devLimiter = new RateLimiter();
 
 /**
  * AI-végpontok őre: belső felhasználó + adatkezelési szabály (DPA éles
@@ -64,8 +70,21 @@ export async function requireAi(req: Request, kind: LimitKind = 'ai'): Promise<A
     logEvent({ event: 'ai_blocked_policy' });
     return { ok: false, response: NextResponse.json({ error: policy.error }, { status: policy.status }) };
   }
-  const who = access.userId ?? req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local';
-  const hit = limiter.hit(`${kind}:${who}`, limitFor(kind));
+  // Élesben elosztott korlát az adatbázisban (audit K11): a kulcs a bejelentkezett
+  // felhasználó (auth.uid()), nem kliens által küldött fejléc; minden szerverpéldány
+  // ugyanazt a számlálót látja. Hiba esetén zárva (a költséges AI-hívás nem fut).
+  const hit = access.mode === 'SUPABASE' ? await distributedHit(await supabaseServer(), kind, limitFor(kind)) : devLimiter.hit(`${kind}:local`, limitFor(kind));
+  void req;
+  if (!hit.ok && 'unavailable' in hit && hit.unavailable) {
+    logEvent({ event: 'api_error', status: 503, kind: 'rate_limit_unavailable' });
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: 'A hívásszám-korlát most nem ellenőrizhető, ezért az AI-funkció átmenetileg zárva. Próbálja újra később.' },
+        { status: 503 },
+      ),
+    };
+  }
   if (!hit.ok) {
     logEvent({ event: 'ai_rate_limited', kind });
     return {

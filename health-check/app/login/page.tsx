@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyRound, Loader2, Mail } from 'lucide-react';
 import { supabaseBrowser, supabaseConfigured } from '@/lib/auth/supabase-browser';
 import { BrandLogo } from '@/components/ui/BrandMark';
@@ -8,6 +8,12 @@ import { BrandLogo } from '@/components/ui/BrandMark';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  // A visszatérési pont hibája (pl. meghívás nélküli fiók) – csak a böngészőben olvasható.
+  const [returned, setReturned] = useState<string | null>(null);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setReturned(new URLSearchParams(window.location.search).get('hiba')));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const redirectTo = () => `${window.location.origin}/auth/callback`;
 
@@ -62,6 +68,16 @@ export default function LoginPage() {
             </form>
             {state === 'sent' && <p className="text-sm text-emerald-700">Elküldtük a belépési linket, ha a cím szerepel a meghívottak között.</p>}
             {state === 'error' && <p className="text-sm text-red-700">A link küldése nem sikerült. Próbálja újra később.</p>}
+            {returned === 'meghivas' && (
+              <p role="alert" className="text-sm text-red-700">
+                Ehhez a fiókhoz nincs meghívás, vagy az e-mail-cím domainje nem engedélyezett. Kérjen meghívást a projekt partnerétől.
+              </p>
+            )}
+            {returned === '1' && (
+              <p role="alert" className="text-sm text-red-700">
+                A belépés nem sikerült vagy lejárt a link. Kérjen újat.
+              </p>
+            )}
           </div>
         )}
       </div>

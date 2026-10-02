@@ -47,6 +47,11 @@ try {
     'biztonsági fejlécek (CSP, X-Frame-Options, nosniff)',
     csp.includes("frame-ancestors 'none'") && res.headers.get('x-frame-options') === 'DENY' && res.headers.get('x-content-type-options') === 'nosniff',
   );
+  check('HSTS (éles build)', (res.headers.get('strict-transport-security') ?? '').includes('max-age=63072000'));
+  const foreign = await fetch(`${base}/auth/signout`, { method: 'POST', headers: { origin: 'https://evil.com' } });
+  check('kilépés idegen oldalról tiltva', foreign.status === 403);
+  const save = await fetch(`${base}/api/engagements/00000000-0000-0000-0000-000000000001/save`, { method: 'POST', body: '{}' });
+  check('mentés-végpont bejelentkezés nélkül tiltva', [401, 403, 503].includes(save.status), String(save.status));
   const redirect = await fetch(`${base}/auth/callback?code=x&next=/\\evil.com`, { redirect: 'manual' });
   check('belépés-visszatérés nem irányít idegen oldalra', !(redirect.headers.get('location') ?? '').includes('evil.com'));
 

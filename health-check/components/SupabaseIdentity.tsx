@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { supabaseBrowser, supabaseConfigured } from '@/lib/auth/supabase-browser';
+import { supabaseConfigured } from '@/lib/auth/supabase-browser';
 import { IdentityProvider, type Identity, type WorkRole } from './Identity';
 
 const ROLE: Record<string, WorkRole> = { partner: 'PARTNER', manager: 'SENIOR', consultant: 'SENIOR' };
@@ -17,14 +17,14 @@ export default function SupabaseIdentity({ children }: { children: ReactNode }) 
     if (!supabaseConfigured) return;
     let cancelled = false;
     (async () => {
-      const sb = supabaseBrowser();
-      const { data } = await sb.auth.getUser();
-      if (!data.user || cancelled) return;
-      const { data: profile } = await sb.from('profiles').select('full_name, role').eq('id', data.user.id).maybeSingle();
-      if (cancelled) return;
+      // A munkamenet HttpOnly sütiben van: a böngésző nem olvassa, a szerver adja vissza a profilt.
+      const res = await fetch('/api/me', { cache: 'no-store' });
+      if (!res.ok || cancelled) return;
+      const { user } = (await res.json()) as { user: { name: string | null; role: string | null } | null };
+      if (!user || cancelled) return;
       setIdentity({
-        name: profile?.full_name || data.user.email || null,
-        role: ROLE[profile?.role ?? ''] ?? null,
+        name: user.name,
+        role: ROLE[user.role ?? ''] ?? null,
         source: 'login',
         loading: false,
       });

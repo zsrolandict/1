@@ -78,8 +78,15 @@ describe('API-végpontok', () => {
       }
     };
     walk(root);
-    const posts = files.filter((f) => /export async function POST/.test(readFileSync(f, 'utf8')));
+    // Nem AI-végpont, de saját őre van: a projekt mentése csak belső, bejelentkezett felhasználónak.
+    const STAFF_ONLY = [path.join('engagements', '[id]', 'save', 'route.ts')];
+    const posts = files.filter((f) => /export async function POST/.test(readFileSync(f, 'utf8')) && !STAFF_ONLY.some((x) => f.endsWith(x)));
     expect(posts.length).toBe(ROUTES.length);
+    for (const x of STAFF_ONLY) {
+      const src = readFileSync(path.join(root, x), 'utf8');
+      const body = src.slice(src.indexOf('export async function POST'));
+      expect(body.split('\n').slice(1, 3).join('\n'), x).toMatch(/await requireStaff\(\)/);
+    }
     for (const f of posts) {
       const src = readFileSync(f, 'utf8');
       const body = src.slice(src.indexOf('export async function POST'));

@@ -142,14 +142,14 @@ Ha az árbevétel nincs megadva (új projekt), a képletek 0 Ft-ot adnak, és ez
 - **Mentés fájlba / visszatöltés** (JSON): a projekt minden adata; visszatöltéskor ellenőrzött szerkezet, mindig új projektként (meglévőt nem ír felül). Ha régóta nincs fájlba mentés, a program figyelmeztet.
 - **Több projekt egyszerre:** az aktív projekt böngészőlaponként külön; a **Projektjeim** áttekintő mutatja minden projekt haladását, következő lépését, és ott folytatja, ahol abbahagytad. Ha ugyanazt a projektet két lapon módosítják, a program jelez.
 - **Tudástár:** a lezárt projektekből csak anonim adat (típus, ágazat, árbevétel-sáv, katalógustételek besorolása) – cégnév, összeg, bizonyíték nem.
-- **Adatbázis (előkészítve, még nincs bekötve):** Supabase (PostgreSQL, EU régió), 10 migráció, sorszintű jogosultsággal (RLS) – pl. a HR-szakértő csak HR-dokumentumot és a bizalmas interjút látja, az ügyfél csak a saját feltöltéseit –, audit naplóval.
+- **Adatbázis (szerveroldal kész, a felület még nincs átállítva):** Supabase (PostgreSQL, EU régió), 14 migráció; atomikus szerveres mentés (minden vagy semmi, verzióütközés-védelemmel), hamisíthatatlan (csak bővíthető, szerver által bélyegzett) napló, sorszintű jogosultsággal (RLS) – pl. a HR-szakértő csak HR-dokumentumot és a bizalmas interjút látja, az ügyfél csak a saját feltöltéseit –, audit naplóval.
 
 ## 10. Technológia és biztonság
 
 - **Alkalmazás:** Next.js 16 (React 19, TypeScript), Tailwind; magyar felület, asztali használatra (a mobil nézet szándékosan nincs optimalizálva).
 - **Riport:** PDF a böngészőben (react-pdf), Excel saját íróval.
-- **Bejelentkezés:** Supabase (céges Microsoft-fiók vagy meghívásos e-mail link); beállítás nélkül az AI-funkciók zárva.
-- **Szerveroldali védelmek:** minden AI-végpont bejelentkezett belső felhasználót kér; felhasználónkénti hívásszám-korlát (40 AI-hívás, 10 leirat óránként); bemenet-ellenőrzés és méretkorlátok; tömörítési bomba elleni védelem; belső hibarészlet nem jut ki; biztonsági fejlécek (CSP, keretezés tiltása); belépés után csak saját oldalra irányít vissza.
+- **Bejelentkezés:** Supabase (céges Microsoft-fiók vagy meghívásos e-mail link); csak meghívott felhasználó léphet be (Auth-hook + adatbázis-trigger + domain-szűrés); a munkamenet-süti HttpOnly/Secure/SameSite; beállítás nélkül az AI-funkciók zárva. Élesítési lépések: docs/12.
+- **Szerveroldali védelmek:** minden AI-végpont bejelentkezett belső felhasználót kér; felhasználónkénti, adatbázisban tárolt (több szerverpéldányon is közös, IP-hamisítással nem kerülhető meg) hívásszám-korlát (40 AI-hívás, 10 leirat óránként); éles módban az AI-felülvizsgálat a forrásokat az adatbázisból veszi, nem a kérésből; bemenet-ellenőrzés és méretkorlátok; tömörítési bomba elleni védelem; belső hibarészlet nem jut ki; biztonsági fejlécek (CSP, keretezés tiltása, HSTS); belépés után csak saját oldalra irányít vissza.
 - **Minőség:** automatikus ellenőrzés (CI) minden változásnál – típusok, lint, formázás, 252 unit teszt, build, adatbázis-migrációk és jogosultsági füsttesztek, két böngészős füstteszt (előnézet és éles build).
 - **Monitoring:** strukturált, tartalom nélküli napló minden AI-hívásról és hibáról (riasztás állítható rá).
 

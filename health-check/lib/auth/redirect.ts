@@ -14,3 +14,17 @@ export function safeRedirectPath(next: string | null, origin: string): string {
     return '/';
   }
 }
+
+/**
+ * Engedélyezett e-mail-domainek (`ALLOWED_EMAIL_DOMAINS`, vesszővel elválasztva,
+ * pl. „ict.hu,ict-europa.hu”). Üres beállításnál csak a meghívás számít.
+ */
+export function emailDomainAllowed(email: string, env: Record<string, string | undefined> = process.env): boolean {
+  const list = (env.ALLOWED_EMAIL_DOMAINS ?? '')
+    .split(',')
+    .map((d) => d.trim().toLowerCase())
+    .filter(Boolean);
+  if (!list.length) return true;
+  const domain = email.toLowerCase().split('@')[1] ?? '';
+  return list.includes(domain);
+}

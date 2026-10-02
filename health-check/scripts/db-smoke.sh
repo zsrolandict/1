@@ -17,6 +17,7 @@ files=(
   "$M/0011_discussion.sql" "$T/09_discussion_smoke.sql"
   "$M/0012_remediation_plan.sql" "$T/10_remediation_plan_smoke.sql"
   "$M/0013_kind_adjustments_rag.sql" "$T/11_rag_parity.sql"
+  "$M/0014_server_trust.sql" "$T/12_server_trust_smoke.sql"
 )
 # Minden migráció benne van-e a listában? (új migrációnál ne maradjon ki)
 for m in "$M"/*.sql; do

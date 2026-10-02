@@ -31,6 +31,7 @@ A `.github/workflows/health-check-ci.yml` minden pushnál és PR-nál (ha a `hea
 A teljes lista magyarázattal: `.env.example`. Éles környezetben kötelező:
 
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (EU régió);
+- `SUPABASE_SERVICE_ROLE_KEY` – csak szerveren; `ALLOWED_EMAIL_DOMAINS` – céges domainek;
 - `AI_PROVIDER` + `ANTHROPIC_API_KEY` vagy `GEMINI_API_KEY` – **fizetős, DPA-val**;
 - `AI_DPA_CONFIRMED=1` – csak a DPA aláírása után; enélkül éles módban minden AI-funkció zárva;
 - leirathoz: `TRANSCRIBE_PROVIDER` (+ Azure esetén `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`).
@@ -42,6 +43,8 @@ Tilos élesben: `ALLOW_DEMO_API`. Kulcs soha nem kerül a repóba (`.env*.local`
 1. A CI zöld a kiadandó commiton.
 2. **Adatbázis-mentés** (Supabase: Database › Backups; PITR legyen bekapcsolva).
 3. Új migrációk futtatása sorrendben (`supabase db push`), előtte egy teszt-projekten.
+   Első élesítéskor a Supabase/Azure biztonsági beállításai (5432 lezárása, SSL,
+   regisztráció tiltása, Auth-hook, single tenant): **docs/12-elesites-biztonsag.md**.
 4. Előnézeti (preview) deploy a hostingon, **külön teszt Supabase-projekttel**; füstteszt kézzel: belépés, új projekt, javaslat elfogadása, PDF és Excel, mentés fájlba és visszatöltés, ügyfél-szerepkörrel az AI 403.
 5. Éles deploy, 15 percig a naplók figyelése (`[api]` hibák, 5xx, szolgáltatói 429).
 

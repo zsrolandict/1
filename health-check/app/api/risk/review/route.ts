@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAiConfigured, parseStructured } from '@/lib/ai/client.server';
-import { requireAi } from '@/lib/auth/guard.server';
+import { requireAi, supabaseServer } from '@/lib/auth/guard.server';
+import { supabaseServiceRole } from '@/lib/auth/serviceRole.server';
+import type { RedFlagRow } from '@/lib/server/redFlagRow';
+import { reviewRequestFromRow, type EngagementRow } from '@/lib/server/reviewFromDb';
 import { EngagementKindSchema } from '@/lib/engagement/kindSchema';
-import { runOpinionReview } from '@/lib/risk/review';
+import { opinionEntry, reviewEntry, runOpinionReview } from '@/lib/risk/review';
 import { errorResponse } from '../../_errors';
 
 export const maxDuration = 120;
@@ -29,17 +32,60 @@ const RequestSchema = z.object({
   opinion: z.string().min(3).max(4000),
 });
 
-/** Szakértői vélemény kritikus felülvizsgálata a tétel forrásai és levezetése alapján. */
+/** Éles kérés: csak a tétel azonosítója és a vélemény – minden más az adatbázisból jön. */
+const ServerRequestSchema = z.object({ redFlagId: z.string().uuid(), opinion: z.string().trim().min(3).max(4000) });
+
+/**
+ * Szakértői vélemény kritikus felülvizsgálata a tétel forrásai és levezetése alapján.
+ * Éles (Supabase) módban zéró bizalom a kliensben (audit K8, K9): a tételt, a
+ * forrásokat és a levezetést a szerver olvassa az adatbázisból a felhasználó
+ * saját, RLS-es kapcsolatán (amihez nincs joga, azt nem is látja); a véleményt a
+ * felhasználó nevében, az AI-felülvizsgálatot service role-lal rögzíti – a kliens
+ * AI-bejegyzést nem tud írni (0014 trigger). Fejlesztői (DEMO) módban, adatbázis
+ * nélkül, a régi, kliens által összeállított kérés is elfogadott.
+ */
 export async function POST(req: Request) {
   const access = await requireAi(req, 'ai');
   if (!access.ok) return access.response;
   if (!isAiConfigured()) {
     return NextResponse.json({ error: 'Az AI nincs beállítva (ANTHROPIC_API_KEY vagy GEMINI_API_KEY).' }, { status: 503 });
   }
-  const parsed = RequestSchema.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: 'Hibás kérés.' }, { status: 400 });
+  const body = await req.json().catch(() => null);
   try {
-    return NextResponse.json({ review: await runOpinionReview(parseStructured, parsed.data) });
+    if (access.mode !== 'SUPABASE') {
+      const parsed = RequestSchema.safeParse(body);
+      if (!parsed.success) return NextResponse.json({ error: 'Hibás kérés.' }, { status: 400 });
+      return NextResponse.json({ review: await runOpinionReview(parseStructured, parsed.data) });
+    }
+    const parsed = ServerRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Hibás kérés: éles módban csak a tétel azonosítója és a vélemény küldhető; a forrásokat a szerver olvassa.' },
+        { status: 400 },
+      );
+    }
+    const admin = supabaseServiceRole();
+    if (!admin) return NextResponse.json({ error: 'A szerver nincs beállítva a felülvizsgálat rögzítésére (SUPABASE_SERVICE_ROLE_KEY).' }, { status: 503 });
+    const supabase = await supabaseServer();
+    const { data: row } = await supabase
+      .from('red_flags')
+      .select('*, engagements(kind, materiality_huf, workspace)')
+      .eq('id', parsed.data.redFlagId)
+      .maybeSingle();
+    if (!row) return NextResponse.json({ error: 'Nincs ilyen tétel, vagy nincs hozzá jogosultság.' }, { status: 404 });
+    const { engagements: eng, ...flag } = row as RedFlagRow & { engagements: EngagementRow };
+    const review = await runOpinionReview(parseStructured, reviewRequestFromRow(flag, eng, parsed.data.opinion));
+    // A vélemény a felhasználó nevében (a trigger bélyegzi a szerzőt és az időt) …
+    const opinion = opinionEntry(parsed.data.opinion, null);
+    const { error: e1 } = await supabase
+      .from('red_flags')
+      .update({ discussion: [...(flag.discussion ?? []), opinion] })
+      .eq('id', flag.id);
+    if (e1) return NextResponse.json({ error: 'A vélemény nem rögzíthető (jogosultság vagy közben módosult tétel).' }, { status: 409 });
+    // … az AI-felülvizsgálat csak service role-lal.
+    const { error: e2 } = await admin.rpc('append_ai_review', { p_red_flag: flag.id, p_entry: reviewEntry(review) });
+    if (e2) return NextResponse.json({ error: 'A felülvizsgálat nem rögzíthető.' }, { status: 500 });
+    return NextResponse.json({ review });
   } catch (err) {
     return errorResponse(err);
   }

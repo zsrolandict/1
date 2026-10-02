@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogIn, LogOut } from 'lucide-react';
-import { supabaseBrowser, supabaseConfigured } from '@/lib/auth/supabase-browser';
+import { supabaseConfigured } from '@/lib/auth/supabase-browser';
 import { useIdentity } from './Identity';
 
 /**
@@ -26,7 +26,8 @@ export default function AccountLink() {
         </span>
         <button
           onClick={async () => {
-            await supabaseBrowser().auth.signOut();
+            // A munkamenet HttpOnly sütiben van: a kilépést a szerver végzi (minden eszközön).
+            await fetch('/auth/signout', { method: 'POST' }).catch(() => {});
             router.push('/login');
           }}
           aria-label="Kilépés"

@@ -8,6 +8,8 @@ const dev = process.env.NODE_ENV !== 'production';
  *   saját beágyazott szkriptjei miatt a script-src 'unsafe-inline';
  *   fejlesztői módban a gyors újratöltéshez 'unsafe-eval' is kell.
  * - Beágyazás (clickjacking) tiltva, a mikrofon csak a saját oldalon.
+ * - HSTS (csak éles buildben): a böngésző két évig kizárólag HTTPS-en éri el
+ *   az oldalt, így a munkamenet-süti nem szivároghat titkosítatlan kérésben.
  */
 const csp = [
   "default-src 'self'",
@@ -29,6 +31,7 @@ const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), geolocation=(), microphone=(self)' },
+  ...(dev ? [] : [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]),
 ];
 
 const nextConfig: NextConfig = {
