@@ -1,6 +1,7 @@
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { KnownFact } from '@/lib/interview/types';
-import { evaluateChecklist, type ChecklistAnswers } from './checklist';
+import { z } from 'zod';
+import { evaluateChecklist, sanitizeAnswers, type ChecklistAnswers } from './checklist';
 import { documentToIntake } from './documents/toIntake';
 import type { DocumentRecord } from './documents/types';
 import { buildRequestList, EMPTY_PROFILE, normalizeProfile, type CaseProfile, type DocRequest, type RequestStatus } from './requests';
@@ -34,6 +35,12 @@ export interface IntakeState {
   /** Pénzügyi alapadatok (beszámoló kulcsszámai, beírható tények), forrással. */
   financials?: FinancialProfile;
   answers: ChecklistAnswers;
+  /**
+   * A tárolóból betöltéskor sémán elbukott válaszok (pl. 250%, szöveg a szám
+   * helyén) okkal: nem számítanak, a felület jelzi őket; helyes válasszal
+   * vagy törléssel tűnnek el.
+   */
+  invalidAnswers?: Record<string, { value: unknown; reason: string }>;
   tables: Partial<Record<TableKind, TableAnalysis>>;
   documents: DocumentRecord[];
   /** Elfogadott (a mátrixba / cégadatokba átvett) javaslatok kulcsai. */
@@ -61,10 +68,33 @@ export function loadIntake(scenarioId: string): IntakeState {
     const raw = localStorage.getItem(intakeKey(scenarioId));
     if (!raw) return EMPTY_INTAKE;
     const saved = JSON.parse(raw) as Partial<IntakeState>;
-    return { ...EMPTY_INTAKE, ...saved, profile: normalizeProfile(saved.profile ?? {}), financials: normalizeFinancials(saved.financials) };
+    // Kérdőív és iratállapot sémával (audit K5): ezekből számol a szabálymotor és a lefedettség.
+    const { answers, invalid } = sanitizeAnswers(saved.answers);
+    const prevInvalid = saved.invalidAnswers && typeof saved.invalidAnswers === 'object' ? saved.invalidAnswers : {};
+    const invalidAnswers = Object.fromEntries(Object.entries({ ...prevInvalid, ...invalid }).filter(([id]) => answers[id] === undefined));
+    return {
+      ...EMPTY_INTAKE,
+      ...saved,
+      profile: normalizeProfile(saved.profile ?? {}),
+      financials: normalizeFinancials(saved.financials),
+      answers,
+      requestStatus: sanitizeRequestStatus(saved.requestStatus),
+      ...(Object.keys(invalidAnswers).length ? { invalidAnswers } : { invalidAnswers: undefined }),
+    };
   } catch {
     return EMPTY_INTAKE;
   }
+}
+
+const RequestStatusSchema = z.enum(['REQUESTED', 'RECEIVED', 'MISSING', 'NA']);
+
+/** Iratállapot: csak ismert állapotérték marad (hiányzó = bekérve). */
+export function sanitizeRequestStatus(raw: unknown): Record<string, RequestStatus> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  return Object.fromEntries(Object.entries(raw as Record<string, unknown>).filter(([, v]) => RequestStatusSchema.safeParse(v).success)) as Record<
+    string,
+    RequestStatus
+  >;
 }
 
 export function saveIntake(scenarioId: string, state: IntakeState): void {

@@ -97,7 +97,7 @@ describe('projektek', () => {
 
   it('mentés fájlba és visszatöltés új projektként, a meglévő felülírása nélkül', () => {
     const a = createProject({ companyName: 'A Kft.', kind: 'HEALTH_CHECK' });
-    saveIntake(a.projectId, { ...EMPTY_INTAKE, answers: { Q02: false } });
+    saveIntake(a.projectId, { ...EMPTY_INTAKE, answers: { Q01: false, Q02: 3 } });
     saveTimesheet(a.projectId, { ...EMPTY_TIMESHEET, feeHuf: 999 });
     const backup = parseBackup(JSON.stringify(exportProject(a.projectId)));
     expect(Object.keys(backup.modules).sort()).toEqual(['intake', 'timesheet']);
@@ -105,7 +105,7 @@ describe('projektek', () => {
     const id = importProject(backup);
     expect(id).not.toBe(a.projectId);
     expect(loadProject(id).companyName).toBe('A Kft. (visszatöltve)');
-    expect(loadIntake(id).answers).toEqual({ Q02: false });
+    expect(loadIntake(id).answers).toEqual({ Q01: false, Q02: 3 });
     expect(loadTimesheet(id).feeHuf).toBe(999);
     expect(activeProjectId()).toBe(id);
 

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import type { KnownFact } from '@/lib/interview/types';
 import type { Pillar, Scale5 } from '@/lib/risk/types';
@@ -715,7 +716,8 @@ export function isVisible(q: ChecklistQuestion, answers: ChecklistAnswers, secto
   if (q.sectors && !q.sectors.some((s) => sectors.includes(s))) return false;
   if (!q.showIf) return true;
   const parent = BY_ID.get(q.showIf.question);
-  return Boolean(parent && isVisible(parent, answers, sectors) && matches(q.showIf.when, answers[q.showIf.question]));
+  const pa = answers[q.showIf.question];
+  return Boolean(parent && isVisible(parent, answers, sectors) && pa !== undefined && !answerIssue(parent, pa) && matches(q.showIf.when, pa));
 }
 
 export function formatAnswer(q: ChecklistQuestion, a: Answer | undefined): string {
@@ -725,9 +727,84 @@ export function formatAnswer(q: ChecklistQuestion, a: Answer | undefined): strin
   return q.choices?.find((c) => c.value === a)?.label ?? a;
 }
 
+/** Darabszám-kérdések felső korlátja (ennél nagyobb érték elírás vagy manipulált bemenet). */
+export const MAX_COUNT_ANSWER = 1_000_000;
+
+const ISSUE: Record<ChecklistQuestion['type'], string> = {
+  YES_NO: 'igen/nem választ vár',
+  PERCENT: '0 és 100 közötti százalékot vár',
+  NUMBER: `0 és ${MAX_COUNT_ANSWER.toLocaleString('hu-HU')} közötti számot vár`,
+  CHOICE: 'a felkínált válaszok egyikét várja',
+};
+
+const SCHEMAS = new Map<string, z.ZodType>();
+
+/**
+ * A kérdés típusához tartozó szigorú séma: igen/nem → logikai; százalék →
+ * véges szám 0–100 között; darabszám → véges, nemnegatív szám a korlátig;
+ * választós → a felkínált értékek egyike. Szöveges szám („45”), NaN,
+ * végtelen, negatív és ismeretlen választási érték nem megy át.
+ */
+export function answerSchema(q: ChecklistQuestion): z.ZodType {
+  let s = SCHEMAS.get(q.id);
+  if (!s) {
+    switch (q.type) {
+      case 'YES_NO':
+        s = z.boolean();
+        break;
+      case 'PERCENT':
+        s = z.number().finite().min(0).max(100);
+        break;
+      case 'NUMBER':
+        s = z.number().finite().min(0).max(MAX_COUNT_ANSWER);
+        break;
+      case 'CHOICE': {
+        const values = (q.choices ?? []).map((c) => c.value);
+        s = values.length ? z.enum(values as [string, ...string[]]) : z.never();
+        break;
+      }
+    }
+    SCHEMAS.set(q.id, s);
+  }
+  return s;
+}
+
+/**
+ * A válasz hibája emberi nyelven, vagy null, ha érvényes. Hibás válasz nem
+ * számít (sem tényként, sem szabályként, sem lefedettségként), és az ok
+ * visszakerül – nem tűnik el csendben.
+ */
+export function answerIssue(q: ChecklistQuestion, a: unknown): string | null {
+  return answerSchema(q).safeParse(a).success ? null : ISSUE[q.type];
+}
+
+/**
+ * Tárolóból betöltött válaszok szétválogatása: ismeretlen kérdés-azonosító
+ * kiesik; a sémán elbukó válasz nem kerül az értékelésbe, hanem okkal
+ * együtt az `invalid` listába (a felület jelzi, javítható). Rejtett
+ * gyermekkérdés válasza megmarad (ha a szülő válasza visszaváltozik,
+ * újra érvényes), de az értékelés figyelmen kívül hagyja.
+ */
+export function sanitizeAnswers(raw: unknown): { answers: ChecklistAnswers; invalid: Record<string, { value: unknown; reason: string }> } {
+  const answers: ChecklistAnswers = {};
+  const invalid: Record<string, { value: unknown; reason: string }> = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { answers, invalid };
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    const q = BY_ID.get(id);
+    if (!q || value === undefined || value === '') continue;
+    const issue = answerIssue(q, value);
+    if (issue) invalid[id] = { value, reason: issue };
+    else answers[id] = value as Answer;
+  }
+  return { answers, invalid };
+}
+
 export function checklistProgress(answers: ChecklistAnswers, sectors: Sector[] = []): { answered: number; total: number } {
   const visible = CHECKLIST.filter((q) => isVisible(q, answers, sectors));
-  return { answered: visible.filter((q) => answers[q.id] !== undefined && answers[q.id] !== '').length, total: visible.length };
+  return {
+    answered: visible.filter((q) => answers[q.id] !== undefined && answers[q.id] !== '' && !answerIssue(q, answers[q.id])).length,
+    total: visible.length,
+  };
 }
 
 interface Hit {
@@ -743,10 +820,16 @@ interface Hit {
 export function evaluateChecklist(answers: ChecklistAnswers, kind: EngagementKind, sectors: Sector[] = []): IntakeResult {
   const hits: Hit[] = [];
   const facts: KnownFact[] = [];
+  const rejectedAnswers: { id: string; reason: string }[] = [];
   for (const q of CHECKLIST) {
     if (!isVisible(q, answers, sectors)) continue;
     const a = answers[q.id];
     if (a === undefined || a === '') continue;
+    const issue = answerIssue(q, a);
+    if (issue) {
+      rejectedAnswers.push({ id: q.id, reason: issue });
+      continue;
+    }
     facts.push({
       id: `CHK-${q.id}`,
       pillar: q.pillar,
@@ -800,7 +883,7 @@ export function evaluateChecklist(answers: ChecklistAnswers, kind: EngagementKin
   }
 
   suggestions.sort((a, b) => b.likelihood * b.impact - a.likelihood * a.impact);
-  return { suggestions, companySuggestions: [], facts };
+  return { suggestions, companySuggestions: [], facts, ...(rejectedAnswers.length ? { rejectedAnswers } : {}) };
 }
 
 export function checklistQuestion(id: string): ChecklistQuestion | undefined {

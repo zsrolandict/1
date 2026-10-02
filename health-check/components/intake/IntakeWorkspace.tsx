@@ -384,11 +384,18 @@ export default function IntakeWorkspace({ onOpenMatrix }: { onOpenMatrix?: () =>
                   const answers = { ...intake.answers };
                   if (a === undefined) delete answers[id];
                   else answers[id] = a;
-                  updateIntake({ answers });
+                  // Új válasz vagy törlés: a korábbi érvénytelen (betöltéskor kiszűrt) érték jelzése megszűnik.
+                  const invalidAnswers = { ...(intake.invalidAnswers ?? {}) };
+                  delete invalidAnswers[id];
+                  updateIntake({ answers, invalidAnswers: Object.keys(invalidAnswers).length ? invalidAnswers : undefined });
                 }}
-                onSample={SAMPLE_ANSWERS[ws.scenarioId] ? () => updateIntake({ answers: SAMPLE_ANSWERS[ws.scenarioId] }) : undefined}
-                onClear={() => updateIntake({ answers: {} })}
-                flagged={new Set(results.checklist.suggestions.flatMap((s) => s.evidence.match(/Q\d\d/g) ?? []))}
+                onSample={SAMPLE_ANSWERS[ws.scenarioId] ? () => updateIntake({ answers: SAMPLE_ANSWERS[ws.scenarioId], invalidAnswers: undefined }) : undefined}
+                onClear={() => updateIntake({ answers: {}, invalidAnswers: undefined })}
+                flagged={new Set(results.checklist.suggestions.flatMap((s) => s.evidence.match(/\bQR?\d+\b/g) ?? []))}
+                rejected={[
+                  ...Object.entries(intake.invalidAnswers ?? {}).map(([id, x]) => ({ id, reason: `${x.reason}; mentett érték: ${JSON.stringify(x.value)}` })),
+                  ...(results.checklist.rejectedAnswers ?? []),
+                ]}
               />
             )}
             {activeTab === 'tables' && (
@@ -476,6 +483,7 @@ function ChecklistTab({
   onSample,
   onClear,
   flagged,
+  rejected,
 }: {
   answers: Record<string, Answer>;
   sectors: Sector[];
@@ -483,6 +491,7 @@ function ChecklistTab({
   onSample?: () => void;
   onClear: () => void;
   flagged: Set<string>;
+  rejected: { id: string; reason: string }[];
 }) {
   return (
     <section className="space-y-4">
@@ -508,6 +517,11 @@ function ChecklistTab({
           </button>
         </div>
       </div>
+      {rejected.length > 0 && (
+        <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Érvénytelen válasz, nem számít bele az értékelésbe: {rejected.map((r) => `${r.id} (${r.reason})`).join('; ')}. Javítsd vagy töröld.
+        </p>
+      )}
       {PILLARS.map((p) => (
         <div key={p} className="rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <h2 className="border-b border-slate-100 px-4 py-2 text-sm font-semibold text-slate-900">{PILLAR_LABEL[p]}</h2>
@@ -587,7 +601,11 @@ function AnswerInput({ q, value, onChange }: { q: ChecklistQuestion; value: Answ
         min={0}
         max={q.type === 'PERCENT' ? 100 : undefined}
         value={typeof value === 'number' ? value : ''}
-        onChange={(e) => onChange(e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)))}
+        onChange={(e) => {
+          const n = Number(e.target.value);
+          if (e.target.value === '' || !Number.isFinite(n)) return onChange(undefined);
+          onChange(Math.min(q.type === 'PERCENT' ? 100 : Number.MAX_SAFE_INTEGER, Math.max(0, n)));
+        }}
         aria-label={q.id}
         className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-right text-sm text-slate-900"
       />

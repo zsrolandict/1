@@ -64,6 +64,8 @@ export interface IntakeResult {
   companySuggestions: CompanySuggestion[];
   /** Az interjúk ellentmondás-kereséséhez átadott tények. */
   facts: KnownFact[];
+  /** Kérdőív: érvénytelen (típusú vagy tartományon kívüli) válaszok – nem számítanak. */
+  rejectedAnswers?: { id: string; reason: string }[];
 }
 
 export const EMPTY_RESULT: IntakeResult = { suggestions: [], companySuggestions: [], facts: [] };

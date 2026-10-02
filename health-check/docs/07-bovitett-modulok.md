@@ -160,6 +160,15 @@ Minden piros és sárga tételhez elkészíti a várható vevői kérdéseket, e
 - **Küszöbök:** 50% és 80% – kezdő feltevés, a Feltevések listán (`lib/risk/coverageRules.ts`).
 - **Kód:** `lib/risk/coverage.ts` (számítás, felülbírálás), `lib/risk/coverageText.ts` (semleges szövegek), `lib/risk/engine.ts` (állapot, nevező, kapu), `components/risk/CoveragePanel.tsx`. A munkaterület `coverageOverrides` és `coverageLog` mezője a tárolóban és a projektmentésben is sémával ellenőrzött. **Teszt:** `lib/risk/coverage.test.ts`, a munkafüzet képletei lefedettséggel (`lib/report/derivation.test.ts`), e2e.
 
+## Kérdőív-válaszok ellenőrzése (audit K5)
+
+- **Séma kérdéstípusonként (zod):** igen/nem → logikai; százalék → véges szám 0–100; darabszám → véges, 0 és 1 000 000 közötti szám; választós → csak a felkínált értékek. Szöveges szám („45”), NaN, végtelen, negatív, 100 fölötti százalék, ismeretlen választási érték nem megy át (`answerSchema`, `answerIssue` – `lib/intake/checklist.ts`).
+- **Értékelés:** érvénytelen válasz nem ad tényt, javaslatot és lefedettséget; az ok visszakerül (`rejectedAnswers`), a kérdőív tetején figyelmeztetés jelzi.
+- **Fantomválaszok:** rejtett gyermekkérdés (a szülő válasza nem nyitja meg, vagy maga érvénytelen) és be nem jelölt ágazat kérdése nem számít; ismeretlen kérdés-azonosító sem.
+- **Betöltés (`loadIntake`):** a válaszok ugyanezen a sémán mennek át: ismeretlen azonosító kiesik, a hibás válasz nem vész el, hanem `invalidAnswers` alá kerül okkal és az eredeti értékkel – a felület jelzi, helyes válasszal vagy törléssel tűnik el. Az iratállapotok közül csak az ismert értékek maradnak (ezekből számol a lefedettség).
+- **Felület:** a százalékos mező 0–100 közé, a szám mező véges, nemnegatív értékre korlátoz; ágazati kérdés kiemelése javítva (QR1–QR4).
+- **Teszt:** `lib/intake/checklistValidation.test.ts`.
+
 ## Javítási terv és díj
 
 - **Mit tud:** minden tételnél a díj nem egy szám, hanem **javítási terv**: cél (mit kap az ügyfél), 2–6 munkalépés leírással, lépésenként ki végzi (üzletág, partner / szenior / junior), hány óra, milyen óradíjjal – ebből a díj. Mellette **sáv** (alsó – felső) és hogy mitől függ, az **ügyfél saját ráfordítása**, a díjban **nem szereplő külső költségek** (illeték, hatósági díj, licenc) és a feltételezések.

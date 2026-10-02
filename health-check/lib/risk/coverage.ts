@@ -1,4 +1,4 @@
-import { CHECKLIST, isVisible, type ChecklistAnswers } from '@/lib/intake/checklist';
+import { answerIssue, CHECKLIST, isVisible, type ChecklistAnswers } from '@/lib/intake/checklist';
 import { buildRequestList, type CaseProfile, type DocRequest, type RequestStatus } from '@/lib/intake/requests';
 import type { EngagementKind } from '@/lib/engagement/kinds';
 import { loadIntake } from '@/lib/intake/state';
@@ -75,7 +75,8 @@ export function computeCoverage(input: CoverageInput): Coverage {
   const out = {} as Coverage;
   for (const pillar of PILLARS) {
     const qs = CHECKLIST.filter((q) => q.pillar === pillar && isVisible(q, input.answers, sectors));
-    const questions = { answered: qs.filter((q) => answered(input.answers[q.id])).length, total: qs.length };
+    // Csak érvényes válasz számít (audit K5): 250% vagy szöveg a szám helyén nem „megválaszolt”.
+    const questions = { answered: qs.filter((q) => answered(input.answers[q.id]) && !answerIssue(q, input.answers[q.id])).length, total: qs.length };
     // Kötelező iratok; a „nem releváns” jelölésű nem számít a nevezőbe.
     const required = docs.filter((d) => d.pillar === pillar && d.priority === 'REQUIRED' && input.requestStatus[d.id] !== 'NA');
     const documents = { received: required.filter((d) => input.requestStatus[d.id] === 'RECEIVED').length, total: required.length };
