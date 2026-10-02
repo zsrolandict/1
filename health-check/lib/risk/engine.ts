@@ -1,5 +1,6 @@
 import { estimateRemediation } from '@/lib/remediation/estimate';
-import type { ActionWindow, Division, Pillar, PillarSummary, Rag, RiskAssessment, RiskItem, Scale5, ScoredRisk } from './types';
+import { COVERAGE_GATE, COVERAGE_PILLAR_MIN } from './coverageRules';
+import type { ActionWindow, Division, Pillar, PillarState, PillarSummary, Rag, RiskAssessment, RiskItem, Scale5, ScoredRisk } from './types';
 import { DEFAULT_COMPANY, resolveExposure, type CompanyProfile } from './valuation';
 import type { KindAdjustments } from '@/lib/engagement/adjustments';
 
@@ -41,6 +42,13 @@ export interface EngineOptions {
   pillarWeights?: Record<Pillar, number>;
   /** Típusfüggő valószínűség/hatás-korrekciók tételkódonként. */
   adjustments?: KindAdjustments;
+  /**
+   * Vizsgálati lefedettség pillérenként (0–1, `lib/risk/coverage.ts`). Ha
+   * meg van adva: a nem vizsgált pillér kiesik a pontszám nevezőjéből, és a
+   * minősítési kapu alatt nem adható Zöld. Hiányában (régi hívók, tesztek)
+   * minden pillér vizsgáltnak számít – a felület és a riport mindig átadja.
+   */
+  coverage?: Partial<Record<Pillar, number>>;
 }
 
 export const DEFAULT_OPTIONS: EngineOptions = {
@@ -129,7 +137,7 @@ function healthScore(risks: Pick<ScoredRisk, 'score'>[]): number {
   return Math.round(remaining * 100);
 }
 
-function pillarRag(summary: Omit<PillarSummary, 'rag'>): Rag {
+function pillarRag(summary: { red: number; amber: number; healthScore: number }): Rag {
   if (summary.red > 0 || summary.healthScore < 40) return 'RED';
   if (summary.amber > 0 || summary.healthScore < 70) return 'AMBER';
   return 'GREEN';
@@ -166,10 +174,26 @@ export function assess(items: RiskItem[], partial: Partial<EngineOptions> = {}):
       expectedLossHuf: sum(own.map((r) => r.expectedLossHuf)),
       healthScore: healthScore(own),
     };
-    pillars[pillar] = { ...base, rag: pillarRag(base) };
+    const raw = pillarRag(base);
+    const coverage = opts.coverage ? clampCoverage(opts.coverage[pillar]) : null;
+    const state: PillarState = coverage == null || coverage >= COVERAGE_PILLAR_MIN ? 'EXAMINED' : base.identified > 0 ? 'PARTIAL' : 'NOT_EXAMINED';
+    pillars[pillar] = {
+      ...base,
+      healthScore: state === 'NOT_EXAMINED' ? null : base.healthScore,
+      rag: state === 'NOT_EXAMINED' || (state === 'PARTIAL' && raw === 'GREEN') ? 'UNRATED' : raw,
+      rawRag: raw,
+      coverage,
+      state,
+    } as PillarSummary;
   }
 
   const pillarList = PILLARS.map((p) => pillars[p]);
+  // Dinamikus nevező: csak a vizsgált (vagy megállapítással bíró) pillérek számítanak.
+  const included = pillarList.filter((p) => p.state !== 'NOT_EXAMINED');
+  const coverageTotal = opts.coverage ? weightedCoverage(pillarList, opts.pillarWeights) : null;
+  const qualified = coverageTotal == null || coverageTotal >= COVERAGE_GATE;
+  const rawTotal = included.map((p) => (p as PillarSummary & { rawRag: Rag }).rawRag).reduce<Rag>(worstRag, 'GREEN');
+  for (const p of pillarList) delete (p as Partial<PillarSummary & { rawRag: Rag }>).rawRag;
   const totals = {
     identified: risks.length,
     red: sum(pillarList.map((p) => p.red)),
@@ -177,8 +201,11 @@ export function assess(items: RiskItem[], partial: Partial<EngineOptions> = {}):
     green: sum(pillarList.map((p) => p.green)),
     grossExposureHuf: sum(pillarList.map((p) => p.grossExposureHuf)),
     expectedLossHuf: sum(pillarList.map((p) => p.expectedLossHuf)),
-    healthScore: weightedHealth(pillarList, opts.pillarWeights),
-    rag: pillarList.map((p) => p.rag).reduce<Rag>(worstRag, 'GREEN'),
+    healthScore: included.length ? weightedHealth(included, opts.pillarWeights) : null,
+    // Kapu: nem vizsgálható semmi, vagy részleges lefedettség mellett nem adható Zöld (Piros és Sárga marad).
+    rag: !included.length || (rawTotal === 'GREEN' && !qualified) ? ('UNRATED' as const) : rawTotal,
+    coverage: coverageTotal,
+    qualified,
   };
 
   const actionPlan = emptyRecord(WINDOWS, () => [] as ScoredRisk[]);
@@ -203,12 +230,23 @@ export function assess(items: RiskItem[], partial: Partial<EngineOptions> = {}):
   };
 }
 
+/** Súlyozott átlag a megadott (vizsgált) pillérekre; a súlyok ezekre normálódnak. */
 function weightedHealth(pillars: PillarSummary[], weights?: Record<Pillar, number>): number {
-  if (!weights) return Math.round(sum(pillars.map((p) => p.healthScore)) / pillars.length);
+  const score = (p: PillarSummary) => p.healthScore ?? 0;
+  if (!weights) return Math.round(sum(pillars.map(score)) / pillars.length);
   const total = sum(pillars.map((p) => Math.max(0, weights[p.pillar] ?? 0)));
-  if (total <= 0) return Math.round(sum(pillars.map((p) => p.healthScore)) / pillars.length);
-  return Math.round(sum(pillars.map((p) => p.healthScore * Math.max(0, weights[p.pillar] ?? 0))) / total);
+  if (total <= 0) return Math.round(sum(pillars.map(score)) / pillars.length);
+  return Math.round(sum(pillars.map((p) => score(p) * Math.max(0, weights[p.pillar] ?? 0))) / total);
 }
+
+/** Összesített lefedettség: a pillérsúlyokkal súlyozott átlag (súly nélkül egyszerű átlag). */
+function weightedCoverage(pillars: PillarSummary[], weights?: Record<Pillar, number>): number {
+  const total = weights ? sum(pillars.map((p) => Math.max(0, weights[p.pillar] ?? 0))) : 0;
+  if (!weights || total <= 0) return sum(pillars.map((p) => p.coverage ?? 0)) / pillars.length;
+  return sum(pillars.map((p) => (p.coverage ?? 0) * Math.max(0, weights[p.pillar] ?? 0))) / total;
+}
+
+const clampCoverage = (x: unknown): number => (typeof x === 'number' && Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 0);
 
 function sum(xs: number[]): number {
   return xs.reduce((a, b) => a + b, 0);

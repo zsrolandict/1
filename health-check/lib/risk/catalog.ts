@@ -1,5 +1,5 @@
 import { EXPERT_PARAMETERS } from './parameters';
-import type { ActionWindow, Division, Pillar, Rag, RiskItem } from './types';
+import type { Rating, ActionWindow, Division, Pillar, Rag, RiskItem } from './types';
 
 export const PILLAR_LABEL: Record<Pillar, string> = {
   FINANCE: 'Pénzügy / Adó',
@@ -21,6 +21,9 @@ export const RAG_LABEL: Record<Rag, string> = {
   AMBER: 'Sárga',
   RED: 'Piros',
 };
+
+/** Minősítés címkéje: a színkód, vagy „Nem minősített” (nem vizsgált / részleges lefedettség). */
+export const RATING_LABEL: Record<Rating, string> = { ...RAG_LABEL, UNRATED: 'Nem minősített' };
 
 export const WINDOW_LABEL: Record<ActionWindow, string> = {
   D0_30: '0–30 nap · Quick wins',

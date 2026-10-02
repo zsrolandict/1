@@ -181,6 +181,20 @@ try {
     `${feeBefore} → ${feeAfter}`,
   );
 
+  const gate = await p.getByText('Részleges / nem minősített felmérés').count();
+  const covPanel = p.locator('details', { hasText: 'Vizsgálati lefedettség' }).first();
+  await covPanel.locator('summary').click();
+  await p.getByLabel('HR: lefedettség felülbírálása').selectOption('EXAMINED');
+  const disabledWithoutReason = await p.getByRole('button', { name: 'Rögzítés' }).isDisabled();
+  await p.getByLabel('HR: a felülbírálás indoklása').fill('HR-vezetői interjú lefedte a területet.');
+  await p.getByRole('button', { name: 'Rögzítés' }).click();
+  await p.waitForTimeout(300);
+  check(
+    'lefedettség: részleges felmérés jelzése, felülbírálás csak indoklással, naplózva',
+    gate > 0 && disabledWithoutReason && /Lefedettségi napló/.test(await covPanel.innerText()),
+    `kapu=${gate} tiltva=${disabledWithoutReason}`,
+  );
+
   check('nincs JavaScript-hiba', errors.length === 0, errors.join(' | '));
 } catch (e) {
   check('a teszt végigfutott', false, e instanceof Error ? e.message.split('\n')[0] : String(e));

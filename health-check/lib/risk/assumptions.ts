@@ -2,6 +2,7 @@ import { KIND_ADJUSTMENTS_STATUS } from '@/lib/engagement/adjustments';
 import { FIN_THRESHOLDS } from '@/lib/intake/financials/thresholds';
 import { DEFAULT_OPTIONS, PROBABILITY } from './engine';
 import { EXPERT_PARAMETERS } from './parameters';
+import { COVERAGE_GATE, COVERAGE_PILLAR_MIN } from './coverageRules';
 import { DIVISION_LABEL } from './catalog';
 import type { Division } from './types';
 import { PLAN_TEMPLATES } from '@/lib/remediation/estimate';
@@ -103,6 +104,26 @@ export const ASSUMPTIONS: Assumption[] = [
     status: 'PROPOSAL',
     owner: 'Módszertan',
     code: 'lib/risk/engine.ts › pillarRag',
+  },
+  {
+    id: 'coverage-pillar',
+    label: 'Pillér lefedettségi küszöbe',
+    value: `${Math.round(COVERAGE_PILLAR_MIN * 100)}%`,
+    effect: 'Ez alatt, azonosított tétel nélkül a pillér „Nem vizsgált”: kimarad a Health Score nevezőjéből (nem kap 100-at).',
+    basis: 'Módszertani döntés (audit K2); lefedettség = megválaszolt kérdések és beérkezett kötelező iratok arányának átlaga.',
+    status: 'PROPOSAL',
+    owner: 'Módszertan',
+    code: 'lib/risk/coverageRules.ts',
+  },
+  {
+    id: 'coverage-gate',
+    label: 'Minősítési kapu (összesített lefedettség)',
+    value: `${Math.round(COVERAGE_GATE * 100)}%`,
+    effect: 'Ez alatt a felmérés „Részleges / nem minősített”: nem adható Zöld minősítés (Piros és Sárga marad).',
+    basis: 'Módszertani döntés (audit K2); a pillérsúlyokkal súlyozott lefedettség.',
+    status: 'PROPOSAL',
+    owner: 'Módszertan',
+    code: 'lib/risk/coverageRules.ts',
   },
   {
     id: 'pillar-weights',

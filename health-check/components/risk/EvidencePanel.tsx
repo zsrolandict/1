@@ -453,11 +453,13 @@ export function HealthExplain({
   total,
   labels,
 }: {
-  pillars: { pillar: string; score: number; weight: number; items: number }[];
-  total: number;
+  /** score null = nem vizsgált pillér: kimarad a nevezőből. */
+  pillars: { pillar: string; score: number | null; weight: number; items: number }[];
+  total: number | null;
   labels: Record<string, string>;
 }) {
-  const weightSum = pillars.reduce((a, p) => a + p.weight, 0) || 1;
+  // Dinamikus nevező: a súlyok csak a vizsgált pillérekre normálódnak.
+  const weightSum = pillars.filter((p) => p.score != null).reduce((a, p) => a + p.weight, 0) || 1;
   return (
     <details className="group rounded-xl border border-slate-200/80 bg-white text-sm shadow-[0_1px_2px_rgba(15,23,42,0.04)] print:hidden">
       <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 font-semibold text-slate-800 [&::-webkit-details-marker]:hidden">
@@ -468,7 +470,8 @@ export function HealthExplain({
         <p>
           Pillérenként 100-ról indulunk. Minden azonosított tétel a pontszámával arányosan csökkenti a maradékot: a szorzó 1 − (pont / 25) × 0,6. Így egy 25
           pontos tétel 40%-ra, egy 8 pontos 81%-ra viszi le a pillért. Egy-egy kritikus tétel erősebben hat, mint sok apró. Az összesített érték a pillérek
-          súlyozott átlaga; a súlyokat az átvilágítás típusa adja.
+          súlyozott átlaga; a súlyokat az átvilágítás típusa adja. A nem vizsgált pillér (alacsony lefedettség, azonosított tétel nélkül) nem kap 100-at:
+          kimarad, és a többi pillér súlya arányosan nő. A hiányt a lefedettség és a minősítési kapu jelzi.
         </p>
         <table className="w-full max-w-xl tabular-nums">
           <thead className="text-left text-[11px] uppercase tracking-wide text-slate-500">
@@ -485,9 +488,9 @@ export function HealthExplain({
               <tr key={p.pillar}>
                 <td className="py-1 text-slate-800">{labels[p.pillar] ?? p.pillar}</td>
                 <td className="py-1 text-right">{p.items}</td>
-                <td className="py-1 text-right">{p.score}</td>
-                <td className="py-1 text-right">{Math.round((p.weight / weightSum) * 100)}%</td>
-                <td className="py-1 text-right">{((p.score * p.weight) / weightSum).toFixed(1)}</td>
+                <td className="py-1 text-right">{p.score ?? 'nem vizsgált'}</td>
+                <td className="py-1 text-right">{p.score == null ? 'kimarad' : `${Math.round((p.weight / weightSum) * 100)}%`}</td>
+                <td className="py-1 text-right">{p.score == null ? '–' : ((p.score * p.weight) / weightSum).toFixed(1)}</td>
               </tr>
             ))}
           </tbody>
@@ -496,7 +499,7 @@ export function HealthExplain({
               <td className="pt-2" colSpan={4}>
                 Health Score (kerekítve)
               </td>
-              <td className="pt-2 text-right">{total}</td>
+              <td className="pt-2 text-right">{total ?? 'Nem értékelhető'}</td>
             </tr>
           </tfoot>
         </table>

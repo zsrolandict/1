@@ -101,11 +101,12 @@ export function deriveRisk(eff: Omit<ScoredRisk, 'priority'>, materialityHuf: nu
 }
 
 export interface HealthDerivation {
-  pillars: { pillar: Pillar; score: number; weight: number; items: number }[];
-  total: number;
+  /** score null = nem vizsgált pillér (kimarad a nevezőből). */
+  pillars: { pillar: Pillar; score: number | null; weight: number; items: number }[];
+  total: number | null;
 }
 
-export function deriveHealth(pillars: Record<Pillar, PillarSummary>, weights: Record<Pillar, number>, total: number): HealthDerivation {
+export function deriveHealth(pillars: Record<Pillar, PillarSummary>, weights: Record<Pillar, number>, total: number | null): HealthDerivation {
   return {
     pillars: (Object.keys(pillars) as Pillar[]).map((p) => ({
       pillar: p,

@@ -50,7 +50,8 @@ export interface BenchmarkRecord {
   kind: EngagementKind;
   sectors: Sector[];
   revenueBand: RevenueBand;
-  healthScore: number;
+  /** null = nem értékelhető felmérés (egy pillér sem volt vizsgálva). */
+  healthScore: number | null;
   red: number;
   amber: number;
   items: BenchmarkItem[];
@@ -171,7 +172,10 @@ export function stats(records: BenchmarkRecord[]): BenchmarkStats {
       redShare: s.red / s.k,
     }))
     .sort((a, b) => b.frequency - a.frequency || b.redShare - a.redShare || a.code.localeCompare(b.code));
-  const avg = (f: (r: BenchmarkRecord) => number) => (n ? round1(records.reduce((a, r) => a + f(r), 0) / n) : null);
+  const avg = (f: (r: BenchmarkRecord) => number | null) => {
+    const xs = records.map(f).filter((x): x is number => x != null);
+    return xs.length ? round1(xs.reduce((a, x) => a + x, 0) / xs.length) : null;
+  };
   return { n, avgHealth: avg((r) => r.healthScore), avgRed: avg((r) => r.red), codes, customCount };
 }
 

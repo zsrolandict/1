@@ -93,6 +93,18 @@ export interface ScoredRisk extends RiskItem {
   feeByDivision: Partial<Record<Division, number>>;
 }
 
+/** Minősítés: a színkód, vagy „nem minősített” (nem vizsgált / részleges lefedettség miatt nem adható Zöld). */
+export type Rating = Rag | 'UNRATED';
+
+/**
+ * Pillér vizsgálati állapota (audit K2):
+ *  - EXAMINED: a lefedettség eléri a küszöböt (vagy nincs lefedettségi adat);
+ *  - PARTIAL: a lefedettség a küszöb alatt, de vannak azonosított tételek – a
+ *    megállapítások beszámítanak, de a pillér nem lehet Zöld;
+ *  - NOT_EXAMINED: a küszöb alatt, tétel nélkül – kiesik a pontszám nevezőjéből.
+ */
+export type PillarState = 'EXAMINED' | 'PARTIAL' | 'NOT_EXAMINED';
+
 export interface PillarSummary {
   pillar: Pillar;
   identified: number;
@@ -101,9 +113,12 @@ export interface PillarSummary {
   green: number;
   grossExposureHuf: number;
   expectedLossHuf: number;
-  /** 0–100 egészségpontszám (100 = nincs azonosított kockázat). */
-  healthScore: number;
-  rag: Rag;
+  /** 0–100 egészségpontszám (100 = nincs azonosított kockázat); null = nem vizsgált pillér. */
+  healthScore: number | null;
+  rag: Rating;
+  /** Vizsgálati lefedettség 0–1 (null = nincs lefedettségi adat). */
+  coverage: number | null;
+  state: PillarState;
 }
 
 export interface RiskAssessment {
@@ -116,8 +131,13 @@ export interface RiskAssessment {
     green: number;
     grossExposureHuf: number;
     expectedLossHuf: number;
-    healthScore: number;
-    rag: Rag;
+    /** A vizsgált pillérek súlyozott pontszáma (dinamikus nevező); null = nem értékelhető (egy pillér sem vizsgált). */
+    healthScore: number | null;
+    rag: Rating;
+    /** Összesített, súlyozott lefedettség 0–1; null = nincs lefedettségi adat. */
+    coverage: number | null;
+    /** A lefedettség eléri a minősítési kaput (vagy nincs lefedettségi adat). */
+    qualified: boolean;
   };
   actionPlan: Record<ActionWindow, ScoredRisk[]>;
   pipeline: {

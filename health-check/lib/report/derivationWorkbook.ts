@@ -1,6 +1,8 @@
 import { adjustmentsFor } from '@/lib/engagement/adjustments';
 import { ENGAGEMENT_KINDS } from '@/lib/engagement/kinds';
-import { PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
+import { PILLAR_LABEL, RAG_LABEL, RATING_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
+import { COVERAGE_GATE, COVERAGE_PILLAR_MIN } from '@/lib/risk/coverageRules';
+import { PILLAR_STATE_LABEL } from '@/lib/risk/coverageText';
 import { DEFAULT_OPTIONS, PILLARS, PROBABILITY, scoreRisk } from '@/lib/risk/engine';
 import { ASSUMPTION_STATUS_LABEL, ASSUMPTIONS, REMAINING_JUDGEMENT } from '@/lib/risk/assumptions';
 import { describeProposal, discussionOf, VERDICT_LABEL } from '@/lib/risk/review';
@@ -36,6 +38,8 @@ const ROW = {
   dsoActual: 14,
   dsoIndustry: 15,
   weight0: 16, // 16–19: pillér-súlyok PILLARS sorrendben
+  covPillarMin: 20,
+  covGate: 21,
 } as const;
 
 export function buildDerivationWorkbook(input: ReportInput, items: RiskItem[]): Sheet[] {
@@ -83,6 +87,16 @@ export function buildDerivationWorkbook(input: ReportInput, items: RiskItem[]): 
         { v: kind.weights[pl], fmt: 'inputPct' as const },
         pl === 'FINANCE' ? `Az átvilágítás típusa (${kind.label}) adja.` : '',
       ]),
+      [
+        'Pillér lefedettségi küszöbe',
+        { v: COVERAGE_PILLAR_MIN, fmt: 'inputPct' as const },
+        'Ez alatt, azonosított tétel nélkül a pillér „Nem vizsgált”: kimarad a Health Score nevezőjéből. Kezdő feltevés.',
+      ],
+      [
+        'Minősítési kapu (összesített lefedettség)',
+        { v: COVERAGE_GATE, fmt: 'inputPct' as const },
+        'Ez alatt a felmérés részleges: nem adható „Zöld” minősítés (Piros és Sárga marad). Kezdő feltevés.',
+      ],
     ],
   };
 
@@ -199,16 +213,24 @@ export function buildDerivationWorkbook(input: ReportInput, items: RiskItem[]): 
     const r = i + 2;
     const s = a.pillars[pl];
     const cond = (extra = '') => `${rng('C')},A${r},${rng('D')},1${extra}`;
+    const raw = `IF(OR(D${r}>0,F${r}<40),"Piros",IF(OR(E${r}>0,F${r}<70),"Sárga","Zöld"))`;
     return [
       PILLAR_LABEL[pl],
       { f: `${PAR}!$B$${ROW.weight0 + i}`, v: kind.weights[pl], fmt: 'pct' },
       { f: `COUNTIFS(${cond()})`, v: s.identified },
       { f: `COUNTIFS(${cond(`,${rng('T')},"Piros"`)})`, v: s.red },
       { f: `COUNTIFS(${cond(`,${rng('T')},"Sárga"`)})`, v: s.amber },
-      { f: `ROUND(100*EXP(SUMPRODUCT((${rng('C')}=A${r})*LN(${rng('Y')}))),0)`, v: s.healthScore },
-      { f: `IF(OR(D${r}>0,F${r}<40),"Piros",IF(OR(E${r}>0,F${r}<70),"Sárga","Zöld"))`, v: RAG_LABEL[s.rag] },
+      // Nyers pillér-egészség (nem vizsgált pillérnél tétel nincs, így 100 – de nem számít, lásd L).
+      { f: `ROUND(100*EXP(SUMPRODUCT((${rng('C')}=A${r})*LN(${rng('Y')}))),0)`, v: s.healthScore ?? 100 },
+      {
+        f: `IF(K${r}="Nem vizsgált","${RATING_LABEL.UNRATED}",IF(AND(K${r}="Részben vizsgált",${raw}="Zöld"),"${RATING_LABEL.UNRATED}",${raw}))`,
+        v: RATING_LABEL[s.rag],
+      },
       { f: `SUMIFS(${rng('P')},${cond()})`, v: s.grossExposureHuf, fmt: 'huf' },
       { f: `SUMIFS(${rng('R')},${cond()})`, v: s.expectedLossHuf, fmt: 'huf' },
+      { v: s.coverage ?? 1, fmt: 'inputPct' },
+      { f: `IF(J${r}>=${p(ROW.covPillarMin)},"Vizsgált",IF(C${r}>0,"Részben vizsgált","Nem vizsgált"))`, v: PILLAR_STATE_LABEL[s.state] },
+      { f: `IF(K${r}="Nem vizsgált",0,1)`, v: s.state === 'NOT_EXAMINED' ? 0 : 1 },
     ];
   });
   const last = PILLARS.length + 1;
@@ -218,13 +240,23 @@ export function buildDerivationWorkbook(input: ReportInput, items: RiskItem[]): 
     { f: `SUM(C2:C${last})`, v: a.totals.identified },
     { f: `SUM(D2:D${last})`, v: a.totals.red },
     { f: `SUM(E2:E${last})`, v: a.totals.amber },
-    { f: `ROUND(SUMPRODUCT(F2:F${last},B2:B${last})/SUM(B2:B${last}),0)`, v: a.totals.healthScore },
+    // Dinamikus nevező: csak a számító (L=1) pillérek súlya.
     {
-      f: `IF(COUNTIF(G2:G${last},"Piros")>0,"Piros",IF(COUNTIF(G2:G${last},"Sárga")>0,"Sárga","Zöld"))`,
-      v: RAG_LABEL[a.totals.rag],
+      f: `IF(SUMPRODUCT(B2:B${last},L2:L${last})=0,"Nem értékelhető",ROUND(SUMPRODUCT(F2:F${last},B2:B${last},L2:L${last})/SUMPRODUCT(B2:B${last},L2:L${last}),0))`,
+      v: a.totals.healthScore ?? 'Nem értékelhető',
+    },
+    {
+      f: `IF(SUM(L2:L${last})=0,"${RATING_LABEL.UNRATED}",IF(COUNTIF(G2:G${last},"Piros")>0,"Piros",IF(COUNTIF(G2:G${last},"Sárga")>0,"Sárga",IF(J${last + 1}>=${p(ROW.covGate)},"Zöld","${RATING_LABEL.UNRATED}"))))`,
+      v: RATING_LABEL[a.totals.rag],
     },
     { f: `SUM(H2:H${last})`, v: a.totals.grossExposureHuf, fmt: 'huf' },
     { f: `SUM(I2:I${last})`, v: a.totals.expectedLossHuf, fmt: 'huf' },
+    { f: `SUMPRODUCT(J2:J${last},B2:B${last})/SUM(B2:B${last})`, v: a.totals.coverage ?? 1, fmt: 'pct' },
+    {
+      f: `IF(J${last + 1}>=${p(ROW.covGate)},"Teljes értékű","Részleges / nem minősített")`,
+      v: a.totals.qualified ? 'Teljes értékű' : 'Részleges / nem minősített',
+    },
+    { f: `SUM(L2:L${last})`, v: PILLARS.filter((pl) => a.pillars[pl].state !== 'NOT_EXAMINED').length },
   ]);
   const pillars: Sheet = {
     name: 'Pillérek',
@@ -235,9 +267,12 @@ export function buildDerivationWorkbook(input: ReportInput, items: RiskItem[]): 
       { header: 'Piros', width: 7, format: 'int' },
       { header: 'Sárga', width: 7, format: 'int' },
       { header: 'Pillér-egészség (0–100)', width: 12, format: 'int' },
-      { header: 'Besorolás', width: 10 },
+      { header: 'Besorolás', width: 16 },
       { header: 'Bruttó kitettség', width: 16 },
       { header: 'Várható veszteség', width: 16 },
+      { header: 'Lefedettség', width: 11, format: 'pct' },
+      { header: 'Vizsgálati állapot', width: 22 },
+      { header: 'Számít a Health Score-ba (1/0)', width: 12, format: 'int' },
     ],
     rows: pillarRows,
   };

@@ -189,7 +189,7 @@ describe('levezetés', () => {
             .replace(',', '.'),
         ),
       );
-      expect(Math.round(100 * factors.reduce((a, b) => a * b, 1))).toBeCloseTo(p.healthScore, 0);
+      expect(Math.round(100 * factors.reduce((a, b) => a * b, 1))).toBeCloseTo(p.healthScore!, 0);
     }
   });
 });

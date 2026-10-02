@@ -175,4 +175,13 @@ describe('K1: böngészős betöltés a fájlbetöltés sémájával (lib/risk/s
     expect(ws.materialityHuf).toBeGreaterThanOrEqual(0);
     expect(ws.kind).not.toBe('NEM_LETEZO');
   });
+
+  it('lefedettségi felülbírálás (K2): az érvényes megmarad, az indoklás nélküli vagy hibás szerkezetű kimarad', () => {
+    const okOverride = { HR: { state: 'EXAMINED', reason: 'HR-interjú lefedte', by: 'Teszt Elek', at: '2026-10-02T10:00:00Z' } };
+    const log = [{ pillar: 'HR', from: 'AUTO', to: 'EXAMINED', reason: 'HR-interjú lefedte', by: 'Teszt Elek', at: '2026-10-02T10:00:00Z' }];
+    storage.setItem(key, JSON.stringify({ scenarioId: 'ures', companyName: 'X', items: [], coverageOverrides: okOverride, coverageLog: log }));
+    expect(loadProject(id)).toMatchObject({ coverageOverrides: okOverride, coverageLog: log });
+    storage.setItem(key, JSON.stringify({ scenarioId: 'ures', companyName: 'X', items: [], coverageOverrides: { HR: { state: 'EXAMINED', reason: '' } } }));
+    expect(loadProject(id).coverageOverrides).toBeUndefined();
+  });
 });

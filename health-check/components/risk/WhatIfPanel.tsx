@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { FlaskConical } from 'lucide-react';
 import type { EngineOptions } from '@/lib/risk/engine';
 import { formatHufShort } from '@/lib/risk/engine';
-import { RAG_LABEL } from '@/lib/risk/catalog';
+import { RAG_LABEL, RATING_LABEL } from '@/lib/risk/catalog';
 import { presetFixes, simulate, type FixMode } from '@/lib/risk/simulate';
 import type { RiskAssessment, RiskItem } from '@/lib/risk/types';
 
@@ -108,8 +108,13 @@ export default function WhatIfPanel({ items, opts, result }: { items: RiskItem[]
             </ul>
           </div>
           <dl className="space-y-2 rounded-lg bg-canvas p-3 text-sm">
-            <Row label="Health Score" before={String(b.healthScore)} after={String(a.healthScore)} good={a.healthScore > b.healthScore} />
-            <Row label="Összesített besorolás" before={RAG_LABEL[b.rag]} after={RAG_LABEL[a.rag]} good={a.rag !== b.rag} />
+            <Row
+              label="Health Score"
+              before={b.healthScore == null ? 'nem értékelhető' : String(b.healthScore)}
+              after={a.healthScore == null ? 'nem értékelhető' : String(a.healthScore)}
+              good={a.healthScore != null && b.healthScore != null && a.healthScore > b.healthScore}
+            />
+            <Row label="Összesített besorolás" before={RATING_LABEL[b.rag]} after={RATING_LABEL[a.rag]} good={a.rag !== b.rag} />
             <Row label="Piros / sárga tételek" before={`${b.red} / ${b.amber}`} after={`${a.red} / ${a.amber}`} good={a.red + a.amber < b.red + b.amber} />
             <Row
               label="Várható veszteség"

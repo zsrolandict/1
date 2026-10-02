@@ -4,8 +4,8 @@ import { HyperFormula } from 'hyperformula';
 import { adjustmentsFor } from '@/lib/engagement/adjustments';
 import { ENGAGEMENT_KINDS } from '@/lib/engagement/kinds';
 import { DIVISION_LABEL } from '@/lib/risk/catalog';
-import { assess } from '@/lib/risk/engine';
-import type { RiskItem } from '@/lib/risk/types';
+import { assess, PILLARS } from '@/lib/risk/engine';
+import type { Pillar, RiskItem } from '@/lib/risk/types';
 import { getScenario, SCENARIOS } from '@/lib/scenarios';
 import { buildDerivationWorkbook, exportDerivation } from './derivationWorkbook';
 import type { CellObj, Sheet } from './xlsx';
@@ -33,7 +33,7 @@ function evaluate(sheets: Sheet[], edit?: (sheets: Sheet[]) => void) {
   return { get, sheets: copy };
 }
 
-function setup(id: string, change?: (items: RiskItem[]) => RiskItem[]) {
+function setup(id: string, change?: (items: RiskItem[]) => RiskItem[], coverage?: Partial<Record<Pillar, number>>) {
   const sc = getScenario(id);
   const items = change ? change(sc.items) : sc.items;
   const opts = {
@@ -41,6 +41,7 @@ function setup(id: string, change?: (items: RiskItem[]) => RiskItem[]) {
     materialityHuf: sc.materialityHuf,
     adjustments: adjustmentsFor(sc.kind),
     pillarWeights: ENGAGEMENT_KINDS[sc.kind].weights,
+    ...(coverage ? { coverage } : {}),
   };
   const input = { companyName: sc.companyName, kind: sc.kind, company: sc.company, materialityHuf: sc.materialityHuf, assessment: assess(items, opts) };
   return { sc, items, input, opts };
@@ -156,6 +157,40 @@ describe('levezetés-munkafüzet', () => {
       (r.rows[rateRow][2] as CellObj).v = ((r.rows[rateRow][2] as CellObj).v as number) + 10_000;
     });
     expect(bumped.get('Javítási díj', total, 9) as number).toBeGreaterThan(input.assessment.pipeline.totalFeeHuf);
+  });
+
+  it('lefedettség (K2): a Pillérek lap képletei egyeznek a programmal, és a lefedettség átírása átfut', () => {
+    // Pénzügy teljes, Jog részleges (tételekkel), Működés és HR nem vizsgált – a minta tételei közül csak ami ide esik.
+    const coverage = { FINANCE: 1, LEGAL: 0.3, OPERATIONS: 0, HR: 0.1 };
+    const keep = (xs: RiskItem[]) => xs.map((r) => (r.pillar === 'OPERATIONS' || r.pillar === 'HR' ? { ...r, identified: false } : r));
+    const { items, input, opts } = setup('it-fejleszto', keep, coverage);
+    expect(input.assessment.pillars.OPERATIONS.state).toBe('NOT_EXAMINED');
+    const sheets = buildDerivationWorkbook(input, items);
+    const { get } = evaluate(sheets);
+    const pil = sheets.find((x) => x.name === 'Pillérek')!;
+    pil.rows.forEach((row, r) =>
+      row.forEach((cell, c) => {
+        if (cell == null || typeof cell !== 'object' || !(cell as CellObj).f) return;
+        const want = (cell as CellObj).v;
+        const got = get('Pillérek', r + 1, c);
+        if (typeof want === 'number') expect(got as number, `Pillérek ${r + 2}:${c}`).toBeCloseTo(want, 3);
+        else expect(got ?? '', `Pillérek ${r + 2}:${c}`).toBe(want ?? '');
+      }),
+    );
+    const total = pil.rows.length; // Összesen sor (fejléc után)
+    expect(get('Pillérek', total, 5)).toBe(input.assessment.totals.healthScore);
+    // A kapu alatt is piros marad, ami piros (csak a Zöld tiltott).
+    expect(input.assessment.totals.qualified).toBe(false);
+    expect(get('Pillérek', total, 6)).toBe('Piros');
+
+    // Mi lenne, ha a Működés is vizsgált lenne: a munkafüzet ugyanazt adja, mint a program.
+    const opsRow = PILLARS.indexOf('OPERATIONS');
+    const after = evaluate(sheets, (s) => {
+      (s.find((x) => x.name === 'Pillérek')!.rows[opsRow][9] as CellObj).v = 1;
+    });
+    const re = assess(items, { ...opts, coverage: { ...coverage, OPERATIONS: 1 } });
+    expect(after.get('Pillérek', total, 5)).toBe(re.totals.healthScore);
+    expect(after.get('Pillérek', total, 9) as number).toBeCloseTo(re.totals.coverage!, 6);
   });
 
   it('valódi XLSX: képletek, újraszámolás megnyitáskor, sárga bemenetek', () => {

@@ -1,20 +1,22 @@
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import { formatHuf, formatHufShort, DIVISIONS, PILLARS } from '@/lib/risk/engine';
-import { DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
+import { DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, RATING_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
 import { EXPERT_PARAMETERS } from '@/lib/risk/parameters';
-import type { Rag, ScoredRisk } from '@/lib/risk/types';
+import type { Rag, Rating, ScoredRisk } from '@/lib/risk/types';
 import { BRAND } from './brand';
 import { formatAdjustment, KIND_ADJUSTMENTS_STATUS } from '@/lib/engagement/adjustments';
 import { firstSentence, formatDateHu, WINDOW_ORDER, type ReportModel } from './model';
 import { hasRevenue } from '@/lib/risk/valuation';
 import { ACTOR_LABEL, formatChange, formatWhen, trailOf, TRAIL_KIND_LABEL } from '@/lib/risk/trail';
 import { scopeCounts, type ReportScope } from './scope';
+import { COVERAGE_METHOD_TEXT, coverageNotice, pct, PILLAR_STATE_LABEL } from '@/lib/risk/coverageText';
 import { estimateRemediation } from '@/lib/remediation/estimate';
 import { RATES_APPROVED, ROLE_SHORT } from '@/lib/remediation/rates';
 
 const C = BRAND.colors;
 
-const RAG_COLOR: Record<Rag, { fg: string; bg: string }> = {
+const RAG_COLOR: Record<Rating, { fg: string; bg: string }> = {
+  UNRATED: { fg: '#475569', bg: '#e2e8f0' },
   RED: { fg: C.red, bg: C.redBg },
   AMBER: { fg: C.amber, bg: C.amberBg },
   GREEN: { fg: C.green, bg: C.greenBg },
@@ -66,12 +68,14 @@ export function ReportDocument({ model }: { model: ReportModel }) {
 // ── Közös elemek ───────────────────────────────────────────────────
 
 function Chrome({ m }: { m: ReportModel }) {
+  const notice = coverageNotice(m.assessment);
   return (
     <>
       <View style={s.header} fixed>
         <Text>
           {BRAND.firmName} · {m.kindLabel}
           {m.unapprovedParameterRisks.length > 0 ? '  ·  TERVEZET – nem kiadható' : ''}
+          {notice && !m.assessment.totals.qualified ? `  ·  ${notice.title.toUpperCase()}` : ''}
         </Text>
         <Text>{m.companyName}</Text>
       </View>
@@ -83,8 +87,8 @@ function Chrome({ m }: { m: ReportModel }) {
   );
 }
 
-function RagPill({ rag, label }: { rag: Rag; label?: string }) {
-  return <Text style={[s.pill, { color: RAG_COLOR[rag].fg, backgroundColor: RAG_COLOR[rag].bg }]}>{label ?? RAG_LABEL[rag]}</Text>;
+function RagPill({ rag, label }: { rag: Rating; label?: string }) {
+  return <Text style={[s.pill, { color: RAG_COLOR[rag].fg, backgroundColor: RAG_COLOR[rag].bg }]}>{label ?? RATING_LABEL[rag]}</Text>;
 }
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -101,6 +105,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 
 function CoverPage({ m }: { m: ReportModel }) {
   const t = m.assessment.totals;
+  const coverNotice = coverageNotice(m.assessment);
   return (
     <Page size="A4" style={[s.page, { paddingTop: 0 }]}>
       <View style={{ backgroundColor: C.primary, marginHorizontal: -44, paddingHorizontal: 44, paddingTop: 44, paddingBottom: 28 }}>
@@ -116,8 +121,17 @@ function CoverPage({ m }: { m: ReportModel }) {
 
       <View style={[s.row, { marginTop: 22, alignItems: 'center' }]}>
         <Text style={[s.h2, { marginBottom: 0, marginRight: 10 }]}>Összesített minősítés</Text>
-        <RagPill rag={t.rag} label={`${RAG_LABEL[t.rag]} · Health Score ${t.healthScore}/100`} />
+        <RagPill
+          rag={t.rag}
+          label={`${RATING_LABEL[t.rag]} · Health Score ${t.healthScore == null ? 'nem értékelhető' : `${t.healthScore}/100`}${t.coverage != null ? ` · lefedettség ${pct(t.coverage)}` : ''}`}
+        />
       </View>
+      {coverNotice && (
+        <View style={{ marginTop: 10, padding: 8, backgroundColor: '#e2e8f0', borderRadius: 3 }}>
+          <Text style={{ fontWeight: 700, color: '#334155' }}>{coverNotice.title}</Text>
+          <Text style={[s.small, { color: '#334155', marginTop: 2 }]}>{coverNotice.text}</Text>
+        </View>
+      )}
 
       <View style={[s.row, { marginTop: 12, marginRight: -8 }]}>
         <Stat label="Bruttó kitettség" value={formatHufShort(t.grossExposureHuf)} sub="azonosított kockázatok összesen" />
@@ -183,13 +197,18 @@ function ScorecardPage({ m }: { m: ReportModel }) {
                 </Text>
                 <RagPill rag={x.rag} />
               </View>
-              <Text style={{ fontSize: 24, fontWeight: 700, marginTop: 4, lineHeight: 1.2 }}>
-                {x.healthScore}
-                <Text style={{ fontSize: 9, fontWeight: 400, color: C.muted }}> / 100</Text>
+              <Text style={{ fontSize: 24, fontWeight: 700, marginTop: 4, lineHeight: 1.2, color: x.healthScore == null ? C.muted : undefined }}>
+                {x.healthScore ?? 'Nem vizsgált'}
+                {x.healthScore != null && <Text style={{ fontSize: 9, fontWeight: 400, color: C.muted }}> / 100</Text>}
               </Text>
               <View style={{ height: 4, backgroundColor: C.rule, borderRadius: 2, marginTop: 4 }}>
-                <View style={{ height: 4, width: `${x.healthScore}%`, backgroundColor: RAG_COLOR[x.rag].fg, borderRadius: 2 }} />
+                <View style={{ height: 4, width: `${x.healthScore ?? 0}%`, backgroundColor: RAG_COLOR[x.rag].fg, borderRadius: 2 }} />
               </View>
+              {x.coverage != null && (
+                <Text style={[s.small, { marginTop: 3 }]}>
+                  Lefedettség {pct(x.coverage)} · {PILLAR_STATE_LABEL[x.state]}
+                </Text>
+              )}
               <View style={[s.row, { justifyContent: 'space-between', marginTop: 8 }]}>
                 <Text style={s.small}>
                   {x.identified} tétel ({x.red} piros, {x.amber} sárga)
@@ -465,6 +484,7 @@ function OfferPage({ m }: { m: ReportModel }) {
       </View>
 
       <Text style={[s.h2, { marginTop: 20 }]}>Módszertan és korlátozások</Text>
+      {m.assessment.totals.coverage != null && <Text style={[s.muted, { marginBottom: 4 }]}>• {COVERAGE_METHOD_TEXT}</Text>}
       <Text style={[s.muted, { marginBottom: 4 }]}>
         • Az átvilágítás a rendelkezésre bocsátott dokumentumokon, az ügyfél által kitöltött kérdőíven és a vezetői interjúkon alapul; nem minősül
         könyvvizsgálatnak vagy teljes körű jogi átvilágításnak.

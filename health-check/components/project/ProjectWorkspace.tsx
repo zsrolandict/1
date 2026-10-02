@@ -1,5 +1,6 @@
 'use client';
 
+import { coverageValues, projectCoverage } from '@/lib/risk/coverage';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import ModuleOff from '../ModuleOff';
 import { useModules } from '../useModules';
@@ -346,6 +347,7 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
         materialityHuf: ws.materialityHuf,
         adjustments: adjustmentsFor(ws.kind),
         pillarWeights: ENGAGEMENT_KINDS[ws.kind].weights,
+        coverage: coverageValues(projectCoverage(ws.projectId, ws.kind, ws.coverageOverrides, getScenario(ws.scenarioId).sectors ?? [])),
       }),
     [ws],
   );
@@ -435,7 +437,7 @@ function KnowledgeSection({ ws, sectors }: { ws: Workspace; sectors: Sector[] })
           <input type="checkbox" checked={withDemo} onChange={(e) => setWithDemo(e.target.checked)} /> bemutató (kitalált) rekordokkal
         </label>
         <span className="ml-auto text-slate-500">
-          {s.n} projekt{s.avgHealth != null && ` · átlagos Health Score ${s.avgHealth} (ez a projekt: ${current.totals.healthScore})`}
+          {s.n} projekt{s.avgHealth != null && ` · átlagos Health Score ${s.avgHealth} (ez a projekt: ${current.totals.healthScore ?? 'nem értékelhető'})`}
           {s.avgRed != null && ` · átlag ${s.avgRed} piros tétel`}
         </span>
       </div>

@@ -18,7 +18,8 @@ export interface Simulation {
   maxDays: number;
   expectedLossReductionHuf: number;
   grossExposureReductionHuf: number;
-  healthScoreGain: number;
+  /** null, ha előtte vagy utána nem értékelhető. */
+  healthScoreGain: number | null;
   /** Várható veszteség-csökkenés / díj; null, ha nincs díj. */
   returnMultiple: number | null;
 }
@@ -44,7 +45,7 @@ export function simulate(items: RiskItem[], opts: Partial<EngineOptions>, fixIds
     maxDays: fixed.reduce((m, r) => Math.max(m, r.remediationDays), 0),
     expectedLossReductionHuf,
     grossExposureReductionHuf: before.totals.grossExposureHuf - after.totals.grossExposureHuf,
-    healthScoreGain: after.totals.healthScore - before.totals.healthScore,
+    healthScoreGain: after.totals.healthScore != null && before.totals.healthScore != null ? after.totals.healthScore - before.totals.healthScore : null,
     returnMultiple: costHuf > 0 ? expectedLossReductionHuf / costHuf : null,
   };
 }

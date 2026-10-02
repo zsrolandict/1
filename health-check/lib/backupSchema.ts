@@ -33,6 +33,29 @@ export const ItemSchema = z
   })
   .passthrough();
 
+const PillarEnum = z.enum(['FINANCE', 'LEGAL', 'OPERATIONS', 'HR']);
+const CoverageState = z.enum(['EXAMINED', 'NOT_EXAMINED']);
+
+/** Lefedettség szakértői felülbírálása pillérenként (indoklás kötelező). */
+export const CoverageOverridesSchema = z.partialRecord(
+  PillarEnum,
+  z.object({ state: CoverageState, reason: z.string().trim().min(1).max(2000), by: z.string().max(200).nullable(), at: z.string().max(40) }),
+);
+
+/** Lefedettségi napló. */
+export const CoverageLogSchema = z
+  .array(
+    z.object({
+      pillar: PillarEnum,
+      from: z.union([CoverageState, z.literal('AUTO')]),
+      to: z.union([CoverageState, z.literal('AUTO')]),
+      reason: z.string().max(2000),
+      by: z.string().max(200).nullable(),
+      at: z.string().max(40),
+    }),
+  )
+  .max(500);
+
 export const CompanySchema = z.object({
   revenueHuf: Money,
   grossMarginPct: z.number().min(0).max(1),

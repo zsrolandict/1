@@ -82,7 +82,7 @@ describe('típus hatása a mátrixra', () => {
     const fin = assess(DEFAULT_CATALOG, { pillarWeights: ENGAGEMENT_KINDS.FINANCING_READINESS.weights });
     const succ = assess(DEFAULT_CATALOG, { pillarWeights: ENGAGEMENT_KINDS.SUCCESSION.weights });
     const p = plain.pillars;
-    const expectedFin = Math.round(p.FINANCE.healthScore * 0.5 + p.LEGAL.healthScore * 0.2 + p.OPERATIONS.healthScore * 0.2 + p.HR.healthScore * 0.1);
+    const expectedFin = Math.round(p.FINANCE.healthScore! * 0.5 + p.LEGAL.healthScore! * 0.2 + p.OPERATIONS.healthScore! * 0.2 + p.HR.healthScore! * 0.1);
     expect(fin.totals.healthScore).toBe(expectedFin);
     expect(succ.totals.healthScore).not.toBe(fin.totals.healthScore);
   });

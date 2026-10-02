@@ -34,8 +34,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { assess, scoreRisk, AUDIT_FEE_HUF, DIVISIONS, formatHuf, formatHufShort, PILLARS, ragFromScore, WINDOWS } from '@/lib/risk/engine';
-import { catalogDefault, DEFAULT_CATALOG, DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
-import type { Division, Pillar, Rag, RiskItem, RiskSource, Scale5, ScoredRisk } from '@/lib/risk/types';
+import { catalogDefault, DEFAULT_CATALOG, DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, RATING_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
+import type { Division, Pillar, Rag, Rating, RiskItem, RiskSource, Scale5, ScoredRisk } from '@/lib/risk/types';
 import {
   clearQuarantine,
   DEFAULT_WORKSPACE,
@@ -62,6 +62,9 @@ import ProjectStagesCard from '../ui/ProjectStagesCard';
 import WhatIfPanel from './WhatIfPanel';
 import FollowUpPanel from './FollowUpPanel';
 import RemediationPlanCard from './RemediationPlanCard';
+import CoveragePanel from './CoveragePanel';
+import { coverageValues, projectCoverage, type CoverageLogEntry, type CoverageOverrides } from '@/lib/risk/coverage';
+import { coverageNotice, healthText, pct, PILLAR_STATE_LABEL } from '@/lib/risk/coverageText';
 import { useModules } from '../useModules';
 import BuyerQuestionsPanel from './BuyerQuestionsPanel';
 import ExportPdfButton, { browserDownload, slug, type SaveFile } from '@/components/report/ExportPdfButton';
@@ -89,10 +92,16 @@ const SOURCE_LABEL: Partial<Record<RiskSource, string>> = {
 const SCALE: Scale5[] = [1, 2, 3, 4, 5];
 const DENSE_KEY = 'ict-hc:matrix-dense';
 
-const RAG_TONE: Record<Rag, Tone> = { GREEN: 'green', AMBER: 'amber', RED: 'red' };
+const RAG_TONE: Record<Rating, Tone> = { GREEN: 'green', AMBER: 'amber', RED: 'red', UNRATED: 'slate' };
 const AI_SOURCES = new Set<RiskSource>(['AI_SYNTHESIS', 'AI_DOCUMENT', 'AI_INTERVIEW']);
 
-const RAG_STYLE: Record<Rag, { dot: string; badge: string; cell: string; ring: string }> = {
+const RAG_STYLE: Record<Rating, { dot: string; badge: string; cell: string; ring: string }> = {
+  UNRATED: {
+    dot: 'bg-slate-400',
+    badge: 'bg-slate-100 text-slate-700 ring-slate-500/20',
+    cell: 'bg-slate-100',
+    ring: 'ring-slate-400',
+  },
   GREEN: {
     dot: 'bg-emerald-500',
     badge: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
@@ -168,6 +177,8 @@ export default function RedFlagMatrix({
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const [quarantine, setQuarantine] = useState<QuarantinedItem[]>([]);
+  const [coverageOverrides, setCoverageOverrides] = useState<CoverageOverrides>({});
+  const [coverageLog, setCoverageLog] = useState<CoverageLogEntry[]>([]);
 
   // Munkapéldány visszatöltése (csak kényelmi funkció – a forrás az adatbázis).
   useEffect(() => {
@@ -180,6 +191,8 @@ export default function RedFlagMatrix({
     setScenarioId(ws.scenarioId);
     setProjectId(ws.projectId);
     setQuarantine(loadQuarantine(ws.projectId));
+    setCoverageOverrides(ws.coverageOverrides ?? {});
+    setCoverageLog(ws.coverageLog ?? []);
     try {
       setDenseState(localStorage.getItem(DENSE_KEY) === '1');
     } catch {
@@ -193,9 +206,9 @@ export default function RedFlagMatrix({
   useEffect(() => {
     if (!hydrated) return;
     if (skipFirstSave.current) skipFirstSave.current = false;
-    else saveWorkspace({ projectId, scenarioId, companyName, company, kind, materialityHuf, items });
+    else saveWorkspace({ projectId, scenarioId, companyName, company, kind, materialityHuf, items, coverageOverrides, coverageLog });
     onChangeRef.current?.(items);
-  }, [items, materialityHuf, kind, companyName, company, scenarioId, projectId, hydrated]);
+  }, [items, materialityHuf, kind, companyName, company, scenarioId, projectId, hydrated, coverageOverrides, coverageLog]);
 
   /** A mátrix visszaállítása a kiinduló mintára (saját projektnél: üres katalógus). */
   const applyWorkspace = (id: string) => {
@@ -213,7 +226,15 @@ export default function RedFlagMatrix({
   const profile = ENGAGEMENT_KINDS[kind];
   const focusCodes = useMemo(() => new Set(profile.focusRiskCodes), [profile]);
   const adjustments = adjustmentsFor(kind);
-  const engineOpts = useMemo(() => ({ materialityHuf, company, pillarWeights: profile.weights, adjustments }), [materialityHuf, company, profile, adjustments]);
+  // Vizsgálati lefedettség (audit K2): a kérdőívből, a kötelező iratokból és a szakértői felülbírálásból.
+  const coverage = useMemo(
+    () => (hydrated ? projectCoverage(projectId, kind, coverageOverrides, getScenario(scenarioId).sectors ?? []) : null),
+    [hydrated, projectId, kind, coverageOverrides, scenarioId],
+  );
+  const engineOpts = useMemo(
+    () => ({ materialityHuf, company, pillarWeights: profile.weights, adjustments, ...(coverage ? { coverage: coverageValues(coverage) } : {}) }),
+    [materialityHuf, company, profile, adjustments, coverage],
+  );
   const result = useMemo(() => assess(items, engineOpts), [items, engineOpts]);
   // Minden sorra (a nem bejelöltekre is) a korrigált értékelés – így látszik, mit kapna.
   const effById = useMemo(() => new Map(items.map((r) => [r.id, scoreRisk(r, engineOpts)])), [items, engineOpts]);
@@ -384,6 +405,7 @@ export default function RedFlagMatrix({
     );
 
   const { totals, pillars, actionPlan, pipeline } = result;
+  const notice = coverageNotice(result);
   const missingRevenue = !hasRevenue(company);
   const noAssessment = totals.identified === 0;
   const settingsOpen = settingsPref ?? missingRevenue;
@@ -524,6 +546,12 @@ export default function RedFlagMatrix({
           </Card>
         ) : (
           <>
+            {notice && (
+              <div role="status" className="rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-800">
+                <p className="font-semibold">{notice.title}</p>
+                <p className="mt-0.5 text-slate-700">{notice.text}</p>
+              </div>
+            )}
             {/* ── KPI sáv ─────────────────────────────────────────────── */}
             <section className="grid grid-cols-2 gap-4 lg:grid-cols-5">
               <KpiTile
@@ -534,12 +562,18 @@ export default function RedFlagMatrix({
               >
                 <span className="flex items-center gap-2">
                   <span className={`h-2.5 w-2.5 rounded-full ${RAG_STYLE[totals.rag].dot}`} aria-hidden />
-                  {RAG_LABEL[totals.rag]}
+                  {RATING_LABEL[totals.rag]}
                 </span>
               </KpiTile>
-              <KpiTile tone="brand" icon={<Gauge className="h-5 w-5" />} label="Health Score" extra={<InfoTip term="healthScore" label="Health Score" />}>
-                {totals.healthScore}
-                <span className="text-sm font-semibold text-slate-400"> / 100</span>
+              <KpiTile
+                tone={totals.qualified ? 'brand' : 'slate'}
+                icon={<Gauge className="h-5 w-5" />}
+                label="Health Score"
+                hint={totals.coverage != null ? `Lefedettség: ${pct(totals.coverage)}` : undefined}
+                extra={<InfoTip term="healthScore" label="Health Score" />}
+              >
+                {healthText(totals.healthScore)}
+                {totals.healthScore != null && <span className="text-sm font-semibold text-slate-400"> / 100</span>}
               </KpiTile>
               <KpiTile
                 tone="amber"
@@ -590,15 +624,22 @@ export default function RedFlagMatrix({
                     >
                       <div className="flex items-start justify-between gap-2">
                         <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">{PILLAR_LABEL[p]}</span>
-                        <Badge tone={RAG_TONE[s.rag]}>{RAG_LABEL[s.rag]}</Badge>
+                        <Badge tone={RAG_TONE[s.rag]}>{s.state === 'NOT_EXAMINED' ? PILLAR_STATE_LABEL.NOT_EXAMINED : RATING_LABEL[s.rag]}</Badge>
                       </div>
                       <div className="mt-3 flex items-baseline gap-1.5">
-                        <span className="text-3xl font-bold tracking-tight tabular-nums text-slate-900">{s.healthScore}</span>
+                        <span className={`text-3xl font-bold tracking-tight tabular-nums ${s.healthScore == null ? 'text-slate-400' : 'text-slate-900'}`}>
+                          {s.healthScore ?? '—'}
+                        </span>
                         <span className="text-xs font-medium text-slate-400">súly {Math.round(profile.weights[p] * 100)}%</span>
                       </div>
                       <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                        <div className={`h-full rounded-full ${RAG_STYLE[s.rag].dot}`} style={{ width: `${s.healthScore}%` }} />
+                        <div className={`h-full rounded-full ${RAG_STYLE[s.rag].dot}`} style={{ width: `${s.healthScore ?? 0}%` }} />
                       </div>
+                      {s.coverage != null && (
+                        <p className={`mt-1.5 text-[11px] ${s.state === 'EXAMINED' ? 'text-slate-500' : 'font-medium text-slate-700'}`}>
+                          Lefedettség {pct(s.coverage)} · {PILLAR_STATE_LABEL[s.state]}
+                        </p>
+                      )}
                       <dl className="mt-3 space-y-1 text-xs text-slate-500">
                         <div className="flex justify-between">
                           <dt>Tételek</dt>
@@ -622,6 +663,19 @@ export default function RedFlagMatrix({
             </section>
 
             <HealthExplain pillars={deriveHealth(pillars, profile.weights, totals.healthScore).pillars} total={totals.healthScore} labels={PILLAR_LABEL} />
+            {coverage && (
+              <CoveragePanel
+                coverage={coverage}
+                assessment={result}
+                overrides={coverageOverrides}
+                log={coverageLog}
+                by={me.name}
+                onChange={({ overrides, log }) => {
+                  setCoverageOverrides(overrides);
+                  setCoverageLog(log);
+                }}
+              />
+            )}
           </>
         )}
       </div>

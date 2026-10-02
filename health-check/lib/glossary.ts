@@ -7,7 +7,8 @@ export const GLOSSARY = {
   redFlag: 'Red Flag mátrix: a feltárt kockázatok („piros zászlók”) listája és értékelése – valószínűség × hatás, forintban kifejezett kitettséggel.',
   status:
     'Összesített státusz: a legrosszabb pillér színe. Egy pillér piros, ha van benne piros tétel vagy a pontszáma 40 alatt van; sárga, ha van sárga tétel vagy 70 alatt van.',
-  healthScore: 'Health Score (0–100): a négy pillér súlyozott állapota. 100 = nincs azonosított kockázat; minél több és súlyosabb a tétel, annál kisebb.',
+  healthScore:
+    'Health Score (0–100): a vizsgált pillérek súlyozott állapota. 100 = nincs azonosított kockázat; minél több és súlyosabb a tétel, annál kisebb. A nem vizsgált pillér kimarad (nem kap 100-at); a hiányt a lefedettség jelzi, 80% alatt a felmérés részleges, és nem kaphat Zöld minősítést.',
   grossExposure: 'Bruttó kitettség: ha minden azonosított kockázat bekövetkezne, ennyi lenne a becsült kár összesen.',
   expectedLoss: 'Várható veszteség: kitettség × a bekövetkezés valószínűsége. Ez a reálisabb, „súlyozott” kárösszeg.',
   score: 'Pontszám = valószínűség (1–5) × hatás (1–5). 15-től piros, 8-tól sárga, alatta zöld.',

@@ -149,6 +149,17 @@ Minden piros és sárga tételhez elkészíti a várható vevői kérdéseket, e
 - **Fontos:** a munkafüzetben végzett módosítás nem kerül vissza a programba; ott változásnaplóval, indoklással kell átvezetni.
 - **Kód:** `lib/report/derivationWorkbook.ts`, `lib/report/xlsx.ts` (képletes cellák).
 
+## Vizsgálati lefedettség és minősítési kapu (audit K2)
+
+- **Miért:** korábban a nem vizsgált pillér (nincs azonosított tétele) 100 pontot kapott, és teljes súllyal számított – egy félig kitöltött felmérés így „Zöld / kiváló” lehetett. Ez hamis biztonságérzet.
+- **Lefedettség pillérenként:** a megválaszolt (látható) kérdőív-kérdések és a beérkezett kötelező iratok arányának átlaga; a „nem releváns” irat nem számít a nevezőbe. Összesítve a pillérsúlyokkal súlyozott átlag.
+- **Szakértői felülbírálás:** pillérenként „vizsgált” / „nem vizsgált” / automatikus, **kötelező indoklással**; minden váltás a lefedettségi naplóba kerül (ki, mikor, mit, miért). Pl. ha a HR-területet egy interjú teljesen lefedte.
+- **Dinamikus nevező:** 50% lefedettség alatt, azonosított tétel nélkül a pillér **„Nem vizsgált”**: nincs pontszáma, kimarad a Health Score nevezőjéből, a többi pillér súlya arányosan nő. Ha van megállapítása, **„Részben vizsgált”**: a megállapítások beszámítanak, de a pillér nem lehet Zöld. A Health Score így a vizsgált területek minőségét mutatja (0–100), nem büntet kétszer.
+- **Minősítési kapu:** 80% összesített lefedettség alatt **„Részleges / nem minősített felmérés”** – szürke sáv a mátrix tetején, a PDF fedőlapján és minden oldal fejlécében; a minősítés nem lehet Zöld (Piros és Sárga marad). Egy vizsgált pillér sem: **„Nem értékelhető”** – nincs pontszám, nincs minősítés.
+- **Hol látszik:** mátrix (sáv, KPI-k, pillérkártyák lefedettséggel és állapottal, „Vizsgálati lefedettség” panel a felülbírálással és a naplóval, Health Score magyarázat), Projekt oldal, PDF (fedőlap, fejléc, pillérkártyák, módszertan), Excel (összefoglaló, Pillérek lap), levezetés-munkafüzet (Pillérek lap: lefedettség, állapot, „számít” oszlop, élő képletekkel; a két küszöb a Paraméterek lapon).
+- **Küszöbök:** 50% és 80% – kezdő feltevés, a Feltevések listán (`lib/risk/coverageRules.ts`).
+- **Kód:** `lib/risk/coverage.ts` (számítás, felülbírálás), `lib/risk/coverageText.ts` (semleges szövegek), `lib/risk/engine.ts` (állapot, nevező, kapu), `components/risk/CoveragePanel.tsx`. A munkaterület `coverageOverrides` és `coverageLog` mezője a tárolóban és a projektmentésben is sémával ellenőrzött. **Teszt:** `lib/risk/coverage.test.ts`, a munkafüzet képletei lefedettséggel (`lib/report/derivation.test.ts`), e2e.
+
 ## Javítási terv és díj
 
 - **Mit tud:** minden tételnél a díj nem egy szám, hanem **javítási terv**: cél (mit kap az ügyfél), 2–6 munkalépés leírással, lépésenként ki végzi (üzletág, partner / szenior / junior), hány óra, milyen óradíjjal – ebből a díj. Mellette **sáv** (alsó – felső) és hogy mitől függ, az **ügyfél saját ráfordítása**, a díjban **nem szereplő külső költségek** (illeték, hatósági díj, licenc) és a feltételezések.

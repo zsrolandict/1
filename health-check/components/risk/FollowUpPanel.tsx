@@ -177,10 +177,24 @@ export default function FollowUpPanel({
   );
 }
 
-function Kpi({ label, before, after, lowerIsBetter, money }: { label: string; before: number; after: number; lowerIsBetter?: boolean; money?: boolean }) {
-  const better = lowerIsBetter ? after < before : after > before;
-  const worse = lowerIsBetter ? after > before : after < before;
-  const f = (n: number) => (money ? formatHufShort(n) : String(n));
+function Kpi({
+  label,
+  before,
+  after,
+  lowerIsBetter,
+  money,
+}: {
+  label: string;
+  /** null = nem értékelhető (nincs vizsgált pillér). */
+  before: number | null;
+  after: number | null;
+  lowerIsBetter?: boolean;
+  money?: boolean;
+}) {
+  const both = before != null && after != null;
+  const better = both && (lowerIsBetter ? after < before : after > before);
+  const worse = both && (lowerIsBetter ? after > before : after < before);
+  const f = (n: number | null) => (n == null ? 'nem értékelhető' : money ? formatHufShort(n) : String(n));
   return (
     <div className="rounded-lg bg-canvas p-2">
       <dt className="text-xs text-slate-500">{label}</dt>

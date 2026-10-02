@@ -3,7 +3,8 @@ import type { SuggestedRedFlag } from '@/lib/interview/types';
 import type { PageId } from '@/lib/guide';
 import { markSaved, markSaveFailed } from '@/lib/localSave';
 import { readJson as read, readRaw, removeKey, writeJson as write } from '@/lib/storage';
-import { CompanySchema, describeIssue, ItemSchema, MoneySchema } from '@/lib/backupSchema';
+import { CompanySchema, CoverageLogSchema, CoverageOverridesSchema, describeIssue, ItemSchema, MoneySchema } from '@/lib/backupSchema';
+import type { CoverageLogEntry, CoverageOverrides } from './coverage';
 import { EngagementKindSchema } from '@/lib/engagement/kindSchema';
 import { BLANK, getScenario, GYARTO, isDemoScenario, type Scenario } from '@/lib/scenarios';
 import { catalogDefault, PILLAR_LABEL } from './catalog';
@@ -30,6 +31,10 @@ export interface Workspace {
   kind: EngagementKind;
   materialityHuf: number;
   items: RiskItem[];
+  /** Lefedettség szakértői felülbírálása pillérenként (audit K2). */
+  coverageOverrides?: CoverageOverrides;
+  /** A felülbírálások naplója. */
+  coverageLog?: CoverageLogEntry[];
 }
 
 export interface ProjectMeta {
@@ -104,6 +109,17 @@ function normalize(saved: Partial<Workspace>, projectId: string): Workspace {
     kind: kind.success ? kind.data : base.kind,
     materialityHuf: materiality.success ? materiality.data : base.materialityHuf,
     items: Array.isArray(saved.items) ? parseItems(saved.items, projectId) : base.items,
+    ...parseCoverage(saved),
+  };
+}
+
+/** Lefedettségi felülbírálások és napló: hibás szerkezet esetén elhagyjuk (automatikus lefedettség). */
+function parseCoverage(saved: Partial<Workspace>): Pick<Workspace, 'coverageOverrides' | 'coverageLog'> {
+  const o = CoverageOverridesSchema.safeParse(saved.coverageOverrides);
+  const l = CoverageLogSchema.safeParse(saved.coverageLog);
+  return {
+    ...(saved.coverageOverrides !== undefined && o.success ? { coverageOverrides: o.data as CoverageOverrides } : {}),
+    ...(saved.coverageLog !== undefined && l.success ? { coverageLog: l.data } : {}),
   };
 }
 

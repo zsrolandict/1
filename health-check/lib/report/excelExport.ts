@@ -1,6 +1,7 @@
 import { formatAdjustment } from '@/lib/engagement/adjustments';
 import { ENGAGEMENT_KINDS } from '@/lib/engagement/kinds';
-import { DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
+import { DIVISION_LABEL, PILLAR_LABEL, RAG_LABEL, RATING_LABEL, WINDOW_LABEL } from '@/lib/risk/catalog';
+import { coverageNotice, healthText, pct, PILLAR_STATE_LABEL } from '@/lib/risk/coverageText';
 import { DIVISIONS, formatHuf, PILLARS, WINDOWS } from '@/lib/risk/engine';
 import { estimateRemediation } from '@/lib/remediation/estimate';
 import { ROLE_SHORT } from '@/lib/remediation/rates';
@@ -51,8 +52,13 @@ export function buildWorkbook(input: ReportInput): Sheet[] {
       ['Cég', input.companyName, null],
       ['Átvilágítás típusa', kind.label, kind.audience],
       ['Készült', date, null],
-      ['Összesített besorolás', RAG_LABEL[a.totals.rag], null],
-      ['Health Score (0–100)', a.totals.healthScore, 'Pillérek súlyozott átlaga, 100 = nincs azonosított kockázat'],
+      ['Összesített besorolás', RATING_LABEL[a.totals.rag], coverageNotice(a)?.title ?? null],
+      [
+        'Health Score (0–100)',
+        a.totals.healthScore ?? healthText(null),
+        'A vizsgált pillérek súlyozott átlaga (dinamikus nevező), 100 = nincs azonosított kockázat',
+      ],
+      ...(a.totals.coverage != null ? [['Vizsgálati lefedettség', pct(a.totals.coverage), coverageNotice(a)?.text ?? 'Teljes értékű felmérés.']] : []),
       ['Azonosított tételek', a.totals.identified, `${a.totals.red} piros · ${a.totals.amber} sárga · ${a.totals.green} zöld`],
       ['Bruttó kitettség', huf(a.totals.grossExposureHuf), null],
       ['Várható veszteség', huf(a.totals.expectedLossHuf), 'kitettség × valószínűség'],
@@ -170,10 +176,24 @@ export function buildWorkbook(input: ReportInput): Sheet[] {
       { header: 'Bruttó kitettség', width: 16, format: 'huf' },
       { header: 'Várható veszteség', width: 16, format: 'huf' },
       { header: 'Súly', width: 8, format: 'pct' },
+      { header: 'Lefedettség', width: 11, format: 'pct' },
+      { header: 'Vizsgálati állapot', width: 16 },
     ],
     rows: PILLARS.map((p) => {
       const s = a.pillars[p];
-      return [PILLAR_LABEL[p], s.healthScore, RAG_LABEL[s.rag], s.red, s.amber, s.green, s.grossExposureHuf, s.expectedLossHuf, kind.weights[p]];
+      return [
+        PILLAR_LABEL[p],
+        s.healthScore,
+        RATING_LABEL[s.rag],
+        s.red,
+        s.amber,
+        s.green,
+        s.grossExposureHuf,
+        s.expectedLossHuf,
+        kind.weights[p],
+        s.coverage,
+        PILLAR_STATE_LABEL[s.state],
+      ];
     }),
   };
 
