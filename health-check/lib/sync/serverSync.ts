@@ -344,6 +344,22 @@ export async function uploadLocalProject(localId: string, f: Fetch = fetch): Pro
   return id;
 }
 
+/** Szerveres projektek, amelyeken helyben feltöltetlen munka van (kilépés előtt figyelmeztetéshez). */
+export function unsyncedServerProjects(): string[] {
+  return listProjects()
+    .filter((p) => p.server && (hasLocalChanges(p.id) || ['pending', 'saving', 'offline', 'conflict', 'error'].includes(syncState(p.id).status)))
+    .map((p) => p.companyName || 'Névtelen projekt');
+}
+
+/**
+ * Kilépéskor: a szerveres projektek helyi másolata törlődik ebből a böngészőből
+ * (közös vagy kölcsöngépen a következő felhasználó ne lássa). A bemutató és a
+ * helyi projektek maradnak.
+ */
+export function clearServerCache(opts: { keepUnsynced?: boolean } = {}): void {
+  for (const p of listProjects()) if (p.server && !(opts.keepUnsynced && hasLocalChanges(p.id))) forget(p.id);
+}
+
 function forget(id: string): void {
   deleteProject(id); // helyi munkaállapot, moduladatok, listabejegyzés
   removeKey(recKey(id));

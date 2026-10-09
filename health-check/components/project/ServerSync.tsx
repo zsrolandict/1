@@ -5,7 +5,7 @@ import { AlertTriangle } from 'lucide-react';
 import { isStaffRole } from '@/lib/auth/mode';
 import { supabaseConfigured } from '@/lib/auth/supabase-browser';
 import { setServerMode } from '@/lib/sync/serverMode';
-import { resolveConflict, startServerSync } from '@/lib/sync/serverSync';
+import { clearServerCache, resolveConflict, startServerSync } from '@/lib/sync/serverSync';
 import { useProjects } from './useProjects';
 import { useSyncState } from './useSync';
 
@@ -21,9 +21,14 @@ export default function ServerSync() {
     let cancelled = false;
     (async () => {
       const res = await fetch('/api/me', { cache: 'no-store' });
-      if (!res.ok || cancelled) return;
-      const { user } = (await res.json()) as { user: { role: string | null } | null };
-      if (!user || !isStaffRole(user.role) || cancelled) return;
+      if (cancelled) return;
+      const { user } = (res.ok ? await res.json() : { user: null }) as { user: { role: string | null } | null };
+      if (!user || !isStaffRole(user.role)) {
+        // Lejárt munkamenet vagy másik (nem belső) felhasználó: a korábbi szerveres másolat ne maradjon látható.
+        // A feltöltetlen munka megmarad, hogy újabb belépés után felkerülhessen.
+        if (res.status === 401 || (res.ok && !user)) clearServerCache({ keepUnsynced: true });
+        return;
+      }
       setServerMode(true);
       stop = startServerSync();
     })().catch(() => {});

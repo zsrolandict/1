@@ -68,6 +68,7 @@ export function projectFromRows(
   flags: RedFlagRow[],
   answers: { answers: unknown; request_status: unknown } | null,
   modules: { module: string; data: unknown }[],
+  documents: { data: unknown }[] = [],
 ): ServerProject {
   const ws = eng.workspace ?? {};
   const overrides = CoverageOverridesSchema.safeParse(ws.coverageOverrides);
@@ -85,7 +86,15 @@ export function projectFromRows(
     items: ordered(flags.filter((f) => f.item_key).map(rowToItem), ws.itemOrder),
     answers: sanitizeAnswers(answers?.answers).answers,
     requestStatus: sanitizeRequestStatus(answers?.request_status),
-    intake: intake && typeof intake === 'object' && !Array.isArray(intake) ? (intake as Record<string, unknown>) : null,
+    // Az iratok (csak a látható pillérekéi) és az összkép (csak projektvezetőnek) külön táblából jönnek vissza.
+    intake:
+      intake && typeof intake === 'object' && !Array.isArray(intake)
+        ? {
+            ...(intake as Record<string, unknown>),
+            documents: documents.map((d) => d.data).filter((d) => d && typeof d === 'object'),
+            synthesis: mod('synthesis') ?? null,
+          }
+        : null,
     snapshots: Array.isArray(snapshots) ? snapshots : [],
   };
 }

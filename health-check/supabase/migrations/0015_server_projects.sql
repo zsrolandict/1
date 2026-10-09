@@ -43,9 +43,18 @@ begin
 end $$;
 
 -- ── 2. Moduladatok ──────────────────────────────────────────────────
+-- Projektvezető (partner vagy a projekt managere): az összképet (AI-szintézis) csak ő látja,
+-- mert több pillér forrásaiból (pl. bizalmas HR-iratból) idéz.
+create or replace function is_engagement_lead(eng uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select is_partner() or exists (
+    select 1 from engagement_members where engagement_id = eng and user_id = auth.uid() and member_role = 'manager'
+  )
+$$;
+
 create table engagement_modules (
   engagement_id uuid not null references engagements on delete cascade,
-  module        text not null check (module in ('intake', 'snapshots')),
+  module        text not null check (module in ('intake', 'snapshots', 'synthesis')),
   data          jsonb not null,
   updated_by    uuid references profiles,
   updated_at    timestamptz not null default now(),
@@ -55,7 +64,24 @@ create table engagement_modules (
 );
 alter table engagement_modules enable row level security;
 create policy modules_staff on engagement_modules for all
-  using (is_partner() or is_staff_member(engagement_id)) with check (is_partner() or is_staff_member(engagement_id));
+  using (case when module = 'synthesis' then is_engagement_lead(engagement_id) else is_partner() or is_staff_member(engagement_id) end)
+  with check (case when module = 'synthesis' then is_engagement_lead(engagement_id) else is_partner() or is_staff_member(engagement_id) end);
+
+-- Feltöltött iratok elemzése pillérenként (a 0001 szabálya: a szakértő csak a saját
+-- pillére iratait látja – pl. HR ≠ főkönyv). Az irat pillérét a szerver rögzíti.
+create table engagement_documents (
+  engagement_id uuid not null references engagements on delete cascade,
+  doc_id        text not null check (length(doc_id) between 1 and 200),
+  pillar        pillar not null,
+  data          jsonb not null check (jsonb_typeof(data) = 'object'),
+  updated_by    uuid references profiles,
+  updated_at    timestamptz not null default now(),
+  primary key (engagement_id, doc_id),
+  constraint document_size check (pg_column_size(data) <= 4 * 1024 * 1024)
+);
+alter table engagement_documents enable row level security;
+create policy documents_pillar on engagement_documents for all
+  using (can_access_pillar(engagement_id, pillar)) with check (can_access_pillar(engagement_id, pillar));
 
 -- Az utolsó mentés szerveren számolt értékelése (a projektlista és a riport forrása).
 alter table engagements add column snapshot jsonb;
@@ -144,6 +170,12 @@ begin
     where (a.answers, a.request_status) is distinct from (excluded.answers, excluded.request_status);
 
   for m in select key, value from jsonb_each(coalesce(p_modules, '{}')) loop
+    if m.key = 'documents' then
+      perform save_documents(p_engagement, m.value);
+      continue;
+    end if;
+    -- Összképet csak a projektvezető ír; a szakértő régi másolata nem írja felül.
+    if m.key = 'synthesis' and not is_engagement_lead(p_engagement) then continue; end if;
     insert into engagement_modules as em (engagement_id, module, data, updated_by, updated_at)
       values (p_engagement, m.key, m.value, auth.uid(), now())
       on conflict (engagement_id, module) do update set data = excluded.data, updated_by = excluded.updated_by, updated_at = excluded.updated_at
@@ -163,4 +195,37 @@ begin
     raise exception 'Nincs ilyen projekt, vagy nincs hozzá jogosultság.' using errcode = '42501';
   end if;
   update engagements set snapshot = p_snapshot where id = p_engagement;
+end $$;
+
+/**
+ * Iratok mentése pillérenként (a save_assessment része, ugyanabban a tranzakcióban).
+ * Csak a felhasználó által LÁTHATÓ iratokat érinti (RLS): a más pillér iratát nem
+ * látja, így nem is törölheti. Új irat pillére: szakértőnél a saját pillére (más
+ * pillérbe nem tölthet fel), egyébként a kliens javaslata.
+ */
+create or replace function save_documents(p_engagement uuid, p_documents jsonb)
+returns void language plpgsql security invoker set search_path = public as $$
+declare
+  d jsonb;
+  keys text[];
+  own pillar;
+  cur engagement_documents;
+begin
+  if jsonb_typeof(coalesce(p_documents, '[]')) <> 'array' then raise exception 'Hibás iratlista.' using errcode = '22023'; end if;
+  select pillar into own from engagement_members
+   where engagement_id = p_engagement and user_id = auth.uid() and member_role = 'consultant';
+  select coalesce(array_agg(x -> 'data' ->> 'id'), '{}') into keys from jsonb_array_elements(coalesce(p_documents, '[]')) x;
+  delete from engagement_documents where engagement_id = p_engagement and not (doc_id = any(keys));
+  for d in select * from jsonb_array_elements(coalesce(p_documents, '[]')) loop
+    select * into cur from engagement_documents where engagement_id = p_engagement and doc_id = d -> 'data' ->> 'id';
+    if found then
+      if cur.data is distinct from d -> 'data' then
+        update engagement_documents set data = d -> 'data', updated_by = auth.uid(), updated_at = now()
+         where engagement_id = p_engagement and doc_id = cur.doc_id;
+      end if;
+    else
+      insert into engagement_documents (engagement_id, doc_id, pillar, data, updated_by)
+      values (p_engagement, d -> 'data' ->> 'id', coalesce(own, (d ->> 'pillar')::pillar, 'OPERATIONS'), d -> 'data', auth.uid());
+    end if;
+  end loop;
 end $$;

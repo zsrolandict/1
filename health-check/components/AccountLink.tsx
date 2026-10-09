@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogIn, LogOut } from 'lucide-react';
 import { supabaseConfigured } from '@/lib/auth/supabase-browser';
+import { setServerMode } from '@/lib/sync/serverMode';
+import { clearServerCache, unsyncedServerProjects } from '@/lib/sync/serverSync';
 import { useIdentity } from './Identity';
 
 /**
@@ -26,8 +28,20 @@ export default function AccountLink() {
         </span>
         <button
           onClick={async () => {
+            const unsynced = unsyncedServerProjects();
+            if (
+              unsynced.length &&
+              !window.confirm(
+                `Ezeken a projekteken feltöltetlen módosítás van: ${unsynced.join(', ')}. Kilépéskor a helyi másolat törlődik, és ez a módosítás elvész. Biztosan kilépsz?`,
+              )
+            ) {
+              return;
+            }
             // A munkamenet HttpOnly sütiben van: a kilépést a szerver végzi (minden eszközön).
             await fetch('/auth/signout', { method: 'POST' }).catch(() => {});
+            // Az ügyféladat ne maradjon a böngészőben (közös gép).
+            clearServerCache();
+            setServerMode(false);
             router.push('/login');
           }}
           aria-label="Kilépés"

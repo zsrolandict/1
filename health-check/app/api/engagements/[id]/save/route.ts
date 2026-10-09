@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireStaff, supabaseServer } from '@/lib/auth/guard.server';
+import { limitWrites, readJsonLimited, tooLarge } from '@/lib/server/body';
 import { prepareSave, SaveRequestSchema, saveErrorStatus, type EngagementForSave } from '@/lib/server/saveAssessment';
 
 /**
@@ -16,7 +17,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (access.mode !== 'SUPABASE') return NextResponse.json({ error: 'A szerveres mentés csak bejelentkezett, éles módban érhető el.' }, { status: 503 });
   const { id } = await ctx.params;
   if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ error: 'Hibás projektazonosító.' }, { status: 400 });
-  const parsed = SaveRequestSchema.safeParse(await req.json().catch(() => null));
+  const limited = await limitWrites();
+  if (limited) return limited;
+  const raw = await readJsonLimited(req);
+  if (raw === 'too_large') return tooLarge();
+  const parsed = SaveRequestSchema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: 'Érvénytelen mentési adat – semmi nem módosult.' }, { status: 400 });
 
   const supabase = await supabaseServer();

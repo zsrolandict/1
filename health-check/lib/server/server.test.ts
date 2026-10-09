@@ -202,3 +202,38 @@ describe('szerveres projekt (0015)', () => {
     expect(p.company.revenueHuf).toBe(1e9);
   });
 });
+
+describe('iratok pillérenként és mentési korlátok', () => {
+  it('prepareSave: az iratok pillérrel külön, az összkép külön; az adatgyűjtésben nem maradnak', async () => {
+    const req = SaveRequestSchema.parse({
+      expectedRevision: 0,
+      items: [],
+      company: DEFAULT_COMPANY,
+      modules: {
+        intake: {
+          documents: [
+            { id: 'd1', analysis: { docType: 'EMPLOYMENT', findings: [], facts: [] } },
+            { id: 'd2', analysis: { findings: [{ pillar: 'FINANCE' }, { pillar: 'FINANCE' }, { pillar: 'HR' }], facts: [] } },
+            { nincs: 'azonosító' },
+          ],
+          synthesis: { summary: 'x' },
+        },
+      },
+    });
+    const { args } = prepareSave('e1', req, ENG);
+    expect(args.p_modules.intake).not.toHaveProperty('documents');
+    expect(args.p_modules.intake).not.toHaveProperty('synthesis');
+    expect((args.p_modules.documents as { pillar: string }[]).map((d) => d.pillar)).toEqual(['HR', 'FINANCE']);
+    expect(args.p_modules.synthesis).toEqual({ summary: 'x' });
+  });
+
+  it('readJsonLimited: túl nagy törzs (fejléc nélkül is) elutasítva, a hibás JSON null', async () => {
+    const { readJsonLimited } = await import('./body');
+    const big = new Request('http://x/', { method: 'POST', body: 'x'.repeat(2000) });
+    expect(await readJsonLimited(big, 1000)).toBe('too_large');
+    const lying = new Request('http://x/', { method: 'POST', body: '{"a":1}', headers: { 'content-length': '999999' } });
+    expect(await readJsonLimited(lying, 1000)).toBe('too_large');
+    expect(await readJsonLimited(new Request('http://x/', { method: 'POST', body: '{"a":1}' }), 1000)).toEqual({ a: 1 });
+    expect(await readJsonLimited(new Request('http://x/', { method: 'POST', body: '{hibás' }), 1000)).toBeNull();
+  });
+});

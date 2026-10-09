@@ -3,6 +3,8 @@ import { CompanySchema, CoverageLogSchema, CoverageOverridesSchema, ItemSchema }
 import { adjustmentsFor } from '@/lib/engagement/adjustments';
 import { ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 import { sanitizeAnswers } from '@/lib/intake/checklist';
+import { documentPillar } from '@/lib/intake/documents/pillar';
+import type { DocumentRecord } from '@/lib/intake/documents/types';
 import { normalizeProfile } from '@/lib/intake/requests';
 import { sanitizeRequestStatus } from '@/lib/intake/state';
 import { computeCoverage, coverageValues, type CoverageOverrides } from '@/lib/risk/coverage';
@@ -53,7 +55,15 @@ export interface SaveRpcArgs {
 }
 
 /** Az adatgyűjtésből ezek külön, ellenőrzött helyen tárolódnak (engagement_answers), vagy betöltéskor újraszámolódnak. */
-const INTAKE_SEPARATE = ['answers', 'requestStatus', 'invalidAnswers'] as const;
+const INTAKE_SEPARATE = ['answers', 'requestStatus', 'invalidAnswers', 'documents', 'synthesis'] as const;
+
+/** Iratok külön, pillér szerinti jogosultsággal (a pillért új iratnál a szerver véglegesíti). */
+function documentsOf(intake: Record<string, unknown> | undefined): { pillar: string; data: Record<string, unknown> }[] | undefined {
+  if (!intake || !Array.isArray(intake.documents)) return undefined;
+  return intake.documents
+    .filter((d): d is Record<string, unknown> => Boolean(d) && typeof d === 'object' && typeof (d as { id?: unknown }).id === 'string')
+    .map((d) => ({ pillar: documentPillar(d as unknown as DocumentRecord), data: d }));
+}
 
 /**
  * A motor által számolt (ScoredRisk) mezők: az ItemSchema a mentések
@@ -90,6 +100,8 @@ export function prepareSave(engagementId: string, req: SaveRequest, eng: Engagem
   const items = req.items.map((it) => stripDerived(it as Record<string, unknown>));
   const { answers, invalid } = sanitizeAnswers(req.answers);
   const requestStatus = sanitizeRequestStatus(req.requestStatus);
+  const documents = documentsOf(req.modules.intake);
+  const synthesis = req.modules.intake && 'synthesis' in req.modules.intake ? (req.modules.intake.synthesis ?? null) : undefined;
   const intake = req.modules.intake ? { ...req.modules.intake } : undefined;
   if (intake) for (const k of INTAKE_SEPARATE) delete intake[k];
   // A tényállás az adatgyűjtésből jön (azt szerkeszti a felület); régi projektnél a projekt mezője.
@@ -115,6 +127,8 @@ export function prepareSave(engagementId: string, req: SaveRequest, eng: Engagem
       p_snapshot: snapshot,
       p_modules: {
         ...(intake ? { intake: { ...intake, profile } } : {}),
+        ...(documents ? { documents } : {}),
+        ...(synthesis !== undefined ? { synthesis } : {}),
         ...(req.modules.snapshots ? { snapshots: req.modules.snapshots } : {}),
       },
     },

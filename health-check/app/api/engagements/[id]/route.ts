@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireStaff, supabaseServer } from '@/lib/auth/guard.server';
 import type { RedFlagRow } from '@/lib/server/redFlagRow';
 import { projectFromRows, type EngagementFullRow } from '@/lib/server/projects';
+import { limitWrites } from '@/lib/server/body';
 
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
@@ -28,17 +29,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     .eq('id', id)
     .maybeSingle();
   if (!eng) return NextResponse.json({ error: 'Nincs ilyen projekt, vagy nincs hozzá jogosultság.' }, { status: 404 });
-  const [flags, answers, modules] = await Promise.all([
+  const [flags, answers, modules, documents] = await Promise.all([
     supabase.from('red_flags').select('*').eq('engagement_id', id),
     supabase.from('engagement_answers').select('answers, request_status').eq('engagement_id', id).maybeSingle(),
     supabase.from('engagement_modules').select('module, data').eq('engagement_id', id),
+    supabase.from('engagement_documents').select('data').eq('engagement_id', id).order('updated_at'),
   ]);
-  if (flags.error || answers.error || modules.error) return NextResponse.json({ error: 'A projekt nem tölthető be.' }, { status: 500 });
+  if (flags.error || answers.error || modules.error || documents.error) return NextResponse.json({ error: 'A projekt nem tölthető be.' }, { status: 500 });
   const project = projectFromRows(
     eng as unknown as EngagementFullRow,
     (flags.data ?? []) as RedFlagRow[],
     answers.data as { answers: unknown; request_status: unknown } | null,
     (modules.data ?? []) as { module: string; data: unknown }[],
+    (documents.data ?? []) as { data: unknown }[],
   );
   return NextResponse.json({ project }, { headers: NO_STORE });
 }
@@ -47,6 +50,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const p = await prepare(ctx);
   if ('response' in p) return p.response;
+  const limited = await limitWrites();
+  if (limited) return limited;
   const { data, error } = await p.supabase.from('engagements').delete().eq('id', p.id).select('id');
   if (error) return NextResponse.json({ error: 'A projekt nem törölhető (kapcsolódó elszámolás van rajta).' }, { status: 409 });
   if (!data?.length) return NextResponse.json({ error: 'Projektet csak partner törölhet.' }, { status: 403 });

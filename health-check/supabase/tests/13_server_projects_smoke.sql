@@ -93,10 +93,62 @@ begin
   raise notice 'OK  a régebbi kliens-másolat a szerver véleményeit nem törli';
 end $$;
 
--- ── 4. Moduladat: ügyfél nem olvassa, idegen projektre nem írható ───
+-- ── 4. Iratok pillérenként, összkép csak projektvezetőnek ───────────
+-- HR-szakértő HR-iratot tölt fel (a kliens rossz pillért javasol: a szerver a saját pillérét adja).
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', false) \g /dev/null
+do $$
+declare
+  eng uuid := '20000000-0000-0000-0000-000000000001';
+  rev int := (select revision from engagements where id = '20000000-0000-0000-0000-000000000001');
+begin
+  perform save_assessment(eng, rev, (select coalesce(jsonb_agg(item || jsonb_build_object('trail', evidence_trail, 'history', change_log, 'discussion', discussion)), '[]')
+                                     from red_flags where engagement_id = eng and item_key is not null),
+    '{}', '{}', '{}', '{}',
+    '{"documents":[{"pillar":"FINANCE","data":{"id":"doc-hr","fileName":"munkaszerzodes.pdf","analysis":{"summary":"bizalmas"}}}],
+      "synthesis":{"summary":"szakértő írta"}}');
+  if (select pillar::text from engagement_documents where doc_id = 'doc-hr') <> 'HR' then raise exception 'FAIL: az irat nem a szakértő pillérébe került'; end if;
+  if exists (select 1 from engagement_modules where module = 'synthesis') then raise exception 'FAIL: szakértő összképet írt'; end if;
+  raise notice 'OK  szakértő irata a saját pillérébe kerül; összképet nem írhat';
+end $$;
+
+-- A pénzügyi szakértő nem látja a HR-iratot, és a mentése (iratlista nélküle) nem törli.
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000003', false) \g /dev/null
+do $$
+declare
+  eng uuid := '20000000-0000-0000-0000-000000000001';
+  rev int := (select revision from engagements where id = '20000000-0000-0000-0000-000000000001');
+begin
+  if exists (select 1 from engagement_documents) then raise exception 'FAIL: más pillér irata látható'; end if;
+  perform save_assessment(eng, rev, (select coalesce(jsonb_agg(item || jsonb_build_object('trail', evidence_trail, 'history', change_log, 'discussion', discussion)), '[]')
+                                     from red_flags where engagement_id = eng and item_key is not null),
+    '{}', '{}', '{}', '{}', '{"documents":[{"pillar":"FINANCE","data":{"id":"doc-fin","fileName":"beszamolo.pdf","analysis":{}}}]}');
+  if (select count(*) from engagement_documents) <> 1 then raise exception 'FAIL: saját irat'; end if;
+  raise notice 'OK  más pillér irata rejtve, és a mentés nem törli';
+end $$;
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', false) \g /dev/null
+do $$
+declare
+  eng uuid := '20000000-0000-0000-0000-000000000001';
+  rev int := (select revision from engagements where id = '20000000-0000-0000-0000-000000000001');
+begin
+  if (select count(*) from engagement_documents where engagement_id = eng) <> 2 then raise exception 'FAIL: a partner nem lát minden iratot'; end if;
+  perform save_assessment(eng, rev, (select coalesce(jsonb_agg(item || jsonb_build_object('trail', evidence_trail, 'history', change_log, 'discussion', discussion)), '[]')
+                                     from red_flags where engagement_id = eng and item_key is not null),
+    '{}', '{}', '{}', '{}', '{"synthesis":{"summary":"partner írta"}}');
+  if (select data ->> 'summary' from engagement_modules where engagement_id = eng and module = 'synthesis') <> 'partner írta' then raise exception 'FAIL: összkép'; end if;
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', false) \g /dev/null
+do $$ begin
+  if exists (select 1 from engagement_modules where module = 'synthesis') then raise exception 'FAIL: szakértő látja az összképet'; end if;
+  if (select count(*) from engagement_documents) <> 1 then raise exception 'FAIL: HR-szakértő láthatósága'; end if;
+  raise notice 'OK  összkép csak projektvezetőnek; partner minden iratot lát';
+end $$;
+
+-- ── 5. Moduladat: ügyfél nem olvassa, idegen projektre nem írható ───
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000004', false) \g /dev/null
 do $$ begin
-  if exists (select 1 from engagement_modules) then raise exception 'FAIL: ügyfél látja a moduladatot'; end if;
+  if exists (select 1 from engagement_modules) or exists (select 1 from engagement_documents) then raise exception 'FAIL: ügyfél látja a moduladatot'; end if;
   raise notice 'OK  moduladat az ügyfélnek rejtve';
 end $$;
 reset role;

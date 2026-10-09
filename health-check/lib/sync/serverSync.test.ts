@@ -226,3 +226,21 @@ describe('szerveres projekttárolás', () => {
     expect(listProjects().some((p) => p.id === local.projectId)).toBe(true);
   });
 });
+
+describe('kilépés', () => {
+  it('a szerveres projektek helyi másolata törlődik; a helyi és a feltöltetlen munka (kérésre) marad', async () => {
+    const { clearServerCache, unsyncedServerProjects } = await import('./serverSync');
+    const srv = fakeServer({ revision: 1 });
+    await pullProjectList(srv.f);
+    await pullProject(ID, srv.f);
+    const local = createProject({ companyName: 'Helyi Minta Bt.', kind: 'HEALTH_CHECK' });
+    expect(unsyncedServerProjects()).toEqual([]);
+    saveWorkspace({ ...loadProject(ID), items: [item('LEG-01', 2)] });
+    expect(unsyncedServerProjects()).toEqual(['Kitalált Minta Kft.']);
+    clearServerCache({ keepUnsynced: true });
+    expect(listProjects().some((p) => p.id === ID)).toBe(true);
+    clearServerCache();
+    expect(listProjects().map((p) => p.id)).toEqual([local.projectId]);
+    expect(storage.getItem(`ict-hc:intake:v1:${ID}`)).toBeNull();
+  });
+});

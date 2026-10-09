@@ -89,14 +89,32 @@ HTTPS kötelező (a HSTS-fejléc és a Secure süti ezt feltételezi).
 - `psql "postgres://…@db.<projekt>.supabase.co:5432/postgres"` a hostingon kívüli gépről → időtúllépés / elutasítás.
 - Ügyfél-szerepkörrel az AI- és a mentés-végpont 403.
 
-## 4. Korlátok – ami még NINCS kész
+## 4. Szerveres projekttárolás (0015)
 
-- **A felület még a böngészőben tárol** (localStorage). A szerveres mentés-végpont és
-  az adatbázis-oldali felülvizsgálat kész és tesztelt, de a felület tárolórétegének
-  átállítása (projektek betöltése/mentése a szerverről) a következő lépés. Addig éles
-  módban a felülvizsgálat és a mentés csak az adatbázisban már meglévő projekttel működik.
+Bejelentkezett belső felhasználónál a projektek a szerveren élnek; a böngésző csak
+gyorsítótár (`lib/sync/serverSync.ts`). Bemutató és bejelentkezés nélküli használat
+változatlanul helyi.
+
+| Mi | Hogyan |
+|---|---|
+| Betöltés | Megnyitáskor `GET /api/engagements/[id]` az RLS-en át; ha helyben feltöltetlen munka van és a szerveren újabb verzió készült, nem ír felül, hanem ütközést jelez. |
+| Mentés | Minden helyi módosítás után ~1,5 mp-cel `POST …/save`: egy tranzakció, a legutóbb látott verzióval. Közbeni mentésnél 409 → ütközéssáv, a felhasználó dönt. Hálózati hibánál a munka helyben marad, újrapróbálás. |
+| Új projekt | Partner vagy projektvezető (`create_engagement`): cég, projekt, tagság egy lépésben. |
+| Iratok | Külön tábla (`engagement_documents`) pillér-jogosultsággal: a szakértő csak a saját pillére iratait látja és írja; új irat pillére szakértőnél a saját pillére, egyébként az irattípusból. |
+| Összkép (AI-szintézis) | Csak partner és projektvezető látja/írja (több pillér forrásaiból idéz). |
+| Korlátok | Mentés legfeljebb 12 MB; írási kérés felhasználónként óránként 1200 (elosztott korlát). |
+| Kilépés | A szerveres projektek helyi másolata törlődik (feltöltetlen munkánál előtte figyelmeztetés); lejárt munkamenetnél a feltöltött másolat törlődik, a feltöltetlen megmarad. |
+| Helyi projekt | A projektválasztóban egy gombbal feltölthető a szerverre. |
+
+## 5. Korlátok – ami még NINCS kész
+
+- **Interjúk és óraszámok** szerveres projektben is csak a böngészőben vannak.
+- **Projektszintű verziózár:** két kolléga egyidejű mentése ütközést ad akkor is, ha
+  más pilléren dolgoznak (automatikus összefésülés a következő lépés).
+- **Riportverzió:** a mentés a projekten frissíti az értékelést; véglegesített,
+  ügyfélnek kiadható riportverzió (`reports`) még nincs bekötve.
 - **Egy szervezet:** az elkülönítés projekt-tagság és pillér szerinti; külön
-  szervezetek (`org_id`) kezelése nincs. Több cég (bérlő) kiszolgálásához ez bővítendő.
-- **Pillér-tanácsadó mentése:** ha a mentett listában más pillér tétele is van, az egész
-  mentés elutasul (atomikusan). A felület átállításakor a pillér-szűrt mentést kell küldeni.
+  szervezetek (`org_id`) kezelése nincs.
+- A szerveres mód valódi Supabase-zel még nem futott; élesítés előtt kézi próba
+  (belépés, új projekt, mentés, ütközés két böngészőből, szakértői láthatóság).
 - A Supabase- és Azure-beállítások (2. fejezet) kézi lépések; a kód ezeket nem tudja kikényszeríteni.

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireStaff, supabaseServer } from '@/lib/auth/guard.server';
 import { CreateProjectSchema, summaryFromRow, type EngagementListRow } from '@/lib/server/projects';
 import { saveErrorStatus } from '@/lib/server/saveAssessment';
+import { limitWrites, readJsonLimited } from '@/lib/server/body';
 
 const NO_STORE = { 'Cache-Control': 'no-store' };
 const notServer = () => NextResponse.json({ error: 'A szerveres projekttárolás csak bejelentkezett, éles módban érhető el.' }, { status: 503 });
@@ -26,7 +27,9 @@ export async function POST(req: Request) {
   const access = await requireStaff();
   if (!access.ok) return access.response;
   if (access.mode !== 'SUPABASE') return notServer();
-  const parsed = CreateProjectSchema.safeParse(await req.json().catch(() => null));
+  const limited = await limitWrites();
+  if (limited) return limited;
+  const parsed = CreateProjectSchema.safeParse(await readJsonLimited(req, 16 * 1024));
   if (!parsed.success) return NextResponse.json({ error: 'Hibás projektadat (cégnév, típus).' }, { status: 400 });
   const supabase = await supabaseServer();
   const { data, error } = await supabase.rpc('create_engagement', {
