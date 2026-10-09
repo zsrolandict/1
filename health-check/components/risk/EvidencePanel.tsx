@@ -214,8 +214,9 @@ function OpinionThread({
         trail,
         text,
       );
-      const result = await backend.reviewOpinion(req);
-      onChange({ discussion: [...thread, opinion, reviewEntry(result)] });
+      const { entries, ...result } = await backend.reviewOpinion(req, risk.id);
+      // Szerveres projektnél a szerver által rögzített bejegyzések (azonosítóval) – így a következő mentés egyezik.
+      onChange({ discussion: [...thread, ...(entries ?? [opinion, reviewEntry(result)])] });
       setDraft('');
     } catch (e) {
       // A vélemény akkor is megmarad, ha a felülvizsgálat nem sikerült.

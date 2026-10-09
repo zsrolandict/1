@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Check, ChevronDown, FolderOpen, HardDrive, LayoutList, Plus, RotateCcw, Trash2, Upload } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, Cloud, CloudUpload, FolderOpen, HardDrive, LayoutList, Plus, RotateCcw, Trash2, Upload } from 'lucide-react';
 import { ENGAGEMENT_KIND_LIST, ENGAGEMENT_KINDS, type EngagementKind } from '@/lib/engagement/kinds';
 import { ago, lastSaved, SAVE_FAILED_EVENT, saveFailedAt, SAVED_EVENT } from '@/lib/localSave';
 import {
@@ -16,7 +16,11 @@ import {
   parseBackup,
   resetDemo,
 } from '@/lib/projects';
-import { byRecent, createProject, openDemo, type ProjectMeta } from '@/lib/risk/store';
+import { byRecent, openDemo, type ProjectMeta } from '@/lib/risk/store';
+import { createAnyProject } from '@/lib/sync/serverMode';
+import { deleteServerProject, uploadLocalProject } from '@/lib/sync/serverSync';
+import { useServerMode, useSyncState } from './useSync';
+import type { SyncState } from '@/lib/sync/serverSync';
 import { SCENARIOS } from '@/lib/scenarios';
 import { useConfirm } from '../ConfirmDialog';
 import { useOutside } from '../useDismiss';
@@ -36,6 +40,8 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
   const [overview, setOverview] = useState(false);
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const serverMode = useServerMode();
   const [confirmDialog, ask] = useConfirm();
   const ref = useRef<HTMLDivElement>(null);
   useOutside(ref, () => setOpen(false), open);
@@ -54,6 +60,18 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
   };
 
   const confirmDelete = async (p: ProjectMeta) => {
+    if (p.server) {
+      const yes = await ask({
+        title: 'Törlöd a projektet a szerverről?',
+        confirmLabel: 'Végleges törlés',
+        danger: true,
+        body: `A(z) „${p.companyName || 'Névtelen projekt'}” projekt minden adata a szerverről is törlődik, minden kollégánál. Projektet csak partner törölhet.`,
+      });
+      if (!yes) return;
+      setNotice(null);
+      await deleteServerProject(p.id).catch((e: unknown) => setNotice(e instanceof Error ? e.message : 'A törlés nem sikerült.'));
+      return;
+    }
     const ok = await ask({
       title: 'Törlöd a projektet?',
       confirmLabel: 'Végleges törlés',
@@ -61,6 +79,17 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
       body: `A(z) „${p.companyName || 'Névtelen projekt'}” projekt minden adata (mátrix, adatgyűjtés, interjúk, időkeret) törlődik ebből a böngészőből. Ha kellhet még, előbb mentsd fájlba.`,
     });
     if (ok) deleteProject(p.id);
+  };
+
+  const confirmUpload = async (p: ProjectMeta) => {
+    const ok = await ask({
+      title: 'Feltöltöd a projektet a szerverre?',
+      confirmLabel: 'Feltöltés',
+      body: `A(z) „${p.companyName || 'Névtelen projekt'}” mátrixa, adatgyűjtése és utókövetése a szerverre kerül, és onnan minden jogosult kolléga eléri; a böngészős példány törlődik. Az interjúk és az óraszámok ebben a lépésben még nem kerülnek fel – ha vannak, előbb mentsd a projektet fájlba.`,
+    });
+    if (!ok) return;
+    setNotice(null);
+    await uploadLocalProject(p.id).catch((e: unknown) => setNotice(e instanceof Error ? e.message : 'A feltöltés nem sikerült.'));
   };
 
   const confirmReset = async (p: ProjectMeta) => {
@@ -95,9 +124,13 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
                 onCancel={() => setCreating(false)}
                 onCreate={(input) =>
                   choose(() => {
-                    createProject(input);
-                    // Saját projekt az Adatgyűjtéssel indul.
-                    if (nav && nav.page !== 'adatok') nav.go('adatok');
+                    setNotice(null);
+                    createAnyProject(input)
+                      .then(() => {
+                        // Saját projekt az Adatgyűjtéssel indul.
+                        if (nav && nav.page !== 'adatok') nav.go('adatok');
+                      })
+                      .catch((e: unknown) => setNotice(e instanceof Error ? e.message : 'A projekt nem hozható létre.'));
                   })
                 }
               />
@@ -122,6 +155,7 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
                     active={p.id === activeId}
                     onOpen={() => choose(() => openProject(p.id, nav))}
                     onDelete={() => confirmDelete(p)}
+                    onUpload={serverMode && !p.server ? () => confirmUpload(p) : undefined}
                   />
                 ))}
               </ul>
@@ -176,13 +210,30 @@ export default function ProjectBar({ saveFile = browserDownload, allowNewTab = t
 
       {overview && <ProjectsOverview onClose={() => setOverview(false)} allowNewTab={allowNewTab} />}
       <SaveStatus projectId={activeId} meta={active} companyName={label} saveFile={saveFile} />
+      {notice && (
+        <p role="alert" className="max-w-xs text-xs text-red-700">
+          {notice}
+        </p>
+      )}
 
       {confirmDialog}
     </div>
   );
 }
 
-function ProjectRow({ p, active, onOpen, onDelete }: { p: ProjectMeta; active: boolean; onOpen: () => void; onDelete: () => void }) {
+function ProjectRow({
+  p,
+  active,
+  onOpen,
+  onDelete,
+  onUpload,
+}: {
+  p: ProjectMeta;
+  active: boolean;
+  onOpen: () => void;
+  onDelete: () => void;
+  onUpload?: () => void;
+}) {
   return (
     <li className="flex items-center gap-1">
       <button onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-slate-50">
@@ -190,10 +241,20 @@ function ProjectRow({ p, active, onOpen, onDelete }: { p: ProjectMeta; active: b
         <span className="min-w-0">
           <span className="block truncate text-slate-900">{p.companyName || 'Névtelen projekt'}</span>
           <span className="block truncate text-xs text-slate-500">
-            {ENGAGEMENT_KINDS[p.kind]?.label} · módosítva {ago(Date.parse(p.updatedAt))}
+            {ENGAGEMENT_KINDS[p.kind]?.label} · {p.server ? 'szerveren · ' : ''}módosítva {ago(Date.parse(p.updatedAt))}
           </span>
         </span>
       </button>
+      {onUpload && (
+        <button
+          onClick={onUpload}
+          title="Feltöltés a szerverre"
+          aria-label={`${p.companyName || 'Projekt'} feltöltése a szerverre`}
+          className="rounded p-1 text-slate-500 hover:bg-brand-50 hover:text-brand-700"
+        >
+          <CloudUpload className="h-3.5 w-3.5" />
+        </button>
+      )}
       <button onClick={onDelete} aria-label={`${p.companyName || 'Projekt'} törlése`} className="rounded p-1 text-slate-500 hover:bg-red-50 hover:text-red-600">
         <Trash2 className="h-3.5 w-3.5" />
       </button>
@@ -287,6 +348,7 @@ function SaveStatus({ projectId, meta, companyName, saveFile }: { projectId: str
   const [note, setNote] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   useOutside(ref, () => setOpen(false), open);
+  const sync = useSyncState(projectId);
   useEffect(() => {
     const t = window.setInterval(() => tick((n) => n + 1), 30_000);
     const onSave = () => tick((n) => n + 1);
@@ -324,6 +386,8 @@ function SaveStatus({ projectId, meta, companyName, saveFile }: { projectId: str
       setNote(e instanceof Error ? e.message : 'A mentés nem sikerült.');
     }
   };
+
+  if (meta?.server) return <ServerSaveStatus state={sync} failed={failed} />;
 
   return (
     <div ref={ref} className="relative">
@@ -377,5 +441,39 @@ function SaveStatus({ projectId, meta, companyName, saveFile }: { projectId: str
         </div>
       )}
     </div>
+  );
+}
+
+const SYNC_LABEL: Record<SyncState['status'], string> = {
+  idle: 'Szerveres projekt',
+  loading: 'Betöltés a szerverről…',
+  pending: 'Mentés hamarosan…',
+  saving: 'Mentés a szerverre…',
+  saved: 'Szerveren mentve',
+  offline: 'Nincs kapcsolat – helyben megvan',
+  conflict: 'Mentési ütközés!',
+  error: 'A szerveres mentés nem sikerült',
+};
+
+/** Szerveres projekt mentési állapota: a munka a szerveren van, a böngésző csak gyorsítótár. */
+function ServerSaveStatus({ state, failed }: { state: SyncState; failed: number | null }) {
+  const bad = state.status === 'conflict' || state.status === 'error' || failed != null;
+  const warn = state.status === 'offline';
+  const label = failed != null ? 'A helyi mentés nem sikerült!' : SYNC_LABEL[state.status];
+  return (
+    <span
+      role={bad ? 'alert' : 'status'}
+      title={state.message ?? 'A projekt a szerveren van; minden módosítás automatikusan, verzióellenőrzéssel mentődik.'}
+      className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs ${
+        bad ? 'bg-red-600 font-medium text-white' : warn ? 'bg-amber-50 text-amber-800' : 'text-slate-500'
+      }`}
+    >
+      {bad || warn ? <AlertTriangle className="h-3.5 w-3.5" /> : <Cloud className="h-3.5 w-3.5" />}
+      <span className="hidden sm:inline">
+        {label}
+        {state.status === 'saved' && state.syncedAt ? ` – ${ago(state.syncedAt)}` : ''}
+        {state.status === 'error' && state.message ? `: ${state.message}` : ''}
+      </span>
+    </span>
   );
 }

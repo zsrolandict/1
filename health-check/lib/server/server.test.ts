@@ -7,6 +7,7 @@ import { DEFAULT_COMPANY } from '@/lib/risk/valuation';
 import { rowToItem, type RedFlagRow } from './redFlagRow';
 import { companyFrom, reviewRequestFromRow } from './reviewFromDb';
 import { prepareSave, SaveRequestSchema, saveErrorStatus } from './saveAssessment';
+import { projectFromRows } from './projects';
 
 /**
  * Éles bekötés (K8–K13) szerveroldali könyvtárai: a kliens nem tud pontszámot,
@@ -152,5 +153,52 @@ describe('hitelesítés (K10, K12)', () => {
 
   it('a munkamenet-süti HttpOnly, SameSite=Lax, teljes útvonal', () => {
     expect(AUTH_COOKIE_OPTIONS).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/' });
+  });
+});
+
+describe('szerveres projekt (0015)', () => {
+  it('prepareSave: a tényállás az adatgyűjtésből; a válaszok nem kerülnek a modulba kétszer', () => {
+    const req = SaveRequestSchema.parse({
+      expectedRevision: 0,
+      items: [],
+      answers: {},
+      company: DEFAULT_COMPANY,
+      modules: { intake: { profile: { sectors: ['TRADE'], narrative: 'x' }, answers: { Q22: 999 }, requestStatus: {}, invalidAnswers: {} }, snapshots: [] },
+    });
+    const { args } = prepareSave('e1', req, ENG);
+    const intake = args.p_modules.intake as Record<string, unknown>;
+    expect(intake).not.toHaveProperty('answers');
+    expect(intake).not.toHaveProperty('invalidAnswers');
+    expect(intake.profile).toMatchObject({ sectors: ['TRADE'], narrative: 'x' });
+    expect(args.p_workspace.itemOrder).toEqual([]);
+    expect(SaveRequestSchema.safeParse({ expectedRevision: 0, items: [], company: DEFAULT_COMPANY, modules: { interviews: {} } }).success).toBe(false);
+  });
+
+  it('projectFromRows: a felület sorrendje, ellenőrzött válaszok, csak a felület tételei', () => {
+    const p = projectFromRows(
+      {
+        id: 'e1',
+        code: 'HC-1',
+        kind: 'HEALTH_CHECK',
+        revision: 3,
+        updated_at: '2026-10-01',
+        materiality_huf: 50_000_000,
+        companies: { name: 'Minta Kft.' },
+        workspace: { company: { revenueHuf: 1e9 }, itemOrder: ['b', 'a'], coverageOverrides: 'hibás' },
+      },
+      [
+        { ...ROW, item_key: 'a' },
+        { ...ROW, item_key: 'b' },
+        { ...ROW, item_key: null },
+      ],
+      { answers: { Q22: 250, Q23: true }, request_status: { d1: 'RECEIVED', d2: 'X' } },
+      [{ module: 'intake', data: { accepted: ['k'] } }],
+    );
+    expect(p.items.map((r) => r.id)).toEqual(['b', 'a']);
+    expect(p.answers).toEqual({ Q23: true });
+    expect(p.requestStatus).toEqual({ d1: 'RECEIVED' });
+    expect(p).not.toHaveProperty('coverageOverrides');
+    expect(p).toMatchObject({ companyName: 'Minta Kft.', revision: 3, intake: { accepted: ['k'] }, snapshots: [] });
+    expect(p.company.revenueHuf).toBe(1e9);
   });
 });

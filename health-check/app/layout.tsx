@@ -5,6 +5,7 @@ import AppShell from '@/components/shell/AppShell';
 import GuideHost from '@/components/guide/GuideHost';
 import ProjectBar from '@/components/project/ProjectBar';
 import ProjectScope from '@/components/project/ProjectScope';
+import ServerSync from '@/components/project/ServerSync';
 import SupabaseIdentity from '@/components/SupabaseIdentity';
 import { NextNavProvider } from '@/components/NextNav';
 import './globals.css';
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </AppShell>
           </SupabaseIdentity>
           <GuideHost />
+          <ServerSync />
         </NextNavProvider>
       </body>
     </html>

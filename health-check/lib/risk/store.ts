@@ -45,6 +45,8 @@ export interface ProjectMeta {
   scenarioId: string;
   /** Bemutató (kitalált mintacég) projekt. */
   isDemo: boolean;
+  /** A projekt a szerveren él (a böngésző csak gyorsítótár); az azonosító a szerveres projekt azonosítója. */
+  server?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -181,6 +183,7 @@ function metaFor(ws: Workspace, prev: ProjectMeta | undefined, now: string): Pro
     kind: ws.kind,
     scenarioId: ws.scenarioId,
     isDemo: prev?.isDemo ?? isDemoScenario(ws.projectId),
+    ...(prev?.server ? { server: true } : {}),
     createdAt: prev?.createdAt ?? now,
     updatedAt: now,
   };
@@ -271,6 +274,9 @@ export function lastPageOf(projectId: string): ProjectPage {
 export function loadProject(id: string): Workspace {
   const saved = read<Partial<Workspace>>(wsKey(id));
   if (saved) return normalize(saved, id);
+  // Szerveres projekt, amelyet ez a böngésző még nem töltött le: üres váz (a szinkron tölti fel).
+  const meta = listProjects().find((p) => p.id === id);
+  if (meta?.server) return { ...workspaceFromScenario(BLANK, id), companyName: meta.companyName, kind: meta.kind };
   // Még nem mentett bemutató projekt: a minta kiinduló állapota.
   return workspaceFromScenario(getScenario(isDemoScenario(id) ? id : GYARTO.id), id);
 }
@@ -326,9 +332,10 @@ export function newProjectId(now = Date.now()): string {
   return `p-${now.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
-/** Új, saját projekt az üres mintából; ez lesz az aktív. */
-export function createProject(input: { companyName: string; kind: EngagementKind; materialityHuf?: number }, now = Date.now()): Workspace {
-  const id = newProjectId(now);
+/** Új, saját projekt az üres mintából; ez lesz az aktív. Szerveres projektnél az azonosítót a szerver adja (lib/sync). */
+export function createProject(input: { companyName: string; kind: EngagementKind; materialityHuf?: number }, now = Date.now(), serverId?: string): Workspace {
+  const id = serverId ?? newProjectId(now);
+  if (serverId) registerServerProject({ id, companyName: input.companyName.trim(), kind: input.kind, updatedAt: new Date(now).toISOString() });
   const ws: Workspace = {
     ...workspaceFromScenario(BLANK, id),
     companyName: input.companyName.trim(),
@@ -363,6 +370,26 @@ export function removeProjectWorkspace(id: string): void {
     INDEX_KEY,
     listProjects().filter((p) => p.id !== id),
   );
+}
+
+/**
+ * Szerveres projekt felvétele / frissítése a listában (a szinkron hívja). A
+ * helyi munkaállapotot nem érinti – azt a betöltés írja.
+ */
+export function registerServerProject(p: { id: string; companyName: string; kind: EngagementKind; updatedAt: string }): void {
+  const list = listProjects();
+  const prev = list.find((x) => x.id === p.id);
+  const meta: ProjectMeta = {
+    id: p.id,
+    companyName: p.companyName,
+    kind: p.kind,
+    scenarioId: prev?.scenarioId ?? BLANK.id,
+    isDemo: false,
+    server: true,
+    createdAt: prev?.createdAt ?? p.updatedAt,
+    updatedAt: prev && prev.updatedAt > p.updatedAt ? prev.updatedAt : p.updatedAt,
+  };
+  write(INDEX_KEY, prev ? list.map((x) => (x.id === p.id ? meta : x)) : [meta, ...list]);
 }
 
 /** Legutóbb módosított elöl (projektválasztó, kalauz, törlés utáni következő projekt). */

@@ -33,7 +33,11 @@ const RequestSchema = z.object({
 });
 
 /** Éles kérés: csak a tétel azonosítója és a vélemény – minden más az adatbázisból jön. */
-const ServerRequestSchema = z.object({ redFlagId: z.string().uuid(), opinion: z.string().trim().min(3).max(4000) });
+const ServerRequestSchema = z.object({
+  engagementId: z.string().uuid(),
+  itemKey: z.string().min(1).max(200),
+  opinion: z.string().trim().min(3).max(4000),
+});
 
 /**
  * Szakértői vélemény kritikus felülvizsgálata a tétel forrásai és levezetése alapján.
@@ -70,7 +74,8 @@ export async function POST(req: Request) {
     const { data: row } = await supabase
       .from('red_flags')
       .select('*, engagements(kind, materiality_huf, workspace)')
-      .eq('id', parsed.data.redFlagId)
+      .eq('engagement_id', parsed.data.engagementId)
+      .eq('item_key', parsed.data.itemKey)
       .maybeSingle();
     if (!row) return NextResponse.json({ error: 'Nincs ilyen tétel, vagy nincs hozzá jogosultság.' }, { status: 404 });
     const { engagements: eng, ...flag } = row as RedFlagRow & { engagements: EngagementRow };
@@ -83,9 +88,11 @@ export async function POST(req: Request) {
       .eq('id', flag.id);
     if (e1) return NextResponse.json({ error: 'A vélemény nem rögzíthető (jogosultság vagy közben módosult tétel).' }, { status: 409 });
     // … az AI-felülvizsgálat csak service role-lal.
-    const { error: e2 } = await admin.rpc('append_ai_review', { p_red_flag: flag.id, p_entry: reviewEntry(review) });
+    const ai = reviewEntry(review);
+    const { error: e2 } = await admin.rpc('append_ai_review', { p_red_flag: flag.id, p_entry: ai });
     if (e2) return NextResponse.json({ error: 'A felülvizsgálat nem rögzíthető.' }, { status: 500 });
-    return NextResponse.json({ review });
+    // A rögzített bejegyzések (azonos azonosítóval): a kliens ezeket veszi át, így a következő mentése egyezik a tárolttal.
+    return NextResponse.json({ review, entries: [opinion, ai] });
   } catch (err) {
     return errorResponse(err);
   }

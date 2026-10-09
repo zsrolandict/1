@@ -79,7 +79,7 @@ describe('API-végpontok', () => {
     };
     walk(root);
     // Nem AI-végpont, de saját őre van: a projekt mentése csak belső, bejelentkezett felhasználónak.
-    const STAFF_ONLY = [path.join('engagements', '[id]', 'save', 'route.ts')];
+    const STAFF_ONLY = [path.join('engagements', '[id]', 'save', 'route.ts'), path.join('engagements', 'route.ts')];
     const posts = files.filter((f) => /export async function POST/.test(readFileSync(f, 'utf8')) && !STAFF_ONLY.some((x) => f.endsWith(x)));
     expect(posts.length).toBe(ROUTES.length);
     for (const x of STAFF_ONLY) {

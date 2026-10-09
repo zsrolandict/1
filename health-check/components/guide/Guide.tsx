@@ -8,7 +8,8 @@ import { ago, SAVED_EVENT } from '@/lib/localSave';
 import { MODULES, type ModuleArea } from '@/lib/modules';
 import { stepsFor } from '@/lib/projectProgress';
 import { applySampleProfile } from '@/lib/projects';
-import { byRecent, createProject, loadWorkspace, PROJECT_EVENT } from '@/lib/risk/store';
+import { byRecent, loadWorkspace, PROJECT_EVENT } from '@/lib/risk/store';
+import { createAnyProject } from '@/lib/sync/serverMode';
 import { useNav, type Nav } from '../Nav';
 import { NewProjectForm } from '../project/ProjectBar';
 import { openProject } from '../project/openProject';
@@ -251,9 +252,12 @@ function StartView({ onDone, nav }: { onDone: () => void; nav: Nav | null }) {
         <NewProjectForm
           onCancel={() => setCreating(false)}
           onCreate={(input) => {
-            createProject(input);
-            if (nav && nav.page !== 'adatok') nav.go('adatok');
-            onDone();
+            void createAnyProject(input)
+              .then(() => {
+                if (nav && nav.page !== 'adatok') nav.go('adatok');
+                onDone();
+              })
+              .catch((e: unknown) => window.alert(e instanceof Error ? e.message : 'A projekt nem hozható létre.'));
           }}
         />
       ) : (
